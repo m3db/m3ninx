@@ -68,7 +68,7 @@ type PostingList interface {
 	NumDocs() int
 
 	// Fetch retrieves all documents which are associated with term `t`.
-	Fetch(t doc.Term) []DocID
+	Fetch(t doc.Term, negate bool) []DocID
 
 	// FetchFuzzy retrieves all documents with terms satisfying the given regexp.
 	FetchFuzzy(r *regexp.Regexp, negate bool) []DocID
