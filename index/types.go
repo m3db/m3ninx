@@ -20,7 +20,11 @@
 
 package index
 
-import "github.com/m3db/m3ninx/doc"
+import (
+	"regexp"
+
+	"github.com/m3db/m3ninx/doc"
+)
 
 // Writer represents an index writer.
 type Writer interface {
@@ -40,6 +44,36 @@ type Reader interface {
 	Fetch(opts FetchOptions) []doc.Document
 }
 
+// DocID is document identifier internal to each index.
+type DocID uint64
+
+// PostingList represents an efficient mapping from doc.Term -> []DocID
+type PostingList interface {
+	// Insert inserts a reference to document `i` for term `t`.
+	Insert(t doc.Term, i DocID)
+
+	// Remove removes the reference (if any) from document `i` to term `t`.
+	Remove(t doc.Term, i DocID)
+
+	// Terms retrieves all known terms.
+	Terms() []doc.Term
+
+	// NumTerms returns the cardinality of known terms.
+	NumTerms() int
+
+	// DocIDs retrieves all known DocIDs.
+	DocIDs() []DocID
+
+	// NumDocs returns the cardinality of known docs.
+	NumDocs() int
+
+	// Fetch retrieves all documents which are associated with term `t`.
+	Fetch(t doc.Term) []DocID
+
+	// FetchFuzzy retrieves all documents with terms satisfying the given regexp.
+	FetchFuzzy(r *regexp.Regexp, negate bool) []DocID
+}
+
 // FetchOptions is a group of criterion to filter documents.
 type FetchOptions struct {
 	Filters         []Filter
@@ -51,8 +85,13 @@ type FetchOptions struct {
 
 // Filter is a field value filter.
 type Filter struct {
-	FieldName        []byte
+	// FiledName is the name of an index field associated with a document.
+	FieldName []byte
+	// FieldValueFilter is the filter applied to field values for the given name.
 	FieldValueFilter []byte
-	Negate           bool
-	Regexp           bool // RE2 only, no PCRE
+	// Negate specifies if matches should be negated.
+	Negate bool
+	// Regexp specifies whether the FieldValueFilter should be treated as a Regexp
+	// Note: RE2 only, no PCRE (i.e. no backreferences)
+	Regexp bool
 }

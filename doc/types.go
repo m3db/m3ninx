@@ -20,6 +20,8 @@
 
 package doc
 
+import "crypto/md5"
+
 // ID represents a document's natural identifier.
 type ID []byte
 
@@ -34,10 +36,13 @@ const (
 	StringValueType
 )
 
+// Term represents the name/value of a field.
+type Term []byte
+
 // Field represents a document field.
 type Field struct {
-	Name      []byte
-	Value     []byte
+	Name      Term
+	Value     Term
 	ValueType FieldValueType
 }
 
@@ -53,3 +58,12 @@ type Document interface {
 	// comprise contents in addition to the ID/Index fields.
 	Bytes() []byte
 }
+
+// Hash is the hash of a []byte, safe to store in a map.
+type Hash [md5.Size]byte
+
+// IDHashFn computes the Hash for a given document ID.
+type IDHashFn func(id ID) Hash
+
+// TermHashFn computes the Hash for a given term.
+type TermHashFn func(t Term) Hash
