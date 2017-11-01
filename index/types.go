@@ -21,66 +21,59 @@
 package index
 
 import (
-	"regexp"
-
 	"github.com/m3db/m3ninx/doc"
 )
 
-// Writer represents an index writer.
-type Writer interface {
-	// Insert inserts the given documnet with provided fields.
+// Readable is a writable index.
+type Readable interface {
+	// Fetch retrieves the list of documents matching the given criterion.
+	Fetch(opts FetchOptions) []doc.Document
+}
+
+// Writable is a writable index.
+type Writable interface {
+	// Insert inserts the given documents with provided fields.
 	Insert(d doc.Document) error
+
+	// Update updates the given document.
+	Update(d doc.Document) error
 
 	// Delete deletes the given ID.
 	Delete(i doc.ID) error
 
 	// Merge merges the given indexes.
-	Merge(r ...Reader) error
+	Merge(r ...Readable) error
+}
+
+// Writer represents an index writer.
+type Writer interface {
+	Writable
+
+	// Open prepares the writer to accept writes.
+	Open() error
+
+	// Close closes the writer.
+	Close() error
 }
 
 // Reader represents an index reader.
 type Reader interface {
-	// Fetch retrieves the list of documents matching the given criterion.
-	Fetch(opts FetchOptions) []doc.Document
+	Readable
+
+	// Open prepares the reader to accept reads.
+	Open() error
+
+	// Close closes the reader.
+	Close() error
 }
 
 // DocID is document identifier internal to each index.
-type DocID uint64
+type DocID uint32
 
-// PostingList represents an efficient mapping from doc.Term -> []DocID
-type PostingList interface {
-	// Insert inserts a reference to document `i` for term `t`.
-	Insert(t doc.Term, i DocID)
-
-	// Remove removes the reference (if any) from document `i` to term `t`.
-	Remove(t doc.Term, i DocID)
-
-	// Terms retrieves all known terms.
-	Terms() []doc.Term
-
-	// NumTerms returns the cardinality of known terms.
-	NumTerms() int
-
-	// DocIDs retrieves all known DocIDs.
-	DocIDs() []DocID
-
-	// NumDocs returns the cardinality of known docs.
-	NumDocs() int
-
-	// Fetch retrieves all documents which are associated with term `t`.
-	Fetch(t doc.Term, negate bool) []DocID
-
-	// FetchFuzzy retrieves all documents with terms satisfying the given regexp.
-	FetchFuzzy(r *regexp.Regexp, negate bool) []DocID
-}
-
-// FetchOptions is a group of criterion to filter documents.
+// FetchOptions is a group of criterion to filter documents by.
 type FetchOptions struct {
-	Filters         []Filter
-	Limit           int64
-	SkipID          bool
-	SkipBytes       bool
-	SkipIndexFields bool
+	IndexFieldFilters []Filter
+	Limit             int64
 }
 
 // Filter is a field value filter.

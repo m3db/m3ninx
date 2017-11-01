@@ -20,50 +20,47 @@
 
 package doc
 
-import "crypto/md5"
-
-// ID represents a document's natural identifier.
+// ID represents a document's natural identifier. It's treated as immutable
+// by the indexing subsystem.
 type ID []byte
 
 // FieldValueType represents the different types of field values supported.
-type FieldValueType int
+type FieldValueType byte
 
 const (
-	// UnknownValueType marks un-specified value types.
-	UnknownValueType FieldValueType = iota
-
 	// StringValueType demarks string value types.
-	StringValueType
+	StringValueType FieldValueType = iota
 )
 
-// Term represents the name/value of a field.
+// Term represents the value of a field.
 type Term []byte
 
 // Field represents a document field.
 type Field struct {
-	Name      Term
+	Name      []byte
 	Value     Term
 	ValueType FieldValueType
 }
 
 // Document represents a document to be indexed.
-type Document interface {
+type Document struct {
 	// ID is the natural identifier for the document.
-	ID() ID
+	ID ID
 
-	// IndexFields contain the list of fields to index by.
-	IndexFields() []Field
+	// IndexableFields contain the list of fields by which to index the document.
+	IndexableFields []Field
 
-	// Bytes returns a serialized representation of the document. It may
-	// comprise contents in addition to the ID/Index fields.
-	Bytes() []byte
+	// StoredFields contains the list of fields to store supplemental
+	// to the indexable fields.
+	StoredFields []Field
 }
 
+// HashSize is the number of the hashed ID (currently set at 16 as we're
+// using md5 Hashing).
+const HashSize = 16
+
 // Hash is the hash of a []byte, safe to store in a map.
-type Hash [md5.Size]byte
+type Hash [HashSize]byte
 
-// IDHashFn computes the Hash for a given document ID.
-type IDHashFn func(id ID) Hash
-
-// TermHashFn computes the Hash for a given term.
-type TermHashFn func(t Term) Hash
+// HashFn computes the Hash for a given document ID.
+type HashFn func(id ID) Hash
