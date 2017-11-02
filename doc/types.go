@@ -36,6 +36,8 @@ const (
 type Term []byte
 
 // Field represents a document field.
+// NB(prateek): The value of a Field is a single Term, this deviates
+// from conventional use of the `Term` in other indexing software.
 type Field struct {
 	Name      []byte
 	Value     Term
@@ -47,7 +49,7 @@ type Document struct {
 	// ID is the natural identifier for the document.
 	ID ID
 
-	// IndexableFields contain the list of fields by which to index the document.
+	// IndexableFields contains the list of fields by which to index the document.
 	IndexableFields []Field
 
 	// StoredFields contains the list of fields to store supplemental

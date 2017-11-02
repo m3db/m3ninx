@@ -24,7 +24,7 @@ import (
 	"github.com/m3db/m3ninx/doc"
 )
 
-// Readable is a writable index.
+// Readable is a readable index.
 type Readable interface {
 	// Fetch retrieves the list of documents matching the given criterion.
 	Fetch(opts FetchOptions) []doc.Document
@@ -67,7 +67,8 @@ type Reader interface {
 	Close() error
 }
 
-// DocID is document identifier internal to each index.
+// DocID is document identifier internal to each index. It's limited to
+// be at most 2^32.
 type DocID uint32
 
 // FetchOptions is a group of criterion to filter documents by.

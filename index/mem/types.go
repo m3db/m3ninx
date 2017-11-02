@@ -18,22 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package inmem
+package mem
 
 import (
-	"regexp"
-
-	"github.com/m3db/m3ninx/doc"
-	mi "github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3x/instrument"
-
-	"github.com/RoaringBitmap/roaring"
 )
 
 // Index represents a memory backed index.
 type Index interface {
-	mi.Readable
-	mi.Writable
+	index.Readable
+	index.Writable
 
 	// Open prepares the index to accept reads/writes.
 	Open() error
@@ -43,30 +38,6 @@ type Index interface {
 
 	// Freeze makes the index immutable. Any writes after this return error.
 	Freeze() error
-}
-
-type termsDictionary interface {
-	FieldNames() [][]byte
-
-	FetchTerms(FieldName []byte) []doc.Term
-
-	FetchDocs(FieldName []byte, Term doc.Term, negate bool) *roaring.Bitmap
-
-	FetchDocsFuzzy(FieldName []byte, TermRe *regexp.Regexp, negate bool) *roaring.Bitmap
-}
-
-type postingID int64
-
-// postingList represents an efficient mapping from postingID -> bitmap of doc ids
-type postingList interface {
-	// Insert inserts a reference to document `i` for posting id `p`.
-	Insert(p postingID, i mi.DocID)
-
-	// Remove removes the reference (if any) from document `i` from posting id `p`.
-	Remove(p postingID, i mi.DocID)
-
-	// Fetch retrieves all documents which are associated with posting id `p`.
-	Fetch(p postingID) (*roaring.Bitmap, error)
 }
 
 // Options is a collection of knobs for an in-memory index.
