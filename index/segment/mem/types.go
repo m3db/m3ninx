@@ -21,26 +21,28 @@
 package mem
 
 import (
-	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/index/segment"
+
 	"github.com/m3db/m3x/instrument"
 )
 
-// Index represents a memory backed index.
-type Index interface {
-	index.Readable
-	index.Writable
+// Segment represents a memory backed index segment.
+type Segment interface {
+	segment.Segment
+	segment.Readable
+	segment.Writable
 
-	// Open prepares the index to accept reads/writes.
+	// Open prepares the segment to accept reads/writes.
 	Open() error
 
-	// Close closes the index.
+	// Close closes the segment.
 	Close() error
 
-	// Freeze makes the index immutable. Any writes after this return error.
+	// Freeze makes the segment immutable. Any writes after this return error.
 	Freeze() error
 }
 
-// Options is a collection of knobs for an in-memory index.
+// Options is a collection of knobs for an in-memory segment.
 type Options interface {
 	// SetInstrumentOptions sets the instrument options.
 	SetInstrumentOptions(value instrument.Options) Options

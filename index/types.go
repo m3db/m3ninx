@@ -21,71 +21,23 @@
 package index
 
 import (
-	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index/segment"
+
+	"github.com/m3db/m3x/instrument"
 )
 
-// Readable is a readable index.
-type Readable interface {
-	// Fetch retrieves the list of documents matching the given criterion.
-	Fetch(opts FetchOptions) []doc.Document
+// Index is a collection of segments.
+type Index interface {
+	segment.Segment
+	segment.Readable
+	segment.Writable
 }
 
-// Writable is a writable index.
-type Writable interface {
-	// Insert inserts the given documents with provided fields.
-	Insert(d doc.Document) error
+// Options is a set of knobs by which to tweak Index-ing behaviour.
+type Options interface {
+	// SetInstrumentOptions sets the instrument options.
+	SetInstrumentOptions(value instrument.Options) Options
 
-	// Update updates the given document.
-	Update(d doc.Document) error
-
-	// Delete deletes the given ID.
-	Delete(i doc.ID) error
-
-	// Merge merges the given indexes.
-	Merge(r ...Readable) error
-}
-
-// Writer represents an index writer.
-type Writer interface {
-	Writable
-
-	// Open prepares the writer to accept writes.
-	Open() error
-
-	// Close closes the writer.
-	Close() error
-}
-
-// Reader represents an index reader.
-type Reader interface {
-	Readable
-
-	// Open prepares the reader to accept reads.
-	Open() error
-
-	// Close closes the reader.
-	Close() error
-}
-
-// DocID is document identifier internal to each index. It's limited to
-// be at most 2^32.
-type DocID uint32
-
-// FetchOptions is a group of criterion to filter documents by.
-type FetchOptions struct {
-	IndexFieldFilters []Filter
-	Limit             int64
-}
-
-// Filter is a field value filter.
-type Filter struct {
-	// FiledName is the name of an index field associated with a document.
-	FieldName []byte
-	// FieldValueFilter is the filter applied to field values for the given name.
-	FieldValueFilter []byte
-	// Negate specifies if matches should be negated.
-	Negate bool
-	// Regexp specifies whether the FieldValueFilter should be treated as a Regexp
-	// Note: RE2 only, no PCRE (i.e. no backreferences)
-	Regexp bool
+	// InstrumentOptions returns the instrument options.
+	InstrumentOptions() instrument.Options
 }

@@ -28,8 +28,11 @@ type ID []byte
 type FieldValueType byte
 
 const (
+	// UnknownValueType demarks an unknown value type.
+	UnknownValueType FieldValueType = iota
+
 	// StringValueType demarks string value types.
-	StringValueType FieldValueType = iota
+	StringValueType
 )
 
 // Term represents the value of a field.
@@ -57,8 +60,7 @@ type Document struct {
 	StoredFields []Field
 }
 
-// HashSize is the number of the hashed ID (currently set at 16 as we're
-// using md5 Hashing).
+// HashSize is the number of the hashed ID.
 const HashSize = 16
 
 // Hash is the hash of a []byte, safe to store in a map.
