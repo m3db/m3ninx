@@ -40,7 +40,7 @@ type Term []byte
 
 // Field represents a document field.
 // NB(prateek): The value of a Field is a single Term, this deviates
-// from conventional use of the `Term` in other indexing software.
+// from conventional use of `Term` in other indexing software (e.g. Lucene).
 type Field struct {
 	Name      []byte
 	Value     Term
