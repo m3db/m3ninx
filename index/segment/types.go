@@ -77,8 +77,8 @@ type Writable interface {
 	// Update updates the given document.
 	Update(d doc.Document) error
 
-	// Delete deletes the given ID.
-	Delete(i doc.ID) error
+	// Delete deletes the given document.
+	Delete(d doc.Document) error
 }
 
 // Writer represents a segment writer.
