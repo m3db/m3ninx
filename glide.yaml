@@ -1,7 +1,8 @@
-package: github.com/m3db/m3index
+package: github.com/m3db/m3ninx
 import:
 - package: github.com/prometheus/prometheus
   # TODO(jeromefroe): When the new Prometheus remote storage endpoint is included
   # in a stable release we should use a version here instead of a commit SHA.
   version: ee011d906d683278518fa3d8439d08b0871e93ff
 - package: github.com/tylertreat/bench
+  version: eb938b1b5e35aa6937565aa805d4da9c1fbde7b3

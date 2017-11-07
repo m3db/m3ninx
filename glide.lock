@@ -1,8 +1,8 @@
-hash: 08a73fef62f20b4de7557a8977811dbea03a4ebd8b3a1e82c7f76644b6a24576
-updated: 2017-10-27T18:25:00.132970602-04:00
+hash: e51ba581d6cb9047a03de69f83ceb330e359d176de2d3308318486f0d5b4b59b
+updated: 2017-11-07T07:33:05.990734195-08:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 8feb05fb5bffe503a94fb9a687a01a9eca0dcf37
+  version: 262fa7531bccfe21fc41b25bde81dad7e8ea3320
   subpackages:
   - aws
   - aws/awserr
@@ -66,7 +66,7 @@ imports:
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 1fd8ba6a5cfc5857a56346a01501c517444d4b43
+  version: 8cc3a55af3bcf171a1c23a90c4df9cf591706104
   subpackages:
   - runtime
   - runtime/internal
@@ -90,7 +90,7 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 1bab55dd05dbff384524a6a1c99006d9eb5f139b
+  version: e3fb1a1acd7605367a2b378bc2e2f893c05174b7
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
@@ -114,7 +114,7 @@ imports:
 - name: github.com/tylertreat/hdrhistogram-writer
   version: d105e3c15daaac745539bdd3e4a1f743b8feda09
 - name: golang.org/x/net
-  version: c73622c77280266305273cb545f54516ced95b93
+  version: 01c190206fbdffa42f334f4b2bf2220f50e64920
   subpackages:
   - context
   - context/ctxhttp
@@ -125,7 +125,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 6eab0e8f74e86c598ec3b6fad4888e0c11482d48
+  version: 88f656faf3f37f690df1a32515b479415e1a6769
   subpackages:
   - secure/bidirule
   - transform
@@ -136,18 +136,19 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/genproto
-  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
+  version: 11c7f9e547da6db876260ce49ea7536985904c9b
   subpackages:
   - googleapis/api/annotations
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: a4ff4e29c4bb071c28d9a81571c0d8bbdc644f9f
+  version: 3790967af47e423e7e30d9bff6366cac0c1fabe9
   subpackages:
   - balancer
   - balancer/roundrobin
   - codes
   - connectivity
   - credentials
+  - encoding
   - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
