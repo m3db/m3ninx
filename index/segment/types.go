@@ -65,8 +65,8 @@ type Iter interface {
 
 // Readable is a readable index segment.
 type Readable interface {
-	// Fetch retrieves the list of documents matching the given criterion.
-	Fetch(opts FetchOptions) []doc.Document
+	// Query retrieves the list of documents matching the given criterion.
+	Query(q Query) []doc.Document
 }
 
 // Writable is a writable index segment.
@@ -107,10 +107,21 @@ type Reader interface {
 // be at most 2^32.
 type DocID uint32
 
-// FetchOptions is a group of criterion to filter documents by.
-type FetchOptions struct {
-	IndexFieldFilters []Filter
-	Limit             int64
+// QueryConjunction specifies query operation conjunction.
+type QueryConjunction byte
+
+const (
+	// UnknownConjunction is the default unknown conjunction.
+	UnknownConjunction QueryConjunction = iota
+	// AndConjunction specifies logically 'And' all provided criterion.
+	AndConjunction
+)
+
+// Query is a group of criterion to filter documents by.
+type Query struct {
+	Conjunction QueryConjunction
+	Filters     []Filter
+	SubQueries  []Query
 }
 
 // Filter is a field value filter.
@@ -121,7 +132,7 @@ type Filter struct {
 	FieldValueFilter []byte
 	// Negate specifies if matches should be negated.
 	Negate bool
-	// Regexp specifies whether the FieldValueFilter should be treated as a Regexp
-	// Note: RE2 only, no PCRE (i.e. no backreferences)
+	// Regexp specifies whether the FieldValueFilter should be treated as a Regexp.
+	// Note: RE2 only, no PCRE (i.e. no backreferences).
 	Regexp bool
 }

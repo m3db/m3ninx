@@ -35,15 +35,13 @@ const (
 	StringValueType
 )
 
-// Term represents the value of a field.
-type Term []byte
+// Value represents the value of a field.
+type Value []byte
 
 // Field represents a document field.
-// NB(prateek): The value of a Field is a single Term, this deviates
-// from conventional use of `Term` in other indexing software (e.g. Lucene).
 type Field struct {
 	Name      []byte
-	Value     Term
+	Value     Value
 	ValueType FieldValueType
 }
 
