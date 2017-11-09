@@ -50,12 +50,8 @@ type Document struct {
 	// ID is the natural identifier for the document.
 	ID ID
 
-	// IndexableFields contains the list of fields by which to index the document.
-	IndexableFields []Field
-
-	// StoredFields contains the list of fields to store supplemental
-	// to the indexable fields.
-	StoredFields []Field
+	// Fields contains the list of fields by which to index the document.
+	Fields []Field
 }
 
 // HashSize is the number of the hashed ID.
