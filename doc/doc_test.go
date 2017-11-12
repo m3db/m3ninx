@@ -18,25 +18,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package index
+package doc_test
 
 import (
-	"github.com/m3db/m3ninx/index/segment"
+	"testing"
 
-	"github.com/m3db/m3x/instrument"
+	"github.com/m3db/m3ninx/doc"
+
+	"github.com/stretchr/testify/require"
 )
 
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
-}
+func TestNewMetricWithNoBytes(t *testing.T) {
+	metricID := []byte("some-random-id")
+	tags := map[string]string{
+		"abc": "one",
+		"def": "two",
+	}
 
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+	d := doc.New(metricID, tags)
+	require.Equal(t, metricID, []byte(d.ID))
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+	found := 0
+	for _, f := range d.Fields {
+		require.Equal(t, doc.StringValueType, f.ValueType)
+		name, value := string(f.Name), string(f.Value)
+		if tags[name] == value {
+			found++
+		}
+	}
+	require.Equal(t, len(tags), found)
 }

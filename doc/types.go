@@ -20,6 +20,15 @@
 
 package doc
 
+// ReservedFieldName signifies the field names which are reserved for internal
+// use.
+type ReservedFieldName string
+
+const (
+	// IDFieldName is the fieldname used for the `Document.ID` field.
+	IDFieldName ReservedFieldName = "_id"
+)
+
 // ID represents a document's natural identifier. It's treated as immutable
 // by the indexing subsystem.
 type ID []byte

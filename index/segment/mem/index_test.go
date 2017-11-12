@@ -18,25 +18,45 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package index
+package mem
 
 import (
+	"testing"
+
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
-	"github.com/m3db/m3x/instrument"
+	"github.com/stretchr/testify/require"
 )
 
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
+func newTestOptions() Options {
+	return NewOptions()
 }
 
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+func TestNewMemSegment(t *testing.T) {
+	opts := newTestOptions()
+	idx, err := New(opts)
+	require.NoError(t, err)
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+	metricID := []byte("some-random-id")
+	tags := map[string]string{
+		"abc": "one",
+		"def": "two",
+	}
+
+	d := doc.New(metricID, tags)
+	require.NoError(t, idx.Insert(d))
+
+	docs, err := idx.Query(segment.Query{
+		Filters: []segment.Filter{
+			segment.Filter{
+				FieldName:        []byte("abc"),
+				FieldValueFilter: []byte("one"),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(docs))
+	require.Equal(t, metricID, []byte(docs[0].ID))
 }

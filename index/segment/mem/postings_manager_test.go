@@ -18,25 +18,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package index
+package mem
 
 import (
+	"testing"
+
 	"github.com/m3db/m3ninx/index/segment"
 
-	"github.com/m3db/m3x/instrument"
+	"github.com/stretchr/testify/require"
 )
 
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
+func TestPostingsListInsertNew(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	id := p.Insert(123)
+	bitmap, err := p.Fetch(id)
+	require.NoError(t, err)
+	require.True(t, bitmap.Contains(123))
 }
 
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+func TestPostingsListFetchIllegalOffset(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	err := p.Update(100, 123)
+	require.Error(t, err)
+	_, err = p.Fetch(100)
+	require.Error(t, err)
+}
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+func TestPostingsListUpdate(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	id := p.Insert(123)
+	err := p.Update(id, 142)
+	require.NoError(t, err)
+
+	bitmap, err := p.Fetch(id)
+	require.NoError(t, err)
+	require.True(t, bitmap.Contains(123))
+	require.True(t, bitmap.Contains(142))
+}
+func TestPostingsListInsertNewMany(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	for i := 0; i < 100; i++ {
+		id := p.Insert(segment.DocID(i))
+		require.Equal(t, i, int(id))
+	}
+
+	for i := 0; i < 100; i++ {
+		bitmap, err := p.Fetch(postingsManagerOffset(i))
+		require.NoError(t, err)
+		require.True(t, bitmap.Contains(segment.DocID(i)))
+	}
 }

@@ -18,25 +18,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package index
+package doc
 
-import (
-	"github.com/m3db/m3ninx/index/segment"
-
-	"github.com/m3db/m3x/instrument"
-)
-
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
-}
-
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
-
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+// New returns a new document.
+// TODO: figure out if we can get away with fewer allocs, e.g. we could update
+// the signature to be New(id []byte, tagKeys [][]byte, tagValues [][]byte) Document {...}
+func New(id []byte, tags map[string]string) Document {
+	fields := make([]Field, 0, len(tags))
+	for k, v := range tags {
+		fields = append(fields, Field{
+			Name:      []byte(k),
+			Value:     []byte(v),
+			ValueType: StringValueType,
+		})
+	}
+	return Document{
+		ID:     id,
+		Fields: fields,
+	}
 }
