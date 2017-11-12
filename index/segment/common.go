@@ -18,42 +18,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package doc
+package segment
 
 import (
 	"bytes"
 	"fmt"
 )
 
-func (f Field) String() string {
-	return fmt.Sprintf("[ Name = %s, Value = %s ]", string(f.Name), string(f.Value))
+func (f Filter) String() string {
+	return fmt.Sprintf("[ Name = %s, Value = %s, Negate = %v, Regex = %v ]", string(f.FieldName), string(f.FieldValueFilter), f.Negate, f.Regexp)
 }
 
-func (d Document) String() string {
+func (q Query) String() string {
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("[ ID = %s, Fields = [ ", string(d.ID)))
-	for _, f := range d.Fields {
+	buf.WriteString("[ Filters = [ ")
+	for _, f := range q.Filters {
 		buf.WriteString("\n\t")
 		buf.WriteString(f.String())
 	}
 	buf.WriteString("\n\t]\n")
 	return buf.String()
-}
-
-// New returns a new document.
-// TODO: figure out if we can get away with fewer allocs, e.g. we could update
-// the signature to be New(id []byte, tagKeys [][]byte, tagValues [][]byte) Document {...}
-func New(id []byte, tags map[string]string) Document {
-	fields := make([]Field, 0, len(tags))
-	for k, v := range tags {
-		fields = append(fields, Field{
-			Name:      []byte(k),
-			Value:     []byte(v),
-			ValueType: StringValueType,
-		})
-	}
-	return Document{
-		ID:     id,
-		Fields: fields,
-	}
 }
