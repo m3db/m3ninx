@@ -100,7 +100,7 @@ func (i *memIndex) Filter(
 	fieldName []byte,
 	fieldValue []byte,
 	isRegex bool,
-) (segment.PostingsList, predicate, error) {
+) (segment.PostingsList, matchPredicate, error) {
 	docs, err := i.termsDict.Fetch(fieldName, fieldValue, isRegex)
 	return docs, nil, err
 }

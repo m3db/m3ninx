@@ -20,43 +20,8 @@
 
 package mem
 
-import (
-	"testing"
-
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index/segment"
-
-	"github.com/stretchr/testify/require"
-)
-
-func newTestOptions() Options {
-	return NewOptions()
-}
-
-func TestNewMemSegment(t *testing.T) {
-	opts := newTestOptions()
-	idx, err := New(opts)
-	require.NoError(t, err)
-
-	metricID := []byte("some-random-id")
-	tags := map[string]string{
-		"abc": "one",
-		"def": "two",
-	}
-
-	d := doc.New(metricID, tags)
-	require.NoError(t, idx.Insert(d))
-
-	docs, err := idx.Query(segment.Query{
-		Filters: []segment.Filter{
-			segment.Filter{
-				FieldName:        []byte("abc"),
-				FieldValueFilter: []byte("one"),
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	require.Equal(t, 1, len(docs))
-	require.Equal(t, metricID, []byte(docs[0].ID))
-}
+// TODO(prateek): write a composite simple+trigram segment, conisder following
+// 	 - 2-level map will be much quicker for exact matches (need to validate)
+//   - Cannot apply negations with the trigram segment
+//   - Trigram's are going to best for non-negated regexp filters
+//   - Don't know which one will be better for negated regexp filters (need to measure)

@@ -56,7 +56,11 @@ func (t *simpleTermsDictionary) Insert(field doc.Field, i segment.DocID) error {
 	return fieldValues.addDocIDForValue(fieldValue, i, t.postingsManager)
 }
 
-func (t *simpleTermsDictionary) Fetch(fieldName, fieldValueFilter []byte, regexp bool) (segment.PostingsList, error) {
+func (t *simpleTermsDictionary) Fetch(
+	fieldName []byte,
+	fieldValueFilter []byte,
+	isRegexp bool,
+) (segment.PostingsList, error) {
 	// check if we know about the field name
 	t.fieldNamesLock.RLock()
 	fieldValues, ok := t.fieldNames[string(fieldName)]
@@ -67,7 +71,7 @@ func (t *simpleTermsDictionary) Fetch(fieldName, fieldValueFilter []byte, regexp
 	}
 
 	// get postingsManagerOffset(s) for the given value.
-	offsets, err := fieldValues.fetchOffsets(fieldValueFilter, regexp)
+	offsets, err := fieldValues.fetchOffsets(fieldValueFilter, isRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +198,7 @@ func newRegexPredicate(valueFilter []byte) (valuePredicate, error) {
 		return nil, err
 	}
 
-	return func(v string) bool { return re.MatchString(v) }, nil
+	return re.MatchString, nil
 }
 
 type valuePredicate func(v string) bool

@@ -62,7 +62,7 @@ type termsDictionary interface {
 
 	// Fetch returns all the docIDs matching the given filter.
 	// NB(prateek): the returned PostingsList is safe to modify.
-	Fetch(filterName []byte, filterValue []byte, isRegex bool) (segment.PostingsList, error)
+	Fetch(fieldName []byte, fieldValueFilter []byte, isRegexp bool) (segment.PostingsList, error)
 }
 
 // postingsManagerOffset is an offset used to reference a postingsList in the postingsManager.
@@ -81,9 +81,9 @@ type postingsManager interface {
 	Fetch(p postingsManagerOffset) (segment.ImmutablePostingsList, error)
 }
 
-// predicate returns a bool indicating if the document matched the
+// matchPredicate returns a bool indicating if the document matched the
 // provided criterion, or not.
-type predicate func(d doc.Document) bool
+type matchPredicate func(d doc.Document) bool
 
 // queryable is the base contract required for any mem segement implementation to be used by a `searcher`.
 type queryable interface {
@@ -95,7 +95,7 @@ type queryable interface {
 		isRegex bool,
 	) (
 		candidateDocIDs segment.PostingsList,
-		pendingFilterFn predicate,
+		pendingFilterFn matchPredicate,
 		err error,
 	)
 

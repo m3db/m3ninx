@@ -21,6 +21,9 @@
 package mem
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 )
@@ -43,6 +46,13 @@ func newSequentialSearcher(
 
 func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) {
 	// TODO: timeout/early termination once we know we're done
+	if err := validateQuery(query); err != nil {
+		return nil, err
+	}
+
+	// order filters to ensure the first filter has no-negation
+	filters := orderFiltersByNonNegated(query.Filters)
+	sort.Sort(filters)
 
 	var candidateDocIds segment.PostingsList
 	// TODO: support parallel fetching across segments/filters
@@ -58,14 +68,21 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 		}
 
 		if candidateDocIds == nil {
+			if filter.Negate {
+				return nil, fmt.Errorf("first filter must be non-negation") // TODO(prateek): extract error message
+			}
 			candidateDocIds = fetchedIds
 			continue
 		}
 
-		// update candidate set
 		// TODO: evaluate perf impact of retrieving all candidate docIDs, waiting till end,
 		// sorting by size and then doing the intersection
-		candidateDocIds.Intersect(fetchedIds)
+		// update candidate set
+		if filter.Negate {
+			candidateDocIds.Difference(fetchedIds)
+		} else {
+			candidateDocIds.Intersect(fetchedIds)
+		}
 
 		// early terminate if we don't have any docs in candidate set
 		if candidateDocIds.IsEmpty() {
@@ -75,4 +92,48 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 
 	// TODO: once we support multiple segments, we'll have to merge results
 	return s.queryable.Fetch(candidateDocIds)
+}
+
+// orderFiltersByNonNegated orders filters which are not negated first in the list.
+type orderFiltersByNonNegated []segment.Filter
+
+func (of orderFiltersByNonNegated) Len() int           { return len(of) }
+func (of orderFiltersByNonNegated) Swap(i, j int)      { of[i], of[j] = of[j], of[i] }
+func (of orderFiltersByNonNegated) Less(i, j int) bool { return !of[i].Negate && of[j].Negate }
+
+// validate any assumptions we have about queries.
+func validateQuery(q segment.Query) error {
+	// assuming we only support AndConjuctions for now.
+	if q.Conjunction != segment.AndConjunction {
+		return fmt.Errorf("query: %v has an invalid conjuction: %v", q, q.Conjunction)
+	}
+
+	// ensure query level have at-least one filter or sub-query
+	if len(q.Filters) == 0 && len(q.SubQueries) == 0 {
+		return fmt.Errorf("empty query specified")
+	}
+
+	// ensure we don't have any level with only Negations as they are super expensive to compute
+	if len(q.Filters) != 0 {
+		hasNonNegationFilter := false
+		for _, f := range q.Filters {
+			if !f.Negate {
+				hasNonNegationFilter = true
+				break
+			}
+		}
+		if !hasNonNegationFilter {
+			return fmt.Errorf("query: %v has only negation filters, specify at least one non-negation filter", q)
+		}
+	}
+
+	// ensure all sub-queries are valid too
+	for _, sub := range q.SubQueries {
+		if err := validateQuery(sub); err != nil {
+			return err
+		}
+	}
+
+	// all good
+	return nil
 }

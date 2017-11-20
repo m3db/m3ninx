@@ -58,6 +58,19 @@ func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 	d.Unlock()
 }
 
+func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
+	o, ok := other.(*roaringPostingsList)
+	if !ok {
+		panic("Difference only supported between roaringDocId sets")
+	}
+
+	d.Lock()
+	o.RLock()
+	d.bitmap.AndNot(o.bitmap)
+	o.RUnlock()
+	d.Unlock()
+}
+
 func (d *roaringPostingsList) Union(other ImmutablePostingsList) {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
