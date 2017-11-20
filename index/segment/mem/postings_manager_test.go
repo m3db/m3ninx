@@ -23,70 +23,61 @@ package mem
 import (
 	"testing"
 
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
 	"github.com/stretchr/testify/require"
 )
 
-func newTestOptions() Options {
-	return NewOptions()
+func TestPostingsListInsertNew(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	id := p.Insert(123)
+	bitmap, err := p.Fetch(id)
+	require.NoError(t, err)
+	require.True(t, bitmap.Contains(123))
 }
 
-func TestNewMemSegment(t *testing.T) {
-	opts := newTestOptions()
-	idx, err := New(opts)
+func TestPostingsListInsertSet(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	set := segment.NewPostingsList()
+	set.Insert(12)
+	set.Insert(23)
+	id, err := p.InsertSet(set)
 	require.NoError(t, err)
-
-	metricID := []byte("some-random-id")
-	tags := map[string]string{
-		"abc": "one",
-		"def": "two",
-	}
-
-	d := doc.New(metricID, tags)
-	require.NoError(t, idx.Insert(d))
-
-	docs, err := idx.Query(segment.Query{
-		Conjunction: segment.AndConjunction,
-		Filters: []segment.Filter{
-			segment.Filter{
-				FieldName:        []byte("abc"),
-				FieldValueFilter: []byte("one"),
-			},
-		},
-	})
+	bitmap, err := p.Fetch(id)
 	require.NoError(t, err)
-
-	require.Equal(t, 1, len(docs))
-	require.Equal(t, metricID, []byte(docs[0].ID))
+	require.True(t, bitmap.Contains(12))
+	require.True(t, bitmap.Contains(23))
 }
 
-func TestNewMemSegmentIter(t *testing.T) {
-	opts := newTestOptions()
-	idx, err := New(opts)
+func TestPostingsListFetchIllegalOffset(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	err := p.Update(100, 123)
+	require.Error(t, err)
+	_, err = p.Fetch(100)
+	require.Error(t, err)
+}
+
+func TestPostingsListUpdate(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	id := p.Insert(123)
+	err := p.Update(id, 142)
 	require.NoError(t, err)
 
-	metricID := []byte("some-random-id")
-	tags := map[string]string{
-		"abc": "one",
-		"def": "two",
+	bitmap, err := p.Fetch(id)
+	require.NoError(t, err)
+	require.True(t, bitmap.Contains(123))
+	require.True(t, bitmap.Contains(142))
+}
+func TestPostingsListInsertNewMany(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	for i := 0; i < 100; i++ {
+		id := p.Insert(segment.DocID(i))
+		require.Equal(t, i, int(id))
 	}
-	d := doc.New(metricID, tags)
-	require.NoError(t, idx.Insert(d))
 
-	otherMetricID := []byte("some-random-id-two")
-	d = doc.New(otherMetricID, tags)
-	require.NoError(t, idx.Insert(d))
-
-	iter := idx.Iter()
-	var foundIDs []doc.ID
-	for iter.Next() {
-		d, _, _ := iter.Current()
-		foundIDs = append(foundIDs, d.ID)
+	for i := 0; i < 100; i++ {
+		bitmap, err := p.Fetch(postingsManagerOffset(i))
+		require.NoError(t, err)
+		require.True(t, bitmap.Contains(segment.DocID(i)))
 	}
-	require.NoError(t, iter.Err())
-	require.Equal(t, 2, len(foundIDs))
-	require.Equal(t, doc.ID(metricID), foundIDs[0])
-	require.Equal(t, doc.ID(otherMetricID), foundIDs[1])
 }

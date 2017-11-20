@@ -45,6 +45,12 @@ func (d *roaringPostingsList) Insert(i DocID) {
 	d.Unlock()
 }
 
+func (d *roaringPostingsList) Remove(i DocID) {
+	d.Lock()
+	d.bitmap.Remove(uint32(i))
+	d.Unlock()
+}
+
 func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
