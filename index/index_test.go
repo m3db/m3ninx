@@ -18,44 +18,43 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package index
+package index_test
 
 import (
-	"errors"
+	"testing"
 
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/index/segment"
-	"github.com/m3db/m3ninx/index/segment/mem"
 
-	"github.com/m3db/m3x/instrument"
+	"github.com/stretchr/testify/require"
 )
 
-var (
-	// ErrDocAlreadyInserted is returned when attempting to insert a document which
-	// has already been inserted.
-	ErrDocAlreadyInserted = errors.New("unable to insert document, already inserted")
-)
+func TestNewIndex(t *testing.T) {
+	opts := index.NewOptions()
+	idx, err := index.New(opts)
+	require.NoError(t, err)
 
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
+	metricID := []byte("some-random-id")
+	tags := map[string]string{
+		"abc": "one",
+		"def": "two",
+	}
 
-	// Insert inserts the given documents with provided fields. It may return ErrDocAlreadyInserted
-	// if the document has already been inserted into the index.
-	// TODO(prateek): need to address go duplicate method here.
-}
+	d := doc.New(metricID, tags)
+	require.NoError(t, idx.Insert(d))
 
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+	docs, err := idx.Query(segment.Query{
+		Conjunction: segment.AndConjunction,
+		Filters: []segment.Filter{
+			segment.Filter{
+				FieldName:        []byte("abc"),
+				FieldValueFilter: []byte("one"),
+			},
+		},
+	})
+	require.NoError(t, err)
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
-
-	// SetMemSegmentOptions sets the mem segment options.
-	SetMemSegmentOptions(value mem.Options) Options
-
-	// MemSegmentOptions returns the mem segment options.
-	MemSegmentOptions() mem.Options
+	require.Equal(t, 1, len(docs))
+	require.Equal(t, metricID, []byte(docs[0].ID))
 }

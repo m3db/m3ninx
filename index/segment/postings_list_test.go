@@ -43,6 +43,16 @@ func TestPostingsListInsert(t *testing.T) {
 	require.True(t, d.Contains(1))
 }
 
+func TestPostingsListRemove(t *testing.T) {
+	d := NewPostingsList()
+	d.Insert(1)
+	require.True(t, d.Contains(1))
+	require.Equal(t, uint64(1), d.Size())
+	d.Remove(1)
+	require.Equal(t, uint64(0), d.Size())
+	require.False(t, d.Contains(1))
+}
+
 func TestPostingsListClone(t *testing.T) {
 	d := NewPostingsList()
 	d.Insert(1)
@@ -79,6 +89,27 @@ func TestPostingsListIntersect(t *testing.T) {
 	require.True(t, c.Contains(1))
 	require.True(t, c.Contains(3))
 	require.Equal(t, uint64(2), c.Size())
+}
+
+func TestPostingsListDifference(t *testing.T) {
+	d := NewPostingsList()
+	d.Insert(1)
+	require.True(t, d.Contains(1))
+	require.Equal(t, uint64(1), d.Size())
+
+	c := d.Clone()
+	require.True(t, c.Contains(1))
+
+	d.Insert(2)
+	d.Insert(3)
+	d.Difference(c)
+
+	require.False(t, d.Contains(1))
+	require.True(t, c.Contains(1))
+	require.Equal(t, uint64(2), d.Size())
+	require.Equal(t, uint64(1), c.Size())
+	require.True(t, d.Contains(3))
+	require.True(t, d.Contains(2))
 }
 
 func TestPostingsListUnion(t *testing.T) {

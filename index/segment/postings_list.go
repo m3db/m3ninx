@@ -45,6 +45,12 @@ func (d *roaringPostingsList) Insert(i DocID) {
 	d.Unlock()
 }
 
+func (d *roaringPostingsList) Remove(i DocID) {
+	d.Lock()
+	d.bitmap.Remove(uint32(i))
+	d.Unlock()
+}
+
 func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
@@ -54,6 +60,19 @@ func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 	d.Lock()
 	o.RLock()
 	d.bitmap.And(o.bitmap)
+	o.RUnlock()
+	d.Unlock()
+}
+
+func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
+	o, ok := other.(*roaringPostingsList)
+	if !ok {
+		panic("Difference only supported between roaringDocId sets")
+	}
+
+	d.Lock()
+	o.RLock()
+	d.bitmap.AndNot(o.bitmap)
 	o.RUnlock()
 	d.Unlock()
 }

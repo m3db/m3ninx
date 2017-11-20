@@ -48,6 +48,7 @@ func TestNewMemSegment(t *testing.T) {
 	require.NoError(t, idx.Insert(d))
 
 	docs, err := idx.Query(segment.Query{
+		Conjunction: segment.AndConjunction,
 		Filters: []segment.Filter{
 			segment.Filter{
 				FieldName:        []byte("abc"),
@@ -59,4 +60,33 @@ func TestNewMemSegment(t *testing.T) {
 
 	require.Equal(t, 1, len(docs))
 	require.Equal(t, metricID, []byte(docs[0].ID))
+}
+
+func TestNewMemSegmentIter(t *testing.T) {
+	opts := newTestOptions()
+	idx, err := New(opts)
+	require.NoError(t, err)
+
+	metricID := []byte("some-random-id")
+	tags := map[string]string{
+		"abc": "one",
+		"def": "two",
+	}
+	d := doc.New(metricID, tags)
+	require.NoError(t, idx.Insert(d))
+
+	otherMetricID := []byte("some-random-id-two")
+	d = doc.New(otherMetricID, tags)
+	require.NoError(t, idx.Insert(d))
+
+	iter := idx.Iter()
+	var foundIDs []doc.ID
+	for iter.Next() {
+		d, _, _ := iter.Current()
+		foundIDs = append(foundIDs, d.ID)
+	}
+	require.NoError(t, iter.Err())
+	require.Equal(t, 2, len(foundIDs))
+	require.Equal(t, doc.ID(metricID), foundIDs[0])
+	require.Equal(t, doc.ID(otherMetricID), foundIDs[1])
 }

@@ -46,12 +46,6 @@ type memIndex struct {
 	// TODO(prateek): add a delete documents bitmap to optimise fetch
 }
 
-type document struct {
-	doc.Document
-	docID      segment.DocID
-	tombstoned bool
-}
-
 // New returns a new in-memory index.
 func New(opts Options) (Segment, error) {
 	seg := &memIndex{
@@ -100,7 +94,7 @@ func (i *memIndex) Filter(
 	fieldName []byte,
 	fieldValue []byte,
 	isRegex bool,
-) (segment.PostingsList, predicate, error) {
+) (segment.PostingsList, matchPredicate, error) {
 	docs, err := i.termsDict.Fetch(fieldName, fieldValue, isRegex)
 	return docs, nil, err
 }
@@ -116,27 +110,22 @@ func (i *memIndex) Fetch(p segment.PostingsList) ([]doc.Document, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown doc-id: %d", id)
 		}
-		docs = append(docs, d)
+		docs = append(docs, d.Document)
 	}
 
 	return docs, nil
 }
 
-func (i *memIndex) fetchDocument(id segment.DocID) (doc.Document, bool) {
+func (i *memIndex) fetchDocument(id segment.DocID) (document, bool) {
 	i.documentsLock.RLock()
 	d, ok := i.documents[id]
 	i.documentsLock.RUnlock()
-	return d.Document, ok
+	return d, ok
 }
 
 func (i *memIndex) Delete(d doc.Document) error {
 	panic("not implemented")
 }
-
-func (i *memIndex) Iter() segment.Iter {
-	panic("not implemented")
-}
-
 func (i *memIndex) Size() uint32 {
 	panic("not implemented")
 }
@@ -147,4 +136,43 @@ func (i *memIndex) ID() segment.ID {
 
 func (i *memIndex) Optimize() error {
 	panic("not implemented")
+}
+
+func (i *memIndex) Iter() segment.Iter {
+	return newMemIndexIter(i)
+}
+
+type memIndexIter struct {
+	idx *memIndex
+
+	current segment.DocID
+	max     segment.DocID
+}
+
+func newMemIndexIter(idx *memIndex) segment.Iter {
+	max := segment.DocID(idx.docIDGen.Load())
+	return &memIndexIter{
+		idx: idx,
+		max: max,
+	}
+}
+
+func (i *memIndexIter) Next() bool {
+	i.current++
+	return i.current <= i.max
+}
+
+func (i *memIndexIter) Current() (doc.Document, bool, segment.DocID) {
+	d, ok := i.idx.fetchDocument(i.current)
+	if !ok {
+		return doc.Document{}, false, 0
+	}
+	return d.Document, d.tombstoned, i.current
+}
+
+func (i *memIndexIter) Err() error {
+	if i.current > (i.max + 1) {
+		return fmt.Errorf("iteration past valid index (current:%d, max:%d)", i.current, i.max)
+	}
+	return nil
 }
