@@ -74,6 +74,10 @@ type postingsManager interface {
 	// offset used.
 	Insert(i segment.DocID) postingsManagerOffset
 
+	// InsertSet inserts documents contained in the provided docIDsSet
+	// at a new posting id, and returns the positingOffset used.
+	InsertSet(i segment.ImmutablePostingsList) (postingsManagerOffset, error)
+
 	// Update updates postingsManagerOffset `p` to include a reference to document `i`.
 	Update(p postingsManagerOffset, i segment.DocID) error
 

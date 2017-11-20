@@ -68,6 +68,15 @@ func (p *postingsMgr) Insert(i segment.DocID) postingsManagerOffset {
 	return t
 }
 
+func (p *postingsMgr) InsertSet(set segment.ImmutablePostingsList) (postingsManagerOffset, error) {
+	t := postingsManagerOffset(p.counter.Inc())
+	p.ensureSufficientCapacity(t)
+	p.Lock()
+	p.postings[t] = set.Clone()
+	p.Unlock()
+	return t, nil
+}
+
 func (p *postingsMgr) ensureSufficientCapacity(t postingsManagerOffset) {
 	p.RLock()
 	size := len(p.postings)
@@ -100,17 +109,18 @@ func (p *postingsMgr) ensureSufficientCapacity(t postingsManagerOffset) {
 }
 
 func (p *postingsMgr) Update(t postingsManagerOffset, i segment.DocID) error {
-	p.RLock()
 	// range check
+	p.RLock()
 	if int(t) >= len(p.postings) {
+		p.RUnlock()
 		return ErrOutOfRange
 	}
 
 	ids := p.postings[t]
+	p.RUnlock()
 	if ids == nil {
 		return ErrOutOfRange
 	}
-	p.RUnlock()
 
 	ids.Insert(i)
 	return nil

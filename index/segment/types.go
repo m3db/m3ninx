@@ -48,7 +48,7 @@ type Iter interface {
 
 	// Current returns the current document and the DocID associated with the
 	// document in the segment.
-	Current() (doc.Document, DocID)
+	Current() (d doc.Document, tombstoned bool, id DocID)
 
 	// Err returns any errors the Iter ran into whilst iterating.
 	Err() error
@@ -131,6 +131,9 @@ type PostingsList interface {
 
 	// Insert inserts the given id to set.
 	Insert(i DocID)
+
+	// Remove removes the given id from the set.
+	Remove(i DocID)
 
 	// Intersect modifies the receiver set to contain only those ids by both sets.
 	Intersect(other ImmutablePostingsList)

@@ -94,6 +94,19 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 	return s.queryable.Fetch(candidateDocIds)
 }
 
+type document struct {
+	doc.Document
+	docID      segment.DocID
+	tombstoned bool
+}
+
+// segmentsOrderedByID orders segments in increasing order of ID.
+type segmentsOrderedByID []segment.Segment
+
+func (so segmentsOrderedByID) Len() int           { return len(so) }
+func (so segmentsOrderedByID) Swap(i, j int)      { so[i], so[j] = so[j], so[i] }
+func (so segmentsOrderedByID) Less(i, j int) bool { return so[i].ID() < so[j].ID() }
+
 // orderFiltersByNonNegated orders filters which are not negated first in the list.
 type orderFiltersByNonNegated []segment.Filter
 

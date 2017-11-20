@@ -1,10 +1,15 @@
-hash: f8a02f256b8a2d7f7869328b8f8add5dba2830c76d8daa91dc408c4ce7d13766
-updated: 2017-11-02T01:08:57.135534414-04:00
+hash: eb41f9570b7e08ae1a522a4c158d485f9e71a0c661e8f2d6371dad3236e288b8
+updated: 2017-11-12T10:32:54.927301788-05:00
 imports:
 - name: github.com/apache/thrift
   version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
   subpackages:
   - lib/go/thrift
+- name: github.com/couchbaselabs/vellum
+  version: 41502e0b9cd521c6c96ceab793343dfc0ae59412
+- name: github.com/edsrzf/mmap-go
+  version: 935e0e8a636ca4ba70b713f3e38a19e1b77739e8
+  repo: https://github.com/edsrzf/mmap-go
 - name: github.com/facebookgo/clock
   version: 600d898af40aa09a7a93ecb9265d87b0504b6f03
 - name: github.com/glycerine/go-unsnap-stream
@@ -69,3 +74,4 @@ testImports:
   subpackages:
   - assert
   - require
+  - suite

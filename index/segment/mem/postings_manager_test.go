@@ -36,6 +36,19 @@ func TestPostingsListInsertNew(t *testing.T) {
 	require.True(t, bitmap.Contains(123))
 }
 
+func TestPostingsListInsertSet(t *testing.T) {
+	p := newPostingsManager(NewOptions())
+	set := segment.NewPostingsList()
+	set.Insert(12)
+	set.Insert(23)
+	id, err := p.InsertSet(set)
+	require.NoError(t, err)
+	bitmap, err := p.Fetch(id)
+	require.NoError(t, err)
+	require.True(t, bitmap.Contains(12))
+	require.True(t, bitmap.Contains(23))
+}
+
 func TestPostingsListFetchIllegalOffset(t *testing.T) {
 	p := newPostingsManager(NewOptions())
 	err := p.Update(100, 123)
