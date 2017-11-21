@@ -64,11 +64,11 @@ func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
 		panic("Difference only supported between roaringDocId sets")
 	}
 
-	d.Lock()
 	o.RLock()
+	d.Lock()
 	d.bitmap.AndNot(o.bitmap)
-	o.RUnlock()
 	d.Unlock()
+	o.RUnlock()
 }
 
 func (d *roaringPostingsList) Union(other ImmutablePostingsList) {

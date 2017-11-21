@@ -27,6 +27,8 @@ import (
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
+	"github.com/m3db/m3x/instrument"
+	xlog "github.com/m3db/m3x/log"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -279,6 +281,17 @@ func TestSimpleSegment(t *testing.T) {
 		seg, err := New(opts)
 		require.NoError(t, err)
 		return seg
+	}
+	suite.Run(t, &segmentTestSuite{fn: fn})
+}
+
+func TestTrigramSegment(t *testing.T) {
+	fn := func() Segment {
+		opts := NewOptions().
+			SetInstrumentOptions(
+				instrument.NewOptions().
+					SetLogger(xlog.SimpleLogger))
+		return NewTrigram(opts)
 	}
 	suite.Run(t, &segmentTestSuite{fn: fn})
 }
