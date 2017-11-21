@@ -28,13 +28,19 @@ type postingsListPool struct {
 	pool pool.ObjectPool
 }
 
+// PostingsListAllocateFn returns a new PostingsList.
+type PostingsListAllocateFn func() PostingsList
+
 // NewPostingsListPool returns a new PostingsListPool.
-func NewPostingsListPool(opts pool.ObjectPoolOptions) PostingsListPool {
+func NewPostingsListPool(
+	opts pool.ObjectPoolOptions,
+	allocator PostingsListAllocateFn,
+) PostingsListPool {
 	p := &postingsListPool{
 		pool: pool.NewObjectPool(opts),
 	}
 	p.pool.Init(func() interface{} {
-		return NewPostingsList()
+		return allocator()
 	})
 	return p
 }

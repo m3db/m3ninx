@@ -135,6 +135,9 @@ type PostingsList interface {
 	// Intersect modifies the receiver set to contain only those ids by both sets.
 	Intersect(other ImmutablePostingsList)
 
+	// Difference modifies the receiver set to remove any ids contained by both sets.
+	Difference(other ImmutablePostingsList)
+
 	// Union modifies the receiver set to contain ids containted in either of the original sets.
 	Union(other ImmutablePostingsList)
 

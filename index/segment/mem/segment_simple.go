@@ -31,7 +31,7 @@ import (
 )
 
 // TODO(prateek): investigate impact of native heap
-type memIndex struct {
+type simpleSegment struct {
 	opts     Options
 	docIDGen *atomic.Uint32
 
@@ -54,28 +54,28 @@ type document struct {
 
 // New returns a new in-memory index.
 func New(opts Options) (Segment, error) {
-	seg := &memIndex{
+	seg := &simpleSegment{
 		opts:     opts,
 		docIDGen: atomic.NewUint32(0),
 
 		documents: make(map[segment.DocID]document, opts.InitialCapacity()),
-		termsDict: newSimpleTermsDictionary(opts, newPostingsManager),
+		termsDict: newSimpleTermsDictionary(opts),
 	}
 
-	searcher := newSequentialSearcher(seg, opts.PostingsListPool())
+	searcher := newSequentialSearcher(seg, differenceNegationFn, opts.PostingsListPool())
 	seg.searcher = searcher
 	return seg, nil
 }
 
 // TODO(prateek): consider copy semantics for input data, esp if we can store it on the native heap
-func (i *memIndex) Insert(d doc.Document) error {
+func (i *simpleSegment) Insert(d doc.Document) error {
 	return i.insertDocument(document{
 		Document: d,
 		docID:    segment.DocID(i.docIDGen.Inc()),
 	})
 }
 
-func (i *memIndex) insertDocument(doc document) error {
+func (i *simpleSegment) insertDocument(doc document) error {
 	// insert document into master doc id -> doc map
 	i.documentsLock.Lock()
 	i.documents[doc.docID] = doc
@@ -92,29 +92,35 @@ func (i *memIndex) insertDocument(doc document) error {
 	return nil
 }
 
-func (i *memIndex) Query(query segment.Query) ([]doc.Document, error) {
+func (i *simpleSegment) Query(query segment.Query) ([]doc.Document, error) {
 	return i.searcher.Query(query)
 }
 
-func (i *memIndex) Filter(
-	fieldName []byte,
-	fieldValue []byte,
-	isRegex bool,
-) (segment.PostingsList, predicate, error) {
-	docs, err := i.termsDict.Fetch(fieldName, fieldValue, isRegex)
+func (i *simpleSegment) Filter(
+	f segment.Filter,
+) (segment.PostingsList, matchPredicate, error) {
+	docs, err := i.termsDict.Fetch(f.FieldName, f.FieldValueFilter, f.Regexp)
 	return docs, nil, err
 }
 
-func (i *memIndex) Fetch(p segment.PostingsList) ([]doc.Document, error) {
+func (i *simpleSegment) Fetch(
+	p segment.PostingsList,
+	filterFn matchPredicate,
+) ([]doc.Document, error) {
+
 	docs := make([]doc.Document, 0, p.Size())
 	iter := p.Iter()
 
 	// retrieve all the filtered document ids
+	// TODO(prateek): option to fetch documents in parallel
 	for iter.Next() {
 		id := iter.Current()
 		d, ok := i.fetchDocument(id)
 		if !ok {
 			return nil, fmt.Errorf("unknown doc-id: %d", id)
+		}
+		if !filterFn(d) {
+			continue
 		}
 		docs = append(docs, d)
 	}
@@ -122,29 +128,29 @@ func (i *memIndex) Fetch(p segment.PostingsList) ([]doc.Document, error) {
 	return docs, nil
 }
 
-func (i *memIndex) fetchDocument(id segment.DocID) (doc.Document, bool) {
+func (i *simpleSegment) fetchDocument(id segment.DocID) (doc.Document, bool) {
 	i.documentsLock.RLock()
 	d, ok := i.documents[id]
 	i.documentsLock.RUnlock()
 	return d.Document, ok
 }
 
-func (i *memIndex) Delete(d doc.Document) error {
+func (i *simpleSegment) Delete(d doc.Document) error {
 	panic("not implemented")
 }
 
-func (i *memIndex) Iter() segment.Iter {
+func (i *simpleSegment) Iter() segment.Iter {
 	panic("not implemented")
 }
 
-func (i *memIndex) Size() uint32 {
+func (i *simpleSegment) Size() uint32 {
 	panic("not implemented")
 }
 
-func (i *memIndex) ID() segment.ID {
+func (i *simpleSegment) ID() segment.ID {
 	panic("not implemented")
 }
 
-func (i *memIndex) Optimize() error {
+func (i *simpleSegment) Optimize() error {
 	panic("not implemented")
 }

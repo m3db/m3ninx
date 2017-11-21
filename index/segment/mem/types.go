@@ -62,45 +62,25 @@ type termsDictionary interface {
 
 	// Fetch returns all the docIDs matching the given filter.
 	// NB(prateek): the returned PostingsList is safe to modify.
-	Fetch(filterName []byte, filterValue []byte, isRegex bool) (segment.PostingsList, error)
+	Fetch(fieldName []byte, fieldValueFilter []byte, isRegexp bool) (segment.PostingsList, error)
 }
 
-// postingsManagerOffset is an offset used to reference a postingsList in the postingsManager.
-type postingsManagerOffset int
-
-// postingsManager represents an efficient mapping from postingsManagerOffset -> PostingsList
-type postingsManager interface {
-	// Insert inserts document `i` at a new postingsManagerOffset, and returns the
-	// offset used.
-	Insert(i segment.DocID) postingsManagerOffset
-
-	// Update updates postingsManagerOffset `p` to include a reference to document `i`.
-	Update(p postingsManagerOffset, i segment.DocID) error
-
-	// Fetch retrieves all documents which are associated with postingsManagerOffset `p`.
-	Fetch(p postingsManagerOffset) (segment.ImmutablePostingsList, error)
-}
-
-// predicate returns a bool indicating if the document matched the
+// matchPredicate returns a bool indicating if the document matched the
 // provided criterion, or not.
-type predicate func(d doc.Document) bool
+type matchPredicate func(d doc.Document) bool
 
 // queryable is the base contract required for any mem segement implementation to be used by a `searcher`.
 type queryable interface {
 	// Filter retrieves the PostingsList for the filter, and any additional
 	// filtering criterion that must be applied in post processing.
-	Filter(
-		filterName []byte,
-		filterValue []byte,
-		isRegex bool,
-	) (
+	Filter(segment.Filter) (
 		candidateDocIDs segment.PostingsList,
-		pendingFilterFn predicate,
+		pendingFilterFn matchPredicate,
 		err error,
 	)
 
 	// Fetch retrieves the list of documents in the given postings list.
-	Fetch(p segment.PostingsList) ([]doc.Document, error)
+	Fetch(p segment.PostingsList, fn matchPredicate) ([]doc.Document, error)
 }
 
 // searcher performs a search on known queryable(s).

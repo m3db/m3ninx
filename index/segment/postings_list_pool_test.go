@@ -27,7 +27,7 @@ import (
 )
 
 func TestPostingsListPoolGet(t *testing.T) {
-	pl := NewPostingsListPool(nil)
+	pl := NewPostingsListPool(nil, NewPostingsList)
 	require.NotNil(t, pl)
 
 	p := pl.Get()
@@ -36,7 +36,7 @@ func TestPostingsListPoolGet(t *testing.T) {
 }
 
 func TestPostingsListPoolPut(t *testing.T) {
-	pl := NewPostingsListPool(nil)
+	pl := NewPostingsListPool(nil, NewPostingsList)
 	require.NotNil(t, pl)
 
 	p := pl.Get()
