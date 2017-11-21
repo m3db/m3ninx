@@ -29,23 +29,18 @@ import (
 )
 
 // simpleTermsDictionary uses two-level map to model a terms dictionary.
-// i.e. fieldName -> fieldValue -> postingsManagerOffset
+// i.e. fieldName -> fieldValue -> postingsList
 type simpleTermsDictionary struct {
 	fieldNamesLock sync.RWMutex
 	fieldNames     map[string]*fieldValuesMap
 
-	opts            Options
-	postingsManager postingsManager
+	opts Options
 }
 
-// newPostingsManagerFn returns a new PostingsList.
-type newPostingsManagerFn func(Options) postingsManager
-
-func newSimpleTermsDictionary(opts Options, fn newPostingsManagerFn) termsDictionary {
+func newSimpleTermsDictionary(opts Options) termsDictionary {
 	return &simpleTermsDictionary{
-		fieldNames:      make(map[string]*fieldValuesMap, opts.InitialCapacity()),
-		opts:            opts,
-		postingsManager: fn(opts),
+		fieldNames: make(map[string]*fieldValuesMap, opts.InitialCapacity()),
+		opts:       opts,
 	}
 }
 
@@ -53,10 +48,14 @@ func (t *simpleTermsDictionary) Insert(field doc.Field, i segment.DocID) error {
 	fieldName := string(field.Name)
 	fieldValues := t.getOrAddFieldName(fieldName)
 	fieldValue := string(field.Value)
-	return fieldValues.addDocIDForValue(fieldValue, i, t.postingsManager)
+	return fieldValues.addDocIDForValue(fieldValue, i)
 }
 
-func (t *simpleTermsDictionary) Fetch(fieldName, fieldValueFilter []byte, regexp bool) (segment.PostingsList, error) {
+func (t *simpleTermsDictionary) Fetch(
+	fieldName []byte,
+	fieldValueFilter []byte,
+	isRegexp bool,
+) (segment.PostingsList, error) {
 	// check if we know about the field name
 	t.fieldNamesLock.RLock()
 	fieldValues, ok := t.fieldNames[string(fieldName)]
@@ -66,27 +65,19 @@ func (t *simpleTermsDictionary) Fetch(fieldName, fieldValueFilter []byte, regexp
 		return nil, nil
 	}
 
-	// get postingsManagerOffset(s) for the given value.
-	offsets, err := fieldValues.fetchOffsets(fieldValueFilter, regexp)
+	// get postingList(s) for the given value.
+	lists, err := fieldValues.fetchLists(fieldValueFilter, isRegexp)
 	if err != nil {
 		return nil, err
 	}
 
-	// union all the docsIDSets
-	set := segment.NewPostingsList()
-	for _, pid := range offsets {
-		// check if we have docIDs set for the given posting list.
-		ids, err := t.postingsManager.Fetch(pid)
-		if err != nil {
-			return nil, err
-		}
-		if ids == nil {
-			continue
-		}
-		set.Union(ids)
+	// union all the postingsList(s)
+	unionedList := t.opts.PostingsListPool().Get()
+	for _, ids := range lists {
+		unionedList.Union(ids)
 	}
 
-	return set, nil
+	return unionedList, nil
 }
 
 func (t *simpleTermsDictionary) getOrAddFieldName(fieldName string) *fieldValuesMap {
@@ -108,7 +99,7 @@ func (t *simpleTermsDictionary) getOrAddFieldName(fieldName string) *fieldValues
 		return fieldValues
 	}
 
-	fieldValues = newFieldValuesMap()
+	fieldValues = newFieldValuesMap(t.opts)
 	t.fieldNames[fieldName] = fieldValues
 	t.fieldNamesLock.Unlock()
 	return fieldValues
@@ -116,45 +107,52 @@ func (t *simpleTermsDictionary) getOrAddFieldName(fieldName string) *fieldValues
 
 type fieldValuesMap struct {
 	sync.RWMutex
-	// fieldValue -> postingsManagerOffset
-	values map[string]postingsManagerOffset
+
+	opts Options
+
+	// fieldValue -> postingsList
+	values map[string]segment.PostingsList
 }
 
-func newFieldValuesMap() *fieldValuesMap {
+func newFieldValuesMap(opts Options) *fieldValuesMap {
 	return &fieldValuesMap{
-		values: make(map[string]postingsManagerOffset),
+		opts:   opts,
+		values: make(map[string]segment.PostingsList),
 	}
 }
 
-func (f *fieldValuesMap) addDocIDForValue(value string, i segment.DocID, pl postingsManager) error {
-	// try read lock to see if we already have a postingsManagerOffset for the given value.
+func (f *fieldValuesMap) addDocIDForValue(value string, i segment.DocID) error {
+	// try read lock to see if we already have a postingsList for the given value.
 	f.RLock()
 	pid, ok := f.values[value]
 	f.RUnlock()
 
-	// we have a postingsManagerOffset, mark the docID and move on.
+	// we have a postingsList, mark the docID and move on.
 	if ok {
-		return pl.Update(pid, i)
+		pid.Insert(i)
+		return nil
 	}
 
-	// postingsManagerOffset doesn't exist, time to acquire write lock
+	// postingsList doesn't exist, time to acquire write lock
 	f.Lock()
 	pid, ok = f.values[value]
 
 	// check if it's been created since we released lock
 	if ok {
 		f.Unlock()
-		return pl.Update(pid, i)
+		pid.Insert(i)
+		return nil
 	}
 
 	// create new posting id for the term, and insert into fieldValues
-	offset := pl.Insert(i)
-	f.values[value] = offset
+	pid = f.opts.PostingsListPool().Get()
+	f.values[value] = pid
 	f.Unlock()
+	pid.Insert(i)
 	return nil
 }
 
-func (f *fieldValuesMap) fetchOffsets(valueFilter []byte, regexp bool) ([]postingsManagerOffset, error) {
+func (f *fieldValuesMap) fetchLists(valueFilter []byte, regexp bool) ([]segment.PostingsList, error) {
 	// special case when we're looking for an exact match
 	if !regexp {
 		return f.fetchExact(valueFilter), nil
@@ -165,26 +163,26 @@ func (f *fieldValuesMap) fetchOffsets(valueFilter []byte, regexp bool) ([]postin
 	if err != nil {
 		return nil, err
 	}
-	var offsets []postingsManagerOffset
+	var postingsLists []segment.PostingsList
 	f.RLock()
-	for value, offset := range f.values {
+	for value, list := range f.values {
 		if pred(value) {
-			offsets = append(offsets, offset)
+			postingsLists = append(postingsLists, list)
 		}
 	}
 	f.RUnlock()
 
-	return offsets, nil
+	return postingsLists, nil
 }
 
-func (f *fieldValuesMap) fetchExact(valueFilter []byte) []postingsManagerOffset {
+func (f *fieldValuesMap) fetchExact(valueFilter []byte) []segment.PostingsList {
 	f.RLock()
 	pid, ok := f.values[string(valueFilter)]
 	f.RUnlock()
 	if !ok {
 		return nil
 	}
-	return []postingsManagerOffset{pid}
+	return []segment.PostingsList{pid}
 }
 
 func newRegexPredicate(valueFilter []byte) (valuePredicate, error) {
@@ -194,13 +192,7 @@ func newRegexPredicate(valueFilter []byte) (valuePredicate, error) {
 		return nil, err
 	}
 
-	return func(v string) bool { return re.MatchString(v) }, nil
+	return re.MatchString, nil
 }
 
 type valuePredicate func(v string) bool
-
-func mustNotBeOutOfRange(err error) {
-	if err == ErrOutOfRange {
-		panic(err)
-	}
-}

@@ -51,9 +51,22 @@ func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 		panic("Intersect only supported between roaringDocId sets")
 	}
 
+	o.RLock()
+	d.Lock()
+	d.bitmap.And(o.bitmap)
+	d.Unlock()
+	o.RUnlock()
+}
+
+func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
+	o, ok := other.(*roaringPostingsList)
+	if !ok {
+		panic("Difference only supported between roaringDocId sets")
+	}
+
 	d.Lock()
 	o.RLock()
-	d.bitmap.And(o.bitmap)
+	d.bitmap.AndNot(o.bitmap)
 	o.RUnlock()
 	d.Unlock()
 }
@@ -64,11 +77,11 @@ func (d *roaringPostingsList) Union(other ImmutablePostingsList) {
 		panic("Union only supported between roaringDocId sets")
 	}
 
-	d.Lock()
 	o.RLock()
+	d.Lock()
 	d.bitmap.Or(o.bitmap)
-	o.RUnlock()
 	d.Unlock()
+	o.RUnlock()
 }
 
 func (d *roaringPostingsList) Reset() {

@@ -39,7 +39,7 @@ type opts struct {
 func NewOptions() Options {
 	return &opts{
 		iopts:           instrument.NewOptions(),
-		postingsPool:    segment.NewPostingsListPool(nil),
+		postingsPool:    segment.NewPostingsListPool(nil, segment.NewPostingsList),
 		initialCapacity: defaultInitialCapacity,
 	}
 }

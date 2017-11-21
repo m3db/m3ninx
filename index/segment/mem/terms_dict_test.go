@@ -96,12 +96,9 @@ func (t *termsDictionaryTestSuite) TestFetchRegex() {
 
 func TestSimpleTermsDictionary(t *testing.T) {
 	opts := NewOptions()
-	plFn := func(o Options) postingsManager {
-		return newPostingsManager(o)
-	}
 	suite.Run(t, &termsDictionaryTestSuite{
 		fn: func() termsDictionary {
-			return newSimpleTermsDictionary(opts, plFn)
+			return newSimpleTermsDictionary(opts)
 		},
 	})
 }

@@ -23,48 +23,41 @@ package mem
 import (
 	"testing"
 
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestPostingsListInsertNew(t *testing.T) {
-	p := newPostingsManager(NewOptions())
-	id := p.Insert(123)
-	bitmap, err := p.Fetch(id)
-	require.NoError(t, err)
-	require.True(t, bitmap.Contains(123))
+func newTestOptions() Options {
+	return NewOptions()
 }
 
-func TestPostingsListFetchIllegalOffset(t *testing.T) {
-	p := newPostingsManager(NewOptions())
-	err := p.Update(100, 123)
-	require.Error(t, err)
-	_, err = p.Fetch(100)
-	require.Error(t, err)
-}
-
-func TestPostingsListUpdate(t *testing.T) {
-	p := newPostingsManager(NewOptions())
-	id := p.Insert(123)
-	err := p.Update(id, 142)
+func TestNewMemSegment(t *testing.T) {
+	opts := newTestOptions()
+	idx, err := New(opts)
 	require.NoError(t, err)
 
-	bitmap, err := p.Fetch(id)
-	require.NoError(t, err)
-	require.True(t, bitmap.Contains(123))
-	require.True(t, bitmap.Contains(142))
-}
-func TestPostingsListInsertNewMany(t *testing.T) {
-	p := newPostingsManager(NewOptions())
-	for i := 0; i < 100; i++ {
-		id := p.Insert(segment.DocID(i))
-		require.Equal(t, i, int(id))
+	metricID := []byte("some-random-id")
+	tags := map[string]string{
+		"abc": "one",
+		"def": "two",
 	}
 
-	for i := 0; i < 100; i++ {
-		bitmap, err := p.Fetch(postingsManagerOffset(i))
-		require.NoError(t, err)
-		require.True(t, bitmap.Contains(segment.DocID(i)))
-	}
+	d := doc.New(metricID, tags)
+	require.NoError(t, idx.Insert(d))
+
+	docs, err := idx.Query(segment.Query{
+		Conjunction: segment.AndConjunction,
+		Filters: []segment.Filter{
+			segment.Filter{
+				FieldName:        []byte("abc"),
+				FieldValueFilter: []byte("one"),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(docs))
+	require.Equal(t, metricID, []byte(docs[0].ID))
 }
