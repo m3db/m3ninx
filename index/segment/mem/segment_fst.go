@@ -224,6 +224,10 @@ func (f *fstIndex) Query(query segment.Query) ([]doc.Document, error) {
 		candidateDocIds segment.PostingsList
 	)
 
+	// TODO(prateek): Query search optimizations
+	// - need to add a filter cache per segment
+	// - need to share the code for the searchers
+	// - pool fst iterators/regex compilations
 	for _, filter := range filters {
 		filter := filter
 		fetchedIds, err := f.filterAndFetchIDs(filter.FieldName, filter.FieldValueFilter, filter.Regexp)
@@ -286,6 +290,7 @@ func (f *fstIndex) filterAndFetchExact(filterName, filterValue []byte) (segment.
 		minKey     = f.computeIndexID(filterName, filterValue)
 		maxKey     = append(minKey, byte(0))
 	)
+	// TODO(prateek): need to pool these iterators
 	iter, err := f.fst.Iterator(minKey, maxKey)
 	if err != nil {
 		return nil, err
