@@ -65,6 +65,26 @@ type termsDictionary interface {
 	Fetch(fieldName []byte, fieldValueFilter []byte, isRegexp bool) (segment.PostingsList, error)
 }
 
+// postingsManagerOffset is an offset used to reference a postingsList in the postingsManager.
+type postingsManagerOffset int
+
+// postingsManager represents an efficient mapping from postingsManagerOffset -> PostingsList
+type postingsManager interface {
+	// Insert inserts document `i` at a new postingsManagerOffset, and returns the
+	// offset used.
+	Insert(i segment.DocID) postingsManagerOffset
+
+	// InsertSet inserts documents contained in the provided docIDsSet
+	// at a new posting id, and returns the positingOffset used.
+	InsertSet(i segment.ImmutablePostingsList) (postingsManagerOffset, error)
+
+	// Update updates postingsManagerOffset `p` to include a reference to document `i`.
+	Update(p postingsManagerOffset, i segment.DocID) error
+
+	// Fetch retrieves all documents which are associated with postingsManagerOffset `p`.
+	Fetch(p postingsManagerOffset) (segment.ImmutablePostingsList, error)
+}
+
 // matchPredicate returns a bool indicating if the document matched the
 // provided criterion, or not.
 type matchPredicate func(d doc.Document) bool

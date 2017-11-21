@@ -43,6 +43,16 @@ func TestPostingsListInsert(t *testing.T) {
 	require.True(t, d.Contains(1))
 }
 
+func TestPostingsListRemove(t *testing.T) {
+	d := NewPostingsList()
+	d.Insert(1)
+	require.True(t, d.Contains(1))
+	require.Equal(t, uint64(1), d.Size())
+	d.Remove(1)
+	require.Equal(t, uint64(0), d.Size())
+	require.False(t, d.Contains(1))
+}
+
 func TestPostingsListClone(t *testing.T) {
 	d := NewPostingsList()
 	d.Insert(1)

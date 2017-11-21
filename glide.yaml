@@ -8,6 +8,8 @@ import:
   - instrument
 - package: github.com/uber-go/atomic
   version: ^1.2.0
+- package: github.com/couchbaselabs/vellum
+  version: 41502e0b9cd521c6c96ceab793343dfc0ae59412
 testImport:
 - package: github.com/stretchr/testify
   version: ^1.1.4

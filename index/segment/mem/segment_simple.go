@@ -46,12 +46,6 @@ type simpleSegment struct {
 	// TODO(prateek): add a delete documents bitmap to optimise fetch
 }
 
-type document struct {
-	doc.Document
-	docID      segment.DocID
-	tombstoned bool
-}
-
 // New returns a new in-memory index.
 func New(opts Options) (Segment, error) {
 	seg := &simpleSegment{
@@ -119,27 +113,23 @@ func (i *simpleSegment) Fetch(
 		if !ok {
 			return nil, fmt.Errorf("unknown doc-id: %d", id)
 		}
-		if !filterFn(d) {
+		if !filterFn(d.Document) {
 			continue
 		}
-		docs = append(docs, d)
+		docs = append(docs, d.Document)
 	}
 
 	return docs, nil
 }
 
-func (i *simpleSegment) fetchDocument(id segment.DocID) (doc.Document, bool) {
+func (i *simpleSegment) fetchDocument(id segment.DocID) (document, bool) {
 	i.documentsLock.RLock()
 	d, ok := i.documents[id]
 	i.documentsLock.RUnlock()
-	return d.Document, ok
+	return d, ok
 }
 
 func (i *simpleSegment) Delete(d doc.Document) error {
-	panic("not implemented")
-}
-
-func (i *simpleSegment) Iter() segment.Iter {
 	panic("not implemented")
 }
 
@@ -153,4 +143,43 @@ func (i *simpleSegment) ID() segment.ID {
 
 func (i *simpleSegment) Optimize() error {
 	panic("not implemented")
+}
+
+func (i *simpleSegment) Iter() segment.Iter {
+	return newSimpleSegmentIter(i)
+}
+
+type memIndexIter struct {
+	idx *simpleSegment
+
+	current segment.DocID
+	max     segment.DocID
+}
+
+func newSimpleSegmentIter(idx *simpleSegment) segment.Iter {
+	max := segment.DocID(idx.docIDGen.Load())
+	return &memIndexIter{
+		idx: idx,
+		max: max,
+	}
+}
+
+func (i *memIndexIter) Next() bool {
+	i.current++
+	return i.current <= i.max
+}
+
+func (i *memIndexIter) Current() (doc.Document, bool, segment.DocID) {
+	d, ok := i.idx.fetchDocument(i.current)
+	if !ok {
+		return doc.Document{}, false, 0
+	}
+	return d.Document, d.tombstoned, i.current
+}
+
+func (i *memIndexIter) Err() error {
+	if i.current > (i.max + 1) {
+		return fmt.Errorf("iteration past valid index (current:%d, max:%d)", i.current, i.max)
+	}
+	return nil
 }
