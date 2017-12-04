@@ -23,11 +23,10 @@ package mem
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 

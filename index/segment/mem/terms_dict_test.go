@@ -23,9 +23,9 @@ package mem
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/m3db/m3ninx/doc"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type newTermsDictFn func() termsDictionary
