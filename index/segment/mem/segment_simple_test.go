@@ -35,7 +35,7 @@ func newTestOptions() Options {
 
 func TestNewMemSegment(t *testing.T) {
 	opts := newTestOptions()
-	idx, err := New(opts)
+	idx, err := New(1, opts)
 	require.NoError(t, err)
 
 	metricID := []byte("some-random-id")
@@ -47,7 +47,7 @@ func TestNewMemSegment(t *testing.T) {
 	d := doc.New(metricID, tags)
 	require.NoError(t, idx.Insert(d))
 
-	docs, err := idx.Query(segment.Query{
+	docsIter, err := idx.Query(segment.Query{
 		Conjunction: segment.AndConjunction,
 		Filters: []segment.Filter{
 			segment.Filter{
@@ -58,6 +58,9 @@ func TestNewMemSegment(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.Equal(t, 1, len(docs))
-	require.Equal(t, metricID, []byte(docs[0].ID))
+	require.True(t, docsIter.Next())
+	result, tombstoned := docsIter.Current()
+	require.Equal(t, d, result)
+	require.False(t, tombstoned)
+	require.False(t, docsIter.Next())
 }

@@ -21,7 +21,6 @@
 package mem
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/m3db/m3ninx/doc"
@@ -33,6 +32,7 @@ import (
 // TODO(prateek): investigate impact of native heap
 type simpleSegment struct {
 	opts     Options
+	id       segment.ID
 	docIDGen *atomic.Uint32
 
 	// internal docID -> document
@@ -53,9 +53,10 @@ type document struct {
 }
 
 // New returns a new in-memory index.
-func New(opts Options) (Segment, error) {
+func New(id segment.ID, opts Options) (Segment, error) {
 	seg := &simpleSegment{
 		opts:     opts,
+		id:       id,
 		docIDGen: atomic.NewUint32(0),
 
 		documents: make(map[segment.DocID]document, opts.InitialCapacity()),
@@ -92,8 +93,13 @@ func (i *simpleSegment) insertDocument(doc document) error {
 	return nil
 }
 
-func (i *simpleSegment) Query(query segment.Query) ([]doc.Document, error) {
-	return i.searcher.Query(query)
+func (i *simpleSegment) Query(query segment.Query) (segment.ResultsIter, error) {
+	ids, pendingFn, err := i.searcher.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	return newResultsIter(ids, pendingFn, i), nil
 }
 
 func (i *simpleSegment) Filter(
@@ -103,43 +109,7 @@ func (i *simpleSegment) Filter(
 	return docs, nil, err
 }
 
-func (i *simpleSegment) Fetch(
-	p segment.PostingsList,
-	filterFn matchPredicate,
-) ([]doc.Document, error) {
-
-	docs := make([]doc.Document, 0, p.Size())
-	iter := p.Iter()
-
-	// retrieve all the filtered document ids
-	// TODO(prateek): option to fetch documents in parallel
-	for iter.Next() {
-		id := iter.Current()
-		d, ok := i.fetchDocument(id)
-		if !ok {
-			return nil, fmt.Errorf("unknown doc-id: %d", id)
-		}
-		if !filterFn(d) {
-			continue
-		}
-		docs = append(docs, d)
-	}
-
-	return docs, nil
-}
-
-func (i *simpleSegment) fetchDocument(id segment.DocID) (doc.Document, bool) {
-	i.documentsLock.RLock()
-	d, ok := i.documents[id]
-	i.documentsLock.RUnlock()
-	return d.Document, ok
-}
-
 func (i *simpleSegment) Delete(d doc.Document) error {
-	panic("not implemented")
-}
-
-func (i *simpleSegment) Iter() segment.Iter {
 	panic("not implemented")
 }
 
@@ -148,9 +118,16 @@ func (i *simpleSegment) Size() uint32 {
 }
 
 func (i *simpleSegment) ID() segment.ID {
-	panic("not implemented")
+	return i.id
 }
 
-func (i *simpleSegment) Optimize() error {
-	panic("not implemented")
+func (i *simpleSegment) Options() Options {
+	return i.opts
+}
+
+func (i *simpleSegment) FetchDocument(id segment.DocID) (document, bool) {
+	i.documentsLock.RLock()
+	d, ok := i.documents[id]
+	i.documentsLock.RUnlock()
+	return d, ok
 }

@@ -66,8 +66,11 @@ func (t *segmentTestSuite) TestInsert() {
 	})
 	t.NoError(err)
 	t.True(docs != nil)
-	t.Equal(1, len(docs))
-	t.Equal(doc.ID("abc=efg"), docs[0].ID)
+	t.True(docs.Next())
+	result, tombstoned := docs.Current()
+	t.Equal(doc.ID("abc=efg"), result.ID)
+	t.False(tombstoned)
+	t.False(docs.Next())
 }
 
 func (t *segmentTestSuite) TestQueryRegex() {
@@ -99,8 +102,12 @@ func (t *segmentTestSuite) TestQueryRegex() {
 		},
 	})
 	t.NoError(err)
-	t.Equal(1, len(docs))
-	t.Equal(doc.ID("abc=efgh"), docs[0].ID)
+	t.True(docs != nil)
+	t.True(docs.Next())
+	result, tombstoned := docs.Current()
+	t.Equal(doc.ID("abc=efgh"), result.ID)
+	t.False(tombstoned)
+	t.False(docs.Next())
 }
 
 func (t *segmentTestSuite) TestQueryNegate() {
@@ -139,8 +146,11 @@ func (t *segmentTestSuite) TestQueryNegate() {
 	})
 	t.NoError(err)
 	t.True(docs != nil)
-	t.Equal(1, len(docs))
-	t.Equal(doc.ID("abc=efgh"), docs[0].ID)
+	t.True(docs.Next())
+	result, tombstoned := docs.Current()
+	t.Equal(doc.ID("abc=efgh"), result.ID)
+	t.False(tombstoned)
+	t.False(docs.Next())
 }
 
 func (t *segmentTestSuite) TestQueryRegexNegate() {
@@ -188,15 +198,23 @@ func (t *segmentTestSuite) TestQueryRegexNegate() {
 		},
 	})
 	t.NoError(err)
-	t.Equal(2, len(docs))
+	t.True(docs != nil)
+
+	returnedIds := []doc.ID{}
+	for docs.Next() {
+		result, tombstoned := docs.Current()
+		t.False(tombstoned)
+		returnedIds = append(returnedIds, result.ID)
+	}
+	t.Equal(2, len(returnedIds))
 	requiredIds := []doc.ID{
 		doc.ID("abc=efg|foo=bar"),
 		doc.ID("foo=bar|baz=efgh"),
 	}
 	for _, req := range requiredIds {
 		found := false
-		for _, ret := range docs {
-			if string(req) == string(ret.ID) {
+		for _, ret := range returnedIds {
+			if string(req) == string(ret) {
 				found = true
 			}
 		}
@@ -249,15 +267,23 @@ func (t *segmentTestSuite) TestQueryExactNegate() {
 		},
 	})
 	t.NoError(err)
-	t.Equal(2, len(docs))
+
+	returnedIds := []doc.ID{}
+	for docs.Next() {
+		result, tombstoned := docs.Current()
+		t.False(tombstoned)
+		returnedIds = append(returnedIds, result.ID)
+	}
+	t.Equal(2, len(returnedIds))
+
 	requiredIds := []doc.ID{
 		doc.ID("abc=efg|foo=bar"),
 		doc.ID("foo=bar|baz=efgh"),
 	}
 	for _, req := range requiredIds {
 		found := false
-		for _, ret := range docs {
-			if string(req) == string(ret.ID) {
+		for _, ret := range returnedIds {
+			if string(req) == string(ret) {
 				found = true
 			}
 		}
@@ -276,7 +302,7 @@ func (t *segmentTestSuite) TestQueryExactNegate() {
 func TestSimpleSegment(t *testing.T) {
 	fn := func() Segment {
 		opts := NewOptions()
-		seg, err := New(opts)
+		seg, err := New(1, opts)
 		require.NoError(t, err)
 		return seg
 	}

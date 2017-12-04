@@ -35,29 +35,23 @@ type Segment interface {
 
 	// Size returns the number of documents indexed.
 	Size() uint32
-
-	// Iter returns a segment document iterator.
-	Iter() Iter
-}
-
-// Iter allows for iteration over the documents indexed in a segment.
-type Iter interface {
-	// Next returns a bool indicating if the iterator has any more documents
-	// to return.
-	Next() bool
-
-	// Current returns the current document and the DocID associated with the
-	// document in the segment.
-	Current() (doc.Document, DocID)
-
-	// Err returns any errors the Iter ran into whilst iterating.
-	Err() error
 }
 
 // Readable is a readable index segment.
 type Readable interface {
 	// Query retrieves the list of documents matching the given criterion.
-	Query(q Query) ([]doc.Document, error)
+	Query(q Query) (ResultsIter, error)
+}
+
+// ResultsIter is an iterator over query results.
+type ResultsIter interface {
+	// Next returns a bool indicating if the iterator has any more documents
+	// to return.
+	Next() bool
+
+	// Current returns the current document and whether the document was marked
+	// as deleted or not.
+	Current() (d doc.Document, tombstoned bool)
 }
 
 // Writable is a writable index segment.
@@ -67,9 +61,6 @@ type Writable interface {
 
 	// Delete deletes the given document.
 	Delete(d doc.Document) error
-
-	// Optimize optimizes the segment by removing any zombie document/field references.
-	Optimize() error
 }
 
 // DocID is a document identifier internal to each index segment. It's limited to

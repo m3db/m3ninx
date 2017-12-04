@@ -112,10 +112,8 @@ func (d *roaringPostingsList) Size() uint64 {
 }
 
 func (d *roaringPostingsList) Iter() PostingsIter {
-	// make a copy to ensure iteration doesn't conflict with updates
-	other := d.Clone().(*roaringPostingsList)
 	return &roaringIter{
-		i: other.bitmap.Iterator(),
+		i: d.bitmap.Iterator(),
 	}
 }
 

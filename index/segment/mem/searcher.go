@@ -56,10 +56,13 @@ func newSequentialSearcher(
 	}
 }
 
-func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) {
-	// TODO: timeout/early termination once we know we're done
+func (s *sequentialSearcher) Query(query segment.Query) (
+	candidateDocIDs segment.PostingsList,
+	pendingFilterFn matchPredicate,
+	err error,
+) {
 	if err := validateQuery(query); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// order filters to ensure the first filter has no-negation
@@ -73,12 +76,12 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 	// TODO: support parallel fetching across segments/filters
 	for filterIdx, filter := range query.Filters {
 		if filterIdx == 0 && filter.Negate {
-			return nil, errFirstFilterMustNotBeNegation
+			return nil, nil, errFirstFilterMustNotBeNegation
 		}
 
 		fetchedIds, pred, err := s.queryable.Filter(filter)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if pred != nil {
@@ -87,7 +90,7 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 
 		// i.e. we don't have any documents for the given filter, can early terminate entire fn
 		if fetchedIds == nil {
-			return nil, nil
+			return nil, nil, nil
 		}
 
 		if candidateDocIds == nil {
@@ -97,6 +100,7 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 
 		// TODO: evaluate perf impact of retrieving all candidate docIDs, waiting till end,
 		// sorting by size and then doing the intersection
+
 		// update candidate set
 		if filter.Negate {
 			s.negationMergeFn(candidateDocIds, fetchedIds)
@@ -106,12 +110,12 @@ func (s *sequentialSearcher) Query(query segment.Query) ([]doc.Document, error) 
 
 		// early terminate if we don't have any docs in candidate set
 		if candidateDocIds.IsEmpty() {
-			return nil, nil
+			return nil, nil, nil
 		}
 	}
 
 	// TODO: once we support multiple segments, we'll have to merge results
-	return s.queryable.Fetch(candidateDocIds, matchPredicates(predicates).Fn())
+	return candidateDocIds, matchPredicates(predicates).Fn(), nil
 }
 
 type matchPredicates []matchPredicate

@@ -71,20 +71,19 @@ type matchPredicate func(d doc.Document) bool
 
 // queryable is the base contract required for any mem segement implementation to be used by a `searcher`.
 type queryable interface {
+	// Options returns the segment Options.
+	Options() Options
+
 	// Filter retrieves the PostingsList for the filter, and any additional
 	// filtering criterion that must be applied in post processing.
-	Filter(segment.Filter) (
-		candidateDocIDs segment.PostingsList,
-		pendingFilterFn matchPredicate,
-		err error,
-	)
+	Filter(f segment.Filter) (candidateDocIDs segment.PostingsList, pendingFilterFn matchPredicate, err error)
 
-	// Fetch retrieves the list of documents in the given postings list.
-	Fetch(p segment.PostingsList, fn matchPredicate) ([]doc.Document, error)
+	// FetchDocument returns the document with the provided id.
+	FetchDocument(docID segment.DocID) (d document, valid bool)
 }
 
 // searcher performs a search on known queryable(s).
 type searcher interface {
 	// Query retrieves the list of documents matching the given criterion.
-	Query(q segment.Query) ([]doc.Document, error)
+	Query(q segment.Query) (candidateDocIDs segment.PostingsList, pendingFilterFn matchPredicate, err error)
 }
