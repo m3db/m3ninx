@@ -38,15 +38,15 @@ func TestNewMemSegment(t *testing.T) {
 	idx, err := New(1, opts)
 	require.NoError(t, err)
 
-	metricID := []byte("some-random-id")
-	tags := map[string]string{
-		"abc": "one",
-		"def": "two",
+	testDoc := doc.Document{
+		ID: []byte("some-random-id"),
+		Fields: []doc.Field{
+			doc.Field{Name: []byte("abc"), Value: doc.Value("one")},
+			doc.Field{Name: []byte("def"), Value: doc.Value("two")},
+		},
 	}
 
-	d := doc.New(metricID, tags)
-	require.NoError(t, idx.Insert(d))
-
+	require.NoError(t, idx.Insert(testDoc))
 	docsIter, err := idx.Query(segment.Query{
 		Conjunction: segment.AndConjunction,
 		Filters: []segment.Filter{
@@ -60,7 +60,7 @@ func TestNewMemSegment(t *testing.T) {
 
 	require.True(t, docsIter.Next())
 	result, tombstoned := docsIter.Current()
-	require.Equal(t, d, result)
+	require.Equal(t, testDoc, result)
 	require.False(t, tombstoned)
 	require.False(t, docsIter.Next())
 }
