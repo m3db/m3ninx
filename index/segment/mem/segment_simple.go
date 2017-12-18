@@ -36,8 +36,10 @@ type simpleSegment struct {
 	docIDGen *atomic.Uint32
 
 	// internal docID -> document
-	documentsLock sync.RWMutex
-	documents     map[segment.DocID]document // TODO(prateek): measure perf impact of slice v map here
+	docs struct {
+		sync.RWMutex
+		values map[segment.DocID]document // TODO(prateek): measure perf impact of slice v map here
+	}
 
 	// field (Name+Value) -> postingsManagerOffset
 	termsDict termsDictionary
@@ -55,14 +57,12 @@ type document struct {
 // New returns a new in-memory index.
 func New(id segment.ID, opts Options) (Segment, error) {
 	seg := &simpleSegment{
-		opts:     opts,
-		id:       id,
-		docIDGen: atomic.NewUint32(0),
-
-		documents: make(map[segment.DocID]document, opts.InitialCapacity()),
+		opts:      opts,
+		id:        id,
+		docIDGen:  atomic.NewUint32(0),
 		termsDict: newSimpleTermsDictionary(opts),
 	}
-
+	seg.docs.values = make(map[segment.DocID]document, opts.InitialCapacity())
 	searcher := newSequentialSearcher(seg, differenceNegationFn, opts.PostingsListPool())
 	seg.searcher = searcher
 	return seg, nil
@@ -78,9 +78,9 @@ func (i *simpleSegment) Insert(d doc.Document) error {
 
 func (i *simpleSegment) insertDocument(doc document) error {
 	// insert document into master doc id -> doc map
-	i.documentsLock.Lock()
-	i.documents[doc.docID] = doc
-	i.documentsLock.Unlock()
+	i.docs.Lock()
+	i.docs.values[doc.docID] = doc
+	i.docs.Unlock()
 
 	// insert each of the indexed fields into the reverse index
 	// TODO: current implementation allows for partial indexing. Evaluate perf impact of not doing that.
@@ -126,8 +126,8 @@ func (i *simpleSegment) Options() Options {
 }
 
 func (i *simpleSegment) FetchDocument(id segment.DocID) (document, bool) {
-	i.documentsLock.RLock()
-	d, ok := i.documents[id]
-	i.documentsLock.RUnlock()
+	i.docs.RLock()
+	d, ok := i.docs.values[id]
+	i.docs.RUnlock()
 	return d, ok
 }

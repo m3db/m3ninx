@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -29,7 +30,8 @@ import (
 )
 
 var (
-	errFirstFilterMustNotBeNegation = fmt.Errorf("first filter must be non-negation")
+	errFirstFilterMustNotBeNegation = errors.New("first filter must be non-negation")
+	errEmptyQuery                   = errors.New("empty query specified")
 )
 
 type negationMergeFn func(x segment.PostingsList, y segment.ImmutablePostingsList)
@@ -147,7 +149,7 @@ func validateQuery(q segment.Query) error {
 
 	// ensure query level have at-least one filter or sub-query
 	if len(q.Filters) == 0 && len(q.SubQueries) == 0 {
-		return fmt.Errorf("empty query specified")
+		return errEmptyQuery
 	}
 
 	// ensure we don't have any level with only Negations as they are super expensive to compute

@@ -21,6 +21,8 @@
 package mem
 
 import (
+	"fmt"
+
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 )
@@ -30,6 +32,7 @@ type resultsIter struct {
 	next    document
 	hasNext bool
 	done    bool
+	err     error
 
 	predicateFn  matchPredicate
 	postingsList segment.ImmutablePostingsList
@@ -60,17 +63,26 @@ func newResultsIter(
 }
 
 func (r *resultsIter) setupNextIteration() {
-	d, ok := r.getNextDocument()
+	d, ok, err := r.getNextDocument()
+	if err != nil {
+		r.release()
+		r.hasNext = false
+		r.err = err
+		r.done = true
+		return
+	}
+
 	if !ok {
 		r.release()
 		r.hasNext = false
 		r.done = true
 		return
 	}
+
 	// setup values so that next time Next() is called, we can rotate
 	// next -> current
 	r.next = d
-	r.hasNext = ok
+	r.hasNext = true
 }
 
 func (r *resultsIter) release() {
@@ -79,37 +91,36 @@ func (r *resultsIter) release() {
 	pl, ok := r.postingsList.(segment.PostingsList)
 	if ok {
 		r.queryable.Options().PostingsListPool().Put(pl)
+		// unset internal references
+		r.postingsList = nil
+		r.idsIter = nil
 	}
 }
 
-func (r *resultsIter) getNextDocument() (document, bool) {
+func (r *resultsIter) getNextDocument() (document, bool, error) {
 	// need to loop as we may filter out values due to the predicate function
 	for {
 		hasNext := r.idsIter.Next()
 		if !hasNext {
-			return document{}, false
+			return document{}, false, nil
 		}
 
 		id := r.idsIter.Current()
 		doc, ok := r.queryable.FetchDocument(id)
 		if !ok {
-			// i.e. we were given a reference to an illegal document ID by the
-			// postings list iter. This should never happen, but listing here for
-			// completeness.
-			// TODO: log error/metric for ^^
-			continue
+			return document{}, false, fmt.Errorf("unable to retrieve document with DocID: %d", id)
 		}
 
 		// ensure document matches predicateFn
 		if r.predicateFn(doc.Document) {
-			return doc, true
+			return doc, true, nil
 		}
 	}
 }
 
 func (r *resultsIter) Next() bool {
 	// ensure internal state is valid
-	if r.done {
+	if r.done || r.err != nil {
 		return false
 	}
 
@@ -126,4 +137,8 @@ func (r *resultsIter) Next() bool {
 
 func (r *resultsIter) Current() (doc.Document, bool) {
 	return r.current.Document, r.current.tombstoned
+}
+
+func (r *resultsIter) Err() error {
+	return r.err
 }

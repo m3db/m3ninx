@@ -52,6 +52,9 @@ type ResultsIter interface {
 	// Current returns the current document and whether the document was marked
 	// as deleted or not.
 	Current() (d doc.Document, tombstoned bool)
+
+	// Err returns any errors encountered during iteration.
+	Err() error
 }
 
 // Writable is a writable index segment.

@@ -31,17 +31,22 @@ import (
 // simpleTermsDictionary uses two-level map to model a terms dictionary.
 // i.e. fieldName -> fieldValue -> postingsList
 type simpleTermsDictionary struct {
-	fieldNamesLock sync.RWMutex
-	fieldNames     map[string]*fieldValuesMap
-
-	opts Options
+	opts   Options
+	fields struct {
+		sync.RWMutex
+		nameToValuesMap map[string]*fieldValuesMap
+		// TODO: as noted in https://github.com/m3db/m3ninx/issues/11, evalute impact of using
+		// a custom hash map where we can avoid using string keys, both to save allocs and
+		// help perf.
+	}
 }
 
 func newSimpleTermsDictionary(opts Options) termsDictionary {
-	return &simpleTermsDictionary{
-		fieldNames: make(map[string]*fieldValuesMap, opts.InitialCapacity()),
-		opts:       opts,
+	dict := &simpleTermsDictionary{
+		opts: opts,
 	}
+	dict.fields.nameToValuesMap = make(map[string]*fieldValuesMap, opts.InitialCapacity())
+	return dict
 }
 
 func (t *simpleTermsDictionary) Insert(field doc.Field, i segment.DocID) error {
@@ -57,9 +62,9 @@ func (t *simpleTermsDictionary) Fetch(
 	isRegexp bool,
 ) (segment.PostingsList, error) {
 	// check if we know about the field name
-	t.fieldNamesLock.RLock()
-	fieldValues, ok := t.fieldNames[string(fieldName)]
-	t.fieldNamesLock.RUnlock()
+	t.fields.RLock()
+	fieldValues, ok := t.fields.nameToValuesMap[string(fieldName)]
+	t.fields.RUnlock()
 	if !ok {
 		// not an error to not have any matching values
 		return nil, nil
@@ -82,26 +87,26 @@ func (t *simpleTermsDictionary) Fetch(
 
 func (t *simpleTermsDictionary) getOrAddFieldName(fieldName string) *fieldValuesMap {
 	// cheap read lock to see if it already exists
-	t.fieldNamesLock.RLock()
-	fieldValues, ok := t.fieldNames[fieldName]
-	t.fieldNamesLock.RUnlock()
+	t.fields.RLock()
+	fieldValues, ok := t.fields.nameToValuesMap[fieldName]
+	t.fields.RUnlock()
 	if ok {
 		return fieldValues
 	}
 
 	// acquire write lock and create
-	t.fieldNamesLock.Lock()
-	fieldValues, ok = t.fieldNames[fieldName]
+	t.fields.Lock()
+	fieldValues, ok = t.fields.nameToValuesMap[fieldName]
 
 	// check if it's been created since we last acquired the lock
 	if ok {
-		t.fieldNamesLock.Unlock()
+		t.fields.Unlock()
 		return fieldValues
 	}
 
 	fieldValues = newFieldValuesMap(t.opts)
-	t.fieldNames[fieldName] = fieldValues
-	t.fieldNamesLock.Unlock()
+	t.fields.nameToValuesMap[fieldName] = fieldValues
+	t.fields.Unlock()
 	return fieldValues
 }
 
@@ -112,6 +117,9 @@ type fieldValuesMap struct {
 
 	// fieldValue -> postingsList
 	values map[string]segment.PostingsList
+	// TODO: as noted in https://github.com/m3db/m3ninx/issues/11, evalute impact of using
+	// a custom hash map where we can avoid using string keys, both to save allocs and
+	// help perf.
 }
 
 func newFieldValuesMap(opts Options) *fieldValuesMap {
