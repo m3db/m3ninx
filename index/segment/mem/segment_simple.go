@@ -21,12 +21,17 @@
 package mem
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
 	"github.com/uber-go/atomic"
+)
+
+var (
+	errUnknownDocID = errors.New("unknown DocID specified")
 )
 
 // TODO(prateek): investigate impact of native heap
@@ -38,7 +43,7 @@ type simpleSegment struct {
 	// internal docID -> document
 	docs struct {
 		sync.RWMutex
-		values map[segment.DocID]document // TODO(prateek): measure perf impact of slice v map here
+		values []document
 	}
 
 	// field (Name+Value) -> postingsManagerOffset
@@ -62,7 +67,7 @@ func New(id segment.ID, opts Options) (Segment, error) {
 		docIDGen:  atomic.NewUint32(0),
 		termsDict: newSimpleTermsDictionary(opts),
 	}
-	seg.docs.values = make(map[segment.DocID]document, opts.InitialCapacity())
+	seg.docs.values = make([]document, opts.InitialCapacity())
 	searcher := newSequentialSearcher(seg, differenceNegationFn, opts.PostingsListPool())
 	seg.searcher = searcher
 	return seg, nil
@@ -76,7 +81,33 @@ func (i *simpleSegment) Insert(d doc.Document) error {
 	})
 }
 
+func (i *simpleSegment) ensureSufficientCapacity(n int64) {
+	// can early terminate if we have sufficient capacity
+	i.docs.RLock()
+	size := len(i.docs.values)
+	i.docs.RUnlock()
+	if int64(size) > n {
+		return
+	}
+
+	// need to expand capacity
+	i.docs.Lock()
+	size = len(i.docs.values)
+	// expanded since we released the lock
+	if int64(size) > n {
+		i.docs.Unlock()
+		return
+	}
+
+	docs := make([]document, 2*(size+1))
+	copy(docs, i.docs.values)
+	i.docs.values = docs
+	i.docs.Unlock()
+}
+
 func (i *simpleSegment) insertDocument(doc document) error {
+	i.ensureSufficientCapacity(int64(doc.docID))
+
 	// insert document into master doc id -> doc map
 	i.docs.Lock()
 	i.docs.values[doc.docID] = doc
@@ -105,7 +136,7 @@ func (i *simpleSegment) Query(query segment.Query) (segment.ResultsIter, error) 
 func (i *simpleSegment) Filter(
 	f segment.Filter,
 ) (segment.PostingsList, matchPredicate, error) {
-	docs, err := i.termsDict.Fetch(f.FieldName, f.FieldValueFilter, f.Regexp)
+	docs, err := i.termsDict.Fetch(f.FieldName, f.FieldValueFilter, termFetchOptions{isRegexp: f.Regexp})
 	return docs, nil, err
 }
 
@@ -114,7 +145,7 @@ func (i *simpleSegment) Delete(d doc.Document) error {
 }
 
 func (i *simpleSegment) Size() uint32 {
-	panic("not implemented")
+	return i.docIDGen.Load()
 }
 
 func (i *simpleSegment) ID() segment.ID {
@@ -125,9 +156,13 @@ func (i *simpleSegment) Options() Options {
 	return i.opts
 }
 
-func (i *simpleSegment) FetchDocument(id segment.DocID) (document, bool) {
+func (i *simpleSegment) FetchDocument(id segment.DocID) (document, error) {
+	if uint32(id) > i.Size() {
+		return document{}, errUnknownDocID
+	}
+
 	i.docs.RLock()
-	d, ok := i.docs.values[id]
+	d := i.docs.values[id]
 	i.docs.RUnlock()
-	return d, ok
+	return d, nil
 }

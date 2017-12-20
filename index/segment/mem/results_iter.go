@@ -106,9 +106,9 @@ func (r *resultsIter) getNextDocument() (document, bool, error) {
 		}
 
 		id := r.idsIter.Current()
-		doc, ok := r.queryable.FetchDocument(id)
-		if !ok {
-			return document{}, false, fmt.Errorf("unable to retrieve document with DocID: %d", id)
+		doc, err := r.queryable.FetchDocument(id)
+		if err != nil {
+			return document{}, false, fmt.Errorf("unable to retrieve document with DocID: %d, err: %v", id, err)
 		}
 
 		// ensure document matches predicateFn

@@ -28,6 +28,12 @@ import (
 	"github.com/m3db/m3ninx/index/segment"
 )
 
+const (
+	regexpPostingsListInitFactor = 0.01
+)
+
+type valuePredicate func(v string) bool
+
 // simpleTermsDictionary uses two-level map to model a terms dictionary.
 // i.e. fieldName -> fieldValue -> postingsList
 type simpleTermsDictionary struct {
@@ -59,7 +65,7 @@ func (t *simpleTermsDictionary) Insert(field doc.Field, i segment.DocID) error {
 func (t *simpleTermsDictionary) Fetch(
 	fieldName []byte,
 	fieldValueFilter []byte,
-	isRegexp bool,
+	opts termFetchOptions,
 ) (segment.PostingsList, error) {
 	// check if we know about the field name
 	t.fields.RLock()
@@ -71,7 +77,7 @@ func (t *simpleTermsDictionary) Fetch(
 	}
 
 	// get postingList(s) for the given value.
-	lists, err := fieldValues.fetchLists(fieldValueFilter, isRegexp)
+	lists, err := fieldValues.fetchLists(fieldValueFilter, opts.isRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +177,10 @@ func (f *fieldValuesMap) fetchLists(valueFilter []byte, regexp bool) ([]segment.
 	if err != nil {
 		return nil, err
 	}
-	var postingsLists []segment.PostingsList
+
 	f.RLock()
+	initLength := int(regexpPostingsListInitFactor * float64(len(f.values)))
+	postingsLists := make([]segment.PostingsList, 0, initLength)
 	for value, list := range f.values {
 		if pred(value) {
 			postingsLists = append(postingsLists, list)
@@ -202,5 +210,3 @@ func newRegexPredicate(valueFilter []byte) (valuePredicate, error) {
 
 	return re.MatchString, nil
 }
-
-type valuePredicate func(v string) bool

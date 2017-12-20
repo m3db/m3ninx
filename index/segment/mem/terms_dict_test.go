@@ -48,7 +48,7 @@ func (t *termsDictionaryTestSuite) TestInsert() {
 	}, 1)
 	t.NoError(err)
 
-	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg"), false)
+	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg"), termFetchOptions{false})
 	t.NoError(err)
 	t.NotNil(ids)
 	t.Equal(uint64(1), ids.Size())
@@ -67,7 +67,7 @@ func (t *termsDictionaryTestSuite) TestInsertIdempotent() {
 	}, 1)
 	t.NoError(err)
 
-	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg"), false)
+	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg"), termFetchOptions{false})
 	t.NoError(err)
 	t.NotNil(ids)
 	t.Equal(uint64(1), ids.Size())
@@ -86,7 +86,7 @@ func (t *termsDictionaryTestSuite) TestFetchRegex() {
 	}, 2)
 	t.NoError(err)
 
-	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg.*"), true)
+	ids, err := t.termsDict.Fetch([]byte("abc"), []byte("efg.*"), termFetchOptions{true})
 	t.NoError(err)
 	t.NotNil(ids)
 	t.Equal(uint64(2), ids.Size())

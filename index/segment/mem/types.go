@@ -62,7 +62,12 @@ type termsDictionary interface {
 
 	// Fetch returns all the docIDs matching the given filter.
 	// NB(prateek): the returned PostingsList is safe to modify.
-	Fetch(fieldName []byte, fieldValueFilter []byte, isRegexp bool) (segment.PostingsList, error)
+	Fetch(fieldName []byte, fieldValueFilter []byte, opts termFetchOptions) (segment.PostingsList, error)
+}
+
+// termFetchOptions are the set of options accompanying the term.
+type termFetchOptions struct {
+	isRegexp bool
 }
 
 // matchPredicate returns a bool indicating if the document matched the
@@ -79,7 +84,7 @@ type queryable interface {
 	Filter(f segment.Filter) (candidateDocIDs segment.PostingsList, pendingFilterFn matchPredicate, err error)
 
 	// FetchDocument returns the document with the provided id.
-	FetchDocument(docID segment.DocID) (d document, valid bool)
+	FetchDocument(docID segment.DocID) (document, error)
 }
 
 // searcher performs a search on known queryable(s).

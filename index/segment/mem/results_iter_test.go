@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -121,11 +122,11 @@ func (s *stubQueryable) Filter(f segment.Filter) (candidateDocIDs segment.Postin
 	return nil, nil, nil
 }
 
-func (s *stubQueryable) FetchDocument(docID segment.DocID) (document, bool) {
+func (s *stubQueryable) FetchDocument(docID segment.DocID) (document, error) {
 	for _, d := range s.docs {
 		if docID == d.docID {
-			return d, true
+			return d, nil
 		}
 	}
-	return document{}, false
+	return document{}, fmt.Errorf("unknown DocID")
 }
