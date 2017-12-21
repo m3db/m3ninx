@@ -109,9 +109,12 @@ func (i *simpleSegment) insertDocument(doc document) error {
 	i.ensureSufficientCapacity(int64(doc.docID))
 
 	// insert document into master doc id -> doc map
-	i.docs.Lock()
+	// NB(prateek): only need a Read-lock here despite an insert operation because
+	// we're guranteed to never have conflicts with docID (it's monotonoic increasing),
+	// and ensureSufficientCapacity guarantees `i.docs.values` is large enough.
+	i.docs.RLock()
 	i.docs.values[doc.docID] = doc
-	i.docs.Unlock()
+	i.docs.RUnlock()
 
 	// insert each of the indexed fields into the reverse index
 	// TODO: current implementation allows for partial indexing. Evaluate perf impact of not doing that.
