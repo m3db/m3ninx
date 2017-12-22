@@ -75,26 +75,35 @@ func New(id segment.ID, opts Options) (Segment, error) {
 
 // TODO(prateek): consider copy semantics for input data, esp if we can store it on the native heap
 func (i *simpleSegment) Insert(d doc.Document) error {
-	return i.insertDocument(document{
+	newDoc := document{
 		Document: d,
 		docID:    segment.DocID(i.docIDGen.Inc()),
-	})
+	}
+	i.insertDocument(newDoc)
+	return i.insertTerms(newDoc)
 }
 
-func (i *simpleSegment) ensureSufficientCapacity(n int64) {
+func (i *simpleSegment) insertDocument(doc document) {
+	docID := int64(doc.docID)
 	// can early terminate if we have sufficient capacity
 	i.docs.RLock()
 	size := len(i.docs.values)
-	i.docs.RUnlock()
-	if int64(size) > n {
+	if int64(size) > docID {
+		// NB(prateek): only need a Read-lock here despite an insert operation because
+		// we're guranteed to never have conflicts with docID (it's monotonoic increasing),
+		// and have checked `i.docs.values` is large enough.
+		i.docs.values[doc.docID] = doc
+		i.docs.RUnlock()
 		return
 	}
+	i.docs.RUnlock()
 
 	// need to expand capacity
 	i.docs.Lock()
 	size = len(i.docs.values)
 	// expanded since we released the lock
-	if int64(size) > n {
+	if int64(size) > docID {
+		i.docs.values[doc.docID] = doc
 		i.docs.Unlock()
 		return
 	}
@@ -102,20 +111,11 @@ func (i *simpleSegment) ensureSufficientCapacity(n int64) {
 	docs := make([]document, 2*(size+1))
 	copy(docs, i.docs.values)
 	i.docs.values = docs
+	i.docs.values[doc.docID] = doc
 	i.docs.Unlock()
 }
 
-func (i *simpleSegment) insertDocument(doc document) error {
-	i.ensureSufficientCapacity(int64(doc.docID))
-
-	// insert document into master doc id -> doc map
-	// NB(prateek): only need a Read-lock here despite an insert operation because
-	// we're guranteed to never have conflicts with docID (it's monotonoic increasing),
-	// and ensureSufficientCapacity guarantees `i.docs.values` is large enough.
-	i.docs.RLock()
-	i.docs.values[doc.docID] = doc
-	i.docs.RUnlock()
-
+func (i *simpleSegment) insertTerms(doc document) error {
 	// insert each of the indexed fields into the reverse index
 	// TODO: current implementation allows for partial indexing. Evaluate perf impact of not doing that.
 	for _, field := range doc.Fields {

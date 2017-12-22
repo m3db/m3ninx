@@ -34,10 +34,14 @@ var (
 	errEmptyQuery                   = errors.New("empty query specified")
 )
 
-type negationMergeFn func(x segment.PostingsList, y segment.ImmutablePostingsList)
+type negationMergeFn func(x segment.PostingsList, y segment.ImmutablePostingsList) error
 
-func differenceNegationFn(x segment.PostingsList, y segment.ImmutablePostingsList) { x.Difference(y) }
-func unionNegationFn(x segment.PostingsList, y segment.ImmutablePostingsList)      { x.Union(y) }
+func differenceNegationFn(x segment.PostingsList, y segment.ImmutablePostingsList) error {
+	return x.Difference(y)
+}
+func unionNegationFn(x segment.PostingsList, y segment.ImmutablePostingsList) error {
+	return x.Union(y)
+}
 
 type sequentialSearcher struct {
 	queryable       queryable
@@ -104,10 +108,15 @@ func (s *sequentialSearcher) Query(query segment.Query) (
 		// sorting by size and then doing the intersection
 
 		// update candidate set
+		var mergeErr error
 		if filter.Negate {
-			s.negationMergeFn(candidateDocIds, fetchedIds)
+			mergeErr = s.negationMergeFn(candidateDocIds, fetchedIds)
 		} else {
-			candidateDocIds.Intersect(fetchedIds)
+			mergeErr = candidateDocIds.Intersect(fetchedIds)
+		}
+
+		if mergeErr != nil {
+			return nil, nil, mergeErr
 		}
 
 		// early terminate if we don't have any docs in candidate set

@@ -119,13 +119,10 @@ func (r *resultsIter) getNextDocument() (document, bool, error) {
 }
 
 func (r *resultsIter) Next() bool {
-	// ensure internal state is valid
-	if r.done || r.err != nil {
-		return false
-	}
-
-	// early terminate if we do not have another value queued
-	if !r.hasNext {
+	// ensure internal state is valid, we have another value queued
+	valid := !r.done && r.err == nil
+	remaining := r.hasNext
+	if !valid || !remaining {
 		return false
 	}
 

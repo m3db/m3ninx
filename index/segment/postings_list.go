@@ -21,9 +21,16 @@
 package segment
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/RoaringBitmap/roaring"
+)
+
+var (
+	errIntersectRoaringOnly  = errors.New("Intersect only supported between roaringDocId sets")
+	errUnionRoaringOnly      = errors.New("Union only supported between roaringDocId sets")
+	errDifferenceRoaringOnly = errors.New("Difference only supported between roaringDocId sets")
 )
 
 // roaringPostingsList wraps a roaring.Bitmap w/ a mutex for thread safety.
@@ -39,16 +46,18 @@ func NewPostingsList() PostingsList {
 	}
 }
 
-func (d *roaringPostingsList) Insert(i DocID) {
+func (d *roaringPostingsList) Insert(i DocID) error {
 	d.Lock()
 	d.bitmap.Add(uint32(i))
 	d.Unlock()
+
+	return nil
 }
 
-func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
+func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
-		panic("Intersect only supported between roaringDocId sets")
+		return errIntersectRoaringOnly
 	}
 
 	o.RLock()
@@ -56,12 +65,13 @@ func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) {
 	d.bitmap.And(o.bitmap)
 	d.Unlock()
 	o.RUnlock()
+	return nil
 }
 
-func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
+func (d *roaringPostingsList) Difference(other ImmutablePostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
-		panic("Difference only supported between roaringDocId sets")
+		return errDifferenceRoaringOnly
 	}
 
 	d.Lock()
@@ -69,12 +79,13 @@ func (d *roaringPostingsList) Difference(other ImmutablePostingsList) {
 	d.bitmap.AndNot(o.bitmap)
 	o.RUnlock()
 	d.Unlock()
+	return nil
 }
 
-func (d *roaringPostingsList) Union(other ImmutablePostingsList) {
+func (d *roaringPostingsList) Union(other ImmutablePostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
-		panic("Union only supported between roaringDocId sets")
+		return errUnionRoaringOnly
 	}
 
 	o.RLock()
@@ -82,6 +93,7 @@ func (d *roaringPostingsList) Union(other ImmutablePostingsList) {
 	d.bitmap.Or(o.bitmap)
 	d.Unlock()
 	o.RUnlock()
+	return nil
 }
 
 func (d *roaringPostingsList) Reset() {

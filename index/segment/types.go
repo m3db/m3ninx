@@ -124,16 +124,16 @@ type PostingsList interface {
 	ImmutablePostingsList
 
 	// Insert inserts the given id to set.
-	Insert(i DocID)
+	Insert(i DocID) error
 
 	// Intersect modifies the receiver set to contain only those ids by both sets.
-	Intersect(other ImmutablePostingsList)
+	Intersect(other ImmutablePostingsList) error
 
 	// Difference modifies the receiver set to remove any ids contained by both sets.
-	Difference(other ImmutablePostingsList)
+	Difference(other ImmutablePostingsList) error
 
 	// Union modifies the receiver set to contain ids containted in either of the original sets.
-	Union(other ImmutablePostingsList)
+	Union(other ImmutablePostingsList) error
 
 	// Reset resets the internal state of the PostingsList.
 	Reset()

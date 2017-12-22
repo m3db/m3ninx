@@ -143,8 +143,7 @@ func (f *fieldValuesMap) addDocIDForValue(value string, i segment.DocID) error {
 
 	// we have a postingsList, mark the docID and move on.
 	if ok {
-		pid.Insert(i)
-		return nil
+		return pid.Insert(i)
 	}
 
 	// postingsList doesn't exist, time to acquire write lock
@@ -154,18 +153,18 @@ func (f *fieldValuesMap) addDocIDForValue(value string, i segment.DocID) error {
 	// check if it's been created since we released lock
 	if ok {
 		f.Unlock()
-		pid.Insert(i)
-		return nil
+		return pid.Insert(i)
 	}
 
 	// create new posting id for the term, and insert into fieldValues
 	pid = f.opts.PostingsListPool().Get()
 	f.values[value] = pid
 	f.Unlock()
-	pid.Insert(i)
-	return nil
+	return pid.Insert(i)
 }
 
+// TODO: consider returning an iterator here, this would require some kind of ordering semantics
+// on the underlying map tho.
 func (f *fieldValuesMap) fetchLists(valueFilter []byte, regexp bool) ([]segment.PostingsList, error) {
 	// special case when we're looking for an exact match
 	if !regexp {
@@ -182,6 +181,8 @@ func (f *fieldValuesMap) fetchLists(valueFilter []byte, regexp bool) ([]segment.
 	initLength := int(regexpPostingsListInitFactor * float64(len(f.values)))
 	postingsLists := make([]segment.PostingsList, 0, initLength)
 	for value, list := range f.values {
+		// TODO: evaluate lock contention caused by holding on to the read lock
+		// while evaluating this predicate.
 		if pred(value) {
 			postingsLists = append(postingsLists, list)
 		}

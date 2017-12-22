@@ -34,18 +34,18 @@ func TestPostingsListEmpty(t *testing.T) {
 
 func TestPostingsListInsert(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 	// idempotency of inserts
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.Equal(t, uint64(1), d.Size())
 	require.True(t, d.Contains(1))
 }
 
 func TestPostingsListClone(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 
@@ -54,7 +54,7 @@ func TestPostingsListClone(t *testing.T) {
 	require.Equal(t, uint64(1), c.Size())
 
 	// ensure only clone is uniquely backed
-	c.Insert(2)
+	require.NoError(t, c.Insert(2))
 	require.True(t, c.Contains(2))
 	require.Equal(t, uint64(2), c.Size())
 	require.True(t, d.Contains(1))
@@ -63,17 +63,17 @@ func TestPostingsListClone(t *testing.T) {
 
 func TestPostingsListIntersect(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 
 	c := d.Clone()
 	require.True(t, c.Contains(1))
 
-	d.Insert(2)
-	c.Insert(3)
+	require.NoError(t, d.Insert(2))
+	require.NoError(t, c.Insert(3))
 
-	d.Intersect(c)
+	require.NoError(t, d.Intersect(c))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 	require.True(t, c.Contains(1))
@@ -83,16 +83,16 @@ func TestPostingsListIntersect(t *testing.T) {
 
 func TestPostingsListDifference(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 
 	c := d.Clone()
 	require.True(t, c.Contains(1))
 
-	d.Insert(2)
-	d.Insert(3)
-	d.Difference(c)
+	require.NoError(t, d.Insert(2))
+	require.NoError(t, d.Insert(3))
+	require.NoError(t, d.Difference(c))
 
 	require.False(t, d.Contains(1))
 	require.True(t, c.Contains(1))
@@ -104,16 +104,16 @@ func TestPostingsListDifference(t *testing.T) {
 
 func TestPostingsListUnion(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 
 	c := d.Clone()
 	require.True(t, c.Contains(1))
-	d.Insert(2)
-	c.Insert(3)
+	require.NoError(t, d.Insert(2))
+	require.NoError(t, c.Insert(3))
 
-	d.Union(c)
+	require.NoError(t, d.Union(c))
 	require.True(t, d.Contains(1))
 	require.True(t, d.Contains(2))
 	require.True(t, d.Contains(3))
@@ -125,7 +125,7 @@ func TestPostingsListUnion(t *testing.T) {
 
 func TestPostingsListReset(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
+	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, uint64(1), d.Size())
 	d.Reset()
@@ -135,8 +135,8 @@ func TestPostingsListReset(t *testing.T) {
 
 func TestPostingsListIter(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
-	d.Insert(2)
+	require.NoError(t, d.Insert(1))
+	require.NoError(t, d.Insert(2))
 	require.Equal(t, uint64(2), d.Size())
 
 	it := d.Iter()
@@ -155,8 +155,8 @@ func TestPostingsListIter(t *testing.T) {
 
 func TestPostingsListIterInsertAfter(t *testing.T) {
 	d := NewPostingsList()
-	d.Insert(1)
-	d.Insert(2)
+	require.NoError(t, d.Insert(1))
+	require.NoError(t, d.Insert(2))
 	require.Equal(t, uint64(2), d.Size())
 
 	it := d.Iter()
