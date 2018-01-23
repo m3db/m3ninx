@@ -64,17 +64,10 @@ func newResultsIter(
 
 func (r *resultsIter) setupNextIteration() {
 	d, ok, err := r.getNextDocument()
-	if err != nil {
+	if err != nil || !ok {
 		r.release()
 		r.hasNext = false
 		r.err = err
-		r.done = true
-		return
-	}
-
-	if !ok {
-		r.release()
-		r.hasNext = false
 		r.done = true
 		return
 	}

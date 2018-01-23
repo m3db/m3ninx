@@ -62,6 +62,9 @@ func newSequentialSearcher(
 	}
 }
 
+// NB: the current implementation of Query() modifies the input arg, which
+// makes it un-safe for concurrent callers. We should address this if we
+// we start fetching filters in parallel.
 func (s *sequentialSearcher) Query(query segment.Query) (
 	candidateDocIDs segment.PostingsList,
 	pendingFilterFn matchPredicate,

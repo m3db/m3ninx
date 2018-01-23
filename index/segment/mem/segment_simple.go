@@ -160,11 +160,11 @@ func (i *simpleSegment) Options() Options {
 }
 
 func (i *simpleSegment) FetchDocument(id segment.DocID) (document, error) {
-	if uint32(id) > i.Size() {
+	i.docs.RLock()
+	if int(id) >= len(i.docs.values) {
+		i.docs.RUnlock()
 		return document{}, errUnknownDocID
 	}
-
-	i.docs.RLock()
 	d := i.docs.values[id]
 	i.docs.RUnlock()
 	return d, nil

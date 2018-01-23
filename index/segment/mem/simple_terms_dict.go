@@ -77,7 +77,7 @@ func (t *simpleTermsDictionary) Fetch(
 	}
 
 	// get postingList(s) for the given value.
-	lists, err := fieldValues.fetchLists(fieldValueFilter, opts.isRegexp)
+	lists, err := fieldValues.fetchLists(fieldValueFilter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +165,9 @@ func (f *fieldValuesMap) addDocIDForValue(value string, i segment.DocID) error {
 
 // TODO: consider returning an iterator here, this would require some kind of ordering semantics
 // on the underlying map tho.
-func (f *fieldValuesMap) fetchLists(valueFilter []byte, regexp bool) ([]segment.PostingsList, error) {
+func (f *fieldValuesMap) fetchLists(valueFilter []byte, opts termFetchOptions) ([]segment.PostingsList, error) {
 	// special case when we're looking for an exact match
-	if !regexp {
+	if !opts.isRegexp {
 		return f.fetchExact(valueFilter), nil
 	}
 
