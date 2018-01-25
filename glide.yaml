@@ -1,2 +1,20 @@
 package: github.com/m3db/m3ninx
-import: []
+import:
+# need to pin this version until we're using 1.9
+- package: github.com/RoaringBitmap/roaring
+  version: 0.3.9
+- package: github.com/m3db/m3x
+  version: 26dc0b7837f34067381b8cf2e1288a0f1d42dc3a
+  subpackages:
+  - instrument
+- package: github.com/uber-go/atomic
+  version: ^1.2.0
+- package: github.com/uber-go/tally
+  version: ^3
+- package: github.com/couchbaselabs/vellum
+  version: 41502e0b9cd521c6c96ceab793343dfc0ae59412
+# testImport:
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - require

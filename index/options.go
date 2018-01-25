@@ -21,41 +21,39 @@
 package index
 
 import (
-	"errors"
-
-	"github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/index/segment/mem"
-
 	"github.com/m3db/m3x/instrument"
 )
 
-var (
-	// ErrDocAlreadyInserted is returned when attempting to insert a document which
-	// has already been inserted.
-	ErrDocAlreadyInserted = errors.New("unable to insert document, already inserted")
-)
-
-// Index is a collection of segments.
-type Index interface {
-	segment.Readable
-	segment.Writable
-
-	// Insert inserts the given documents with provided fields. It may return ErrDocAlreadyInserted
-	// if the document has already been inserted into the index.
-	// TODO(prateek): need to address go duplicate method here.
+type opts struct {
+	iopts instrument.Options
+	mopts mem.Options
 }
 
-// Options is a set of knobs by which to tweak Index-ing behaviour.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+// NewOptions returns new options.
+func NewOptions() Options {
+	return &opts{
+		iopts: instrument.NewOptions(),
+		mopts: mem.NewOptions(),
+	}
+}
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+func (o *opts) SetInstrumentOptions(value instrument.Options) Options {
+	opts := *o
+	opts.iopts = value
+	return &opts
+}
 
-	// SetMemSegmentOptions sets the mem segment options.
-	SetMemSegmentOptions(value mem.Options) Options
+func (o *opts) InstrumentOptions() instrument.Options {
+	return o.iopts
+}
 
-	// MemSegmentOptions returns the mem segment options.
-	MemSegmentOptions() mem.Options
+func (o *opts) SetMemSegmentOptions(value mem.Options) Options {
+	opts := *o
+	opts.mopts = value
+	return &opts
+}
+
+func (o *opts) MemSegmentOptions() mem.Options {
+	return o.mopts
 }

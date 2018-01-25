@@ -32,7 +32,11 @@ BUILD            := $(abspath ./bin)
 GO_BUILD_LDFLAGS := $(shell $(abspath ./.ci/go-build-ldflags.sh) $(m3ninx_package))
 LINUX_AMD64_ENV  := GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 
-# SERVICES := \
+SERVICES := \
+	idxnode   \
+
+TOOLS :=  \
+	idxload \
 
 .PHONY: setup
 setup:
@@ -51,10 +55,28 @@ $(SERVICE)-linux-amd64:
 
 endef
 
+define TOOL_RULES
+
+.PHONY: $(TOOL)
+$(TOOL): setup
+	@echo Building $(TOOL)
+	go build -o $(BUILD)/$(TOOL) ./tools/$(TOOL)/main/.
+
+.PHONY: $(TOOL)-linux-amd64
+$(TOOL)-linux-amd64:
+	$(LINUX_AMD64_ENV) make $(TOOL)
+
+endef
+
 .PHONY: services services-linux-amd64
 services: $(SERVICES)
 services-linux-amd64:
 	$(LINUX_AMD64_ENV) make services
+
+.PHONY: tools tools-linux-amd64
+tools: $(TOOLS)
+tools-linux-amd64:
+	$(LINUX_AMD64_ENV) make tools
 
 $(foreach SERVICE,$(SERVICES),$(eval $(SERVICE_RULES)))
 $(foreach TOOL,$(TOOLS),$(eval $(TOOL_RULES)))
