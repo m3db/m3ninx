@@ -83,3 +83,12 @@ func TestTrigramTermsDictionary(t *testing.T) {
 		},
 	})
 }
+
+func TestTrigramTermsDictionary(t *testing.T) {
+	opts := NewOptions()
+	suite.Run(t, &termsDictionaryTestSuite{
+		fn: func() termsDictionary {
+			return newTrigramTermsDictionary(opts)
+		},
+	})
+}
