@@ -30,7 +30,7 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
 
-	"github.com/google/codesearch/index"
+	"github.com/m3db/codesearch/index"
 )
 
 var (
@@ -54,7 +54,7 @@ type trigramTermsDictionary struct {
 
 	fields struct {
 		sync.RWMutex
-		idsMap map[segment.DocID]doc.Field
+		idsMap map[segment.DocID][]doc.Field
 	}
 	backingDict *simpleTermsDictionary
 }
@@ -65,7 +65,7 @@ func newTrigramTermsDictionary(opts Options) termsDictionary {
 		opts:        opts,
 		backingDict: std,
 	}
-	ttd.fields.idsMap = make(map[segment.DocID]doc.Field)
+	ttd.fields.idsMap = make(map[segment.DocID][]doc.Field)
 	return ttd
 }
 
@@ -88,7 +88,7 @@ func (t *trigramTermsDictionary) Insert(field doc.Field, i segment.DocID) error 
 	}
 	t.fields.Lock()
 	defer t.fields.Unlock()
-	t.fields.idsMap[i] = field
+	t.fields.idsMap[i] = append(t.fields.idsMap[i], field)
 	return nil
 }
 
@@ -108,6 +108,8 @@ func (t *trigramTermsDictionary) Fetch(
 	}
 	defer t.opts.PostingsListPool().Put(canidates)
 
+	// NB: The trigram index can return false postives so we verify that the returned
+	// documents do in fact match the given filter below.
 	var (
 		regex *regexp.Regexp
 		it    = canidates.Iter()
@@ -127,22 +129,33 @@ func (t *trigramTermsDictionary) Fetch(
 
 	for it.Next() {
 		id := it.Current()
-		field, ok := t.fields.idsMap[id]
+		fields, ok := t.fields.idsMap[id]
 		if !ok {
 			return nil, fmt.Errorf("ID '%v' found in postings list but not ID map", id)
 		}
 
-		if opts.isRegexp {
-			if !regex.Match(field.Value) {
+		var matched bool
+		for _, field := range fields {
+			if !bytes.Equal(fieldName, field.Name) {
 				continue
 			}
-		} else {
-			if !bytes.Equal(fieldValueFilter, field.Value) {
-				continue
+
+			if opts.isRegexp {
+				if regex.Match(field.Value) {
+					matched = true
+					break
+				}
+			} else {
+				if bytes.Equal(fieldValueFilter, field.Value) {
+					matched = true
+					break
+				}
 			}
 		}
 
-		ids.Insert(id)
+		if matched {
+			ids.Insert(id)
+		}
 	}
 
 	return ids, nil
