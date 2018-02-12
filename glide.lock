@@ -1,5 +1,5 @@
-hash: 473b58e320bb2678ccf1b5cda610f9c3fbc31861b5ca2b1100646ba0a50f2130
-updated: 2018-02-13T17:55:59.618789-05:00
+hash: 9369108084d181614800f6f01439818f5bcddbcbec9503cf94d6041bdb9291d8
+updated: 2018-02-13T17:57:03.7232-05:00
 imports:
 - name: github.com/apache/thrift
   version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
@@ -70,6 +70,11 @@ testImports:
   version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
+- name: github.com/leanovate/gopter
+  version: ed879adfa983372d181640d83cbb2851480335d4
+  subpackages:
+  - gen
+  - prop
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
