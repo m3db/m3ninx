@@ -21,11 +21,9 @@
 package mem
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
-	"regexp"
 	"regexp/syntax"
-	"sync"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index/segment"
@@ -34,39 +32,46 @@ import (
 )
 
 var (
-	// sentinelTrigram is stored for every field so that we can perform match all lookups.
-	sentinelTrigram = ""
+	errUnsupportedQuery = errors.New("query is not supported by the trigram terms dictionary")
 )
 
-// The trigram terms dictionary works by breaking down the value of a field into its constiuent
-// trigrams and storing each trigram in a simple dictionary. For example, given a field
-// (name: "foo", value: "fizzbuzz") and DocID `i` we
+type unsupportedQueryError struct {
+	fieldName, fieldValueFilter []byte
+}
+
+func (e *unsupportedQueryError) Error() string {
+	return fmt.Sprintf(
+		"query (name:%s, value:%s) is not supported by the trigram terms dictionary",
+		e.fieldName,
+		e.fieldValueFilter,
+	)
+}
+
+// trigramsTermsDict stores trigrams of terms to support regular expression queries
+// more efficiently. It does not support all queries and returns an unsupportedQueryError
+// for queries which it does not support. It can also return false positives and it is the
+// caller's responsibility to check the docIDs returned from Fetch if false positives
+// are not acceptable.
+//
+// The trigram terms dictionary works by breaking down the value of a field into
+// its constiuent trigrams and storing each trigram in a simple dictionary. For
+// example, given a field (name: "foo", value: "fizzbuzz") and DocID `i` we
 //   (1) Compute all trigrams for the given value. In this case:
 //         fiz, izz, zzb, zbu, buz, uzz
-//   (2) For each trigram `t` created in step 1, store the entry (value: `t`, docID: `i`) in the
-//       postings list for the field name "foo".
+//   (2) For each trigram `t` created in step 1, store the entry
+//       (value: `t`, docID: `i`) in the postings list for the field name "foo".
 //
-
-// trigramsTermsDict uses trigrams in a two-level map to model a terms dictionary.
-// i.e. fieldName > trigram(fieldValue) -> postingsList
 type trigramTermsDictionary struct {
 	opts Options
 
-	fields struct {
-		sync.RWMutex
-		idsMap map[segment.DocID][]doc.Field
-	}
 	backingDict *simpleTermsDictionary
 }
 
-func newTrigramTermsDictionary(opts Options) termsDictionary {
-	std := newSimpleTermsDictionary(opts).(*simpleTermsDictionary)
-	ttd := &trigramTermsDictionary{
+func newTrigramTermsDictionary(opts Options) *trigramTermsDictionary {
+	return &trigramTermsDictionary{
 		opts:        opts,
-		backingDict: std,
+		backingDict: newSimpleTermsDictionary(opts),
 	}
-	ttd.fields.idsMap = make(map[segment.DocID][]doc.Field)
-	return ttd
 }
 
 func (t *trigramTermsDictionary) Insert(field doc.Field, i segment.DocID) error {
@@ -83,12 +88,9 @@ func (t *trigramTermsDictionary) Insert(field doc.Field, i segment.DocID) error 
 			},
 			i,
 		); err != nil {
-			return err
+			return fmt.Errorf("unable to insert trigram %s into backing dictionary: %v", tri, err)
 		}
 	}
-	t.fields.Lock()
-	defer t.fields.Unlock()
-	t.fields.idsMap[i] = append(t.fields.idsMap[i], field)
 	return nil
 }
 
@@ -97,67 +99,21 @@ func (t *trigramTermsDictionary) Fetch(
 	fieldValueFilter []byte,
 	opts termFetchOptions,
 ) (segment.PostingsList, error) {
-	re, err := syntax.Parse(string(fieldValueFilter), syntax.Perl)
+	filter := string(fieldValueFilter)
+	re, err := syntax.Parse(filter, syntax.Perl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse query filter %s: %v", filter, err)
 	}
 	q := index.RegexpQuery(re)
-	canidates, err := t.postingQuery(fieldName, q, nil, false)
+	ids, err := t.postingQuery(fieldName, q, nil, false)
 	if err != nil {
-		return nil, err
+		if err == errUnsupportedQuery {
+			return nil, &unsupportedQueryError{fieldName: fieldName, fieldValueFilter: fieldValueFilter}
+		}
+		return nil, fmt.Errorf(
+			"unable to get postings list matching query (name: %s, value: %s): %v", fieldName, filter, err,
+		)
 	}
-	defer t.opts.PostingsListPool().Put(canidates)
-
-	// NB: The trigram index can return false postives so we verify that the returned
-	// documents do in fact match the given filter below.
-	var (
-		regex *regexp.Regexp
-		it    = canidates.Iter()
-		ids   = t.opts.PostingsListPool().Get()
-	)
-	if opts.isRegexp {
-		regex, err = regexp.Compile(string(fieldValueFilter))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// TODO: Investigate releasing the lock every N iterations so we don't block
-	// inserts for the entire time we hold the lock.
-	t.fields.RLock()
-	defer t.fields.RUnlock()
-
-	for it.Next() {
-		id := it.Current()
-		fields, ok := t.fields.idsMap[id]
-		if !ok {
-			return nil, fmt.Errorf("ID '%v' found in postings list but not ID map", id)
-		}
-
-		var matched bool
-		for _, field := range fields {
-			if !bytes.Equal(fieldName, field.Name) {
-				continue
-			}
-
-			if opts.isRegexp {
-				if regex.Match(field.Value) {
-					matched = true
-					break
-				}
-			} else {
-				if bytes.Equal(fieldValueFilter, field.Value) {
-					matched = true
-					break
-				}
-			}
-		}
-
-		if matched {
-			ids.Insert(id)
-		}
-	}
-
 	return ids, nil
 }
 
@@ -175,11 +131,8 @@ func (t *trigramTermsDictionary) postingQuery(
 		if candidateIDs != nil {
 			return candidateIDs, nil
 		}
-		ids, err := t.docIDsForTrigram(fieldName, sentinelTrigram)
-		if err != nil {
-			return nil, err
-		}
-		candidateIDs = ids.Clone()
+		// Match all queries are not supported by the trigram terms dictionary.
+		return nil, errUnsupportedQuery
 
 	case index.QAnd:
 		for _, tri := range q.Trigram {
@@ -264,17 +217,17 @@ func (t *trigramTermsDictionary) docIDsForTrigram(
 	return t.backingDict.Fetch(fieldName, []byte(tri), termFetchOptions{isRegexp: false})
 }
 
-// computeTrigrams returns the trigrams composing a byte slice, including the sentinel
-// trigram. The slice of trigrams returned is not guaranteed to be unique.
+// computeTrigrams returns the trigrams composing a byte slice. The slice of trigrams
+// returned is not guaranteed to be unique.
 func computeTrigrams(value []byte) [][]byte {
 	numTrigrams := len(value) - 2
-	trigrams := make([][]byte, 0, numTrigrams+1)
+	if numTrigrams < 1 {
+		return nil
+	}
+
+	trigrams := make([][]byte, 0, numTrigrams)
 	for i := 2; i < len(value); i++ {
 		trigrams = append(trigrams, value[i-2:i+1])
 	}
-	// NB: Taking a byte slice of an empty string won't allocate, see
-	// BenchmarkEmptyStringToByteSlice.
-	trigrams = append(trigrams, []byte(sentinelTrigram))
-
 	return trigrams
 }
