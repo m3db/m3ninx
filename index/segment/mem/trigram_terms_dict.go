@@ -35,20 +35,8 @@ var (
 	errUnsupportedQuery = errors.New("query is not supported by the trigram terms dictionary")
 )
 
-type unsupportedQueryError struct {
-	fieldName, fieldValueFilter []byte
-}
-
-func (e *unsupportedQueryError) Error() string {
-	return fmt.Sprintf(
-		"query (name:%s, value:%s) is not supported by the trigram terms dictionary",
-		e.fieldName,
-		e.fieldValueFilter,
-	)
-}
-
 // trigramsTermsDict stores trigrams of terms to support regular expression queries
-// more efficiently. It does not support all queries and returns an unsupportedQueryError
+// more efficiently. It does not support all queries and returns an errUnsupportedQuery
 // for queries which it does not support. It can also return false positives and it is the
 // caller's responsibility to check the docIDs returned from Fetch if false positives
 // are not acceptable.
@@ -107,12 +95,7 @@ func (t *trigramTermsDictionary) Fetch(
 	q := index.RegexpQuery(re)
 	ids, err := t.postingQuery(fieldName, q, nil, false)
 	if err != nil {
-		if err == errUnsupportedQuery {
-			return nil, &unsupportedQueryError{fieldName: fieldName, fieldValueFilter: fieldValueFilter}
-		}
-		return nil, fmt.Errorf(
-			"unable to get postings list matching query (name: %s, value: %s): %v", fieldName, filter, err,
-		)
+		return nil, fmt.Errorf("unable to get postings list matching query: %v", err)
 	}
 	return ids, nil
 }
