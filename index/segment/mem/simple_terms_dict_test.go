@@ -25,9 +25,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/m3db/m3ninx/index/segment"
-
 	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index/segment"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
