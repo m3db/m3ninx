@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	testRandomSeeed        int64 = 42
+	testRandomSeed         int64 = 42
 	testMinSuccessfulTests       = 1000
 
 	sampleRegexes = []interface{}{
@@ -195,7 +195,7 @@ func TestSimpleTermsDictionary(t *testing.T) {
 
 func getProperties() *gopter.Properties {
 	params := gopter.DefaultTestParameters()
-	params.Rng.Seed(testRandomSeeed)
+	params.Rng.Seed(testRandomSeed)
 	params.MinSuccessfulTests = testMinSuccessfulTests
 	return gopter.NewProperties(params)
 }
