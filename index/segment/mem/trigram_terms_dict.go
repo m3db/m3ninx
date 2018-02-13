@@ -197,6 +197,8 @@ func (t *trigramTermsDictionary) docIDsForTrigram(
 	fieldName []byte,
 	tri string,
 ) (segment.ImmutablePostingsList, error) {
+	// TODO(jeromefroe): Consider adding a FetchString method to the simpleDictionary
+	// to avoid the string conversion here.
 	return t.backingDict.Fetch(fieldName, []byte(tri), termFetchOptions{isRegexp: false})
 }
 
