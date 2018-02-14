@@ -7,29 +7,66 @@ import (
 	"os"
 	"testing"
 
-	"github.com/m3db/m3ninx/index/segment"
-
 	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index/segment"
 )
 
 var (
-	benchDocs []doc.Document
+	benchRegexFetchName   = []byte("__name__")
+	benchRegexFetchFilter = []byte("node_netstat_Tcp_.*")
+	benchRegexFetchOpts   = termFetchOptions{true}
 )
 
-func init() {
-	var err error
-	if benchDocs, err = readDocuments("../../../testdata/node_exporter.json", 2000); err != nil {
-		panic(fmt.Sprintf("unable to read documents for benchmarks: %v", err))
+func BenchmarkTermsDictionary(b *testing.B) {
+	benchmarks := []struct {
+		name string
+		fn   func(docs []doc.Document, b *testing.B)
+	}{
+		{
+			name: "benchmark inserting documents into simple terms dictionary",
+			fn:   benchmarkInsertSimpleTermsDictionary,
+		},
+		{
+			name: "benchmark inserting documents into trigram terms dictionary",
+			fn:   benchmarkInsertTrigramTermsDictionary,
+		},
+		{
+			name: "benchmark fetching documents from simple terms dictionary",
+			fn:   benchmarkFetchSimpleTermsDictionary,
+		},
+		{
+			name: "benchmark fetching documents from trigram terms dictionary",
+			fn:   benchmarkFetchTrigramTermsDictionary,
+		},
+		{
+			name: "benchmark regex fetch for simple terms dictionary",
+			fn:   benchmarkFetchRegexSimpleTermsDictionary,
+		},
+		{
+			name: "benchmark regex fetch for trigram terms dictionary",
+			fn:   benchmarkFetchRegexTrigramTermsDictionary,
+		},
+	}
+
+	docs, err := readDocuments("../../../testdata/node_exporter.json", 2000)
+	if err != nil {
+		b.Fatalf("unable to read documents for benchmarks: %v", err)
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			bm.fn(docs, b)
+		})
 	}
 }
 
-func BenchmarkInsert_SimpleTermsDictionary(b *testing.B) {
+func benchmarkInsertSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
 		dict := newSimpleTermsDictionary(NewOptions())
 		b.StartTimer()
 
-		for i, d := range benchDocs {
+		for i, d := range docs {
 			for _, f := range d.Fields {
 				dict.Insert(f, segment.DocID(i))
 			}
@@ -37,13 +74,13 @@ func BenchmarkInsert_SimpleTermsDictionary(b *testing.B) {
 	}
 }
 
-func BenchmarkInsert_TrigramTermsDictionary(b *testing.B) {
+func benchmarkInsertTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
 		dict := newTrigramTermsDictionary(NewOptions())
 		b.StartTimer()
 
-		for i, d := range benchDocs {
+		for i, d := range docs {
 			for _, f := range d.Fields {
 				dict.Insert(f, segment.DocID(i))
 			}
@@ -51,9 +88,9 @@ func BenchmarkInsert_TrigramTermsDictionary(b *testing.B) {
 	}
 }
 
-func BenchmarkFetch_SimpleTermsDictionary(b *testing.B) {
+func benchmarkFetchSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 	dict := newSimpleTermsDictionary(NewOptions())
-	for i, d := range benchDocs {
+	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, segment.DocID(i))
 		}
@@ -61,7 +98,7 @@ func BenchmarkFetch_SimpleTermsDictionary(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		for _, d := range benchDocs {
+		for _, d := range docs {
 			for _, f := range d.Fields {
 				dict.Fetch(f.Name, f.Value, termFetchOptions{false})
 			}
@@ -69,9 +106,9 @@ func BenchmarkFetch_SimpleTermsDictionary(b *testing.B) {
 	}
 }
 
-func BenchmarkFetch_TrigramTermsDictionary(b *testing.B) {
+func benchmarkFetchTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 	dict := newTrigramTermsDictionary(NewOptions())
-	for i, d := range benchDocs {
+	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, segment.DocID(i))
 		}
@@ -79,7 +116,7 @@ func BenchmarkFetch_TrigramTermsDictionary(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		for _, d := range benchDocs {
+		for _, d := range docs {
 			for _, f := range d.Fields {
 				// The trigram terms dictionary can return false postives so we may want to
 				// consider verifying the results returned are matches to provide a more
@@ -90,46 +127,34 @@ func BenchmarkFetch_TrigramTermsDictionary(b *testing.B) {
 	}
 }
 
-func BenchmarkFetchRegex_SimpleTermsDictionary(b *testing.B) {
+func benchmarkFetchRegexSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 	dict := newSimpleTermsDictionary(NewOptions())
-	for i, d := range benchDocs {
+	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, segment.DocID(i))
 		}
 	}
-
-	var (
-		name   = []byte("__name__")
-		filter = []byte("node_netstat_Tcp_.*")
-		opts   = termFetchOptions{true}
-	)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		dict.Fetch(name, filter, opts)
+		dict.Fetch(benchRegexFetchName, benchRegexFetchFilter, benchRegexFetchOpts)
 	}
 }
 
-func BenchmarkFetchRegex_TrigramTermsDictionary(b *testing.B) {
+func benchmarkFetchRegexTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 	dict := newTrigramTermsDictionary(NewOptions())
-	for i, d := range benchDocs {
+	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, segment.DocID(i))
 		}
 	}
-
-	var (
-		name   = []byte("__name__")
-		filter = []byte("node_netstat_Tcp_.*")
-		opts   = termFetchOptions{true}
-	)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		// The trigram terms dictionary can return false postives so we may want to
 		// consider verifying the results returned are matches to provide a more
 		// fair comparison with the simple terms dictionary.
-		dict.Fetch(name, filter, opts)
+		dict.Fetch(benchRegexFetchName, benchRegexFetchFilter, benchRegexFetchOpts)
 	}
 }
 
