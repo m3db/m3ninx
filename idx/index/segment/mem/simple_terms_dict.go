@@ -32,8 +32,6 @@ const (
 	regexpPostingsListInitFactor = 0.01
 )
 
-type valuePredicate func(v string) bool
-
 // simpleTermsDictionary uses two-level map to model a terms dictionary.
 // i.e. fieldName -> fieldValue -> postingsList
 type simpleTermsDictionary struct {

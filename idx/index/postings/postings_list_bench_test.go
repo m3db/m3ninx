@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Uber Technologies, Inc.
+// Copyright (c) 2017 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,4 +18,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package postings
+
+import (
+	"testing"
+
+	"github.com/RoaringBitmap/roaring"
+)
+
+func BenchmarkClone(b *testing.B) {
+	b.ReportAllocs()
+
+	initPL := roaring.New()
+	for i := 0; i < b.N; i++ {
+		initPL.Add(uint32(i))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		copy := initPL.Clone()
+		if copy.GetCardinality() != initPL.GetCardinality() {
+			b.Error("unequal duplicate size")
+		}
+	}
+}
+
+func BenchmarkCachedObject(b *testing.B) {
+	b.ReportAllocs()
+
+	initPL := roaring.New()
+	for i := 0; i < b.N; i++ {
+		initPL.Add(uint32(i))
+	}
+	copy := roaring.New()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		copy.Clear()
+		copy.Or(initPL)
+		if copy.GetCardinality() != initPL.GetCardinality() {
+			b.Error("unequal duplicate size")
+		}
+	}
+}

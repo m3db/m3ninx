@@ -61,6 +61,8 @@ func BenchmarkTermsDictionary(b *testing.B) {
 }
 
 func benchmarkInsertSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
 		dict := newSimpleTermsDictionary(NewOptions())
@@ -75,6 +77,8 @@ func benchmarkInsertSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkInsertTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
 		dict := newTrigramTermsDictionary(NewOptions())
@@ -89,6 +93,8 @@ func benchmarkInsertTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkFetchSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	dict := newSimpleTermsDictionary(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
@@ -107,6 +113,8 @@ func benchmarkFetchSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkFetchTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	dict := newTrigramTermsDictionary(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
@@ -128,6 +136,8 @@ func benchmarkFetchTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkFetchRegexSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	dict := newSimpleTermsDictionary(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
@@ -142,6 +152,8 @@ func benchmarkFetchRegexSimpleTermsDictionary(docs []doc.Document, b *testing.B)
 }
 
 func benchmarkFetchRegexTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
+
 	dict := newTrigramTermsDictionary(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {

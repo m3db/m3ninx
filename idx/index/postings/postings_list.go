@@ -18,11 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package segment
+package postings
 
 import (
 	"errors"
 	"sync"
+
+	"github.com/m3db/m3ninx/idx/index"
 
 	"github.com/RoaringBitmap/roaring"
 )
@@ -40,13 +42,13 @@ type roaringPostingsList struct {
 }
 
 // NewPostingsList returns a new PostingsList.
-func NewPostingsList() PostingsList {
+func NewPostingsList() index.MutablePostingsList {
 	return &roaringPostingsList{
 		bitmap: roaring.NewBitmap(),
 	}
 }
 
-func (d *roaringPostingsList) Insert(i DocID) error {
+func (d *roaringPostingsList) Insert(i index.DocID) error {
 	d.Lock()
 	d.bitmap.Add(uint32(i))
 	d.Unlock()
@@ -54,7 +56,7 @@ func (d *roaringPostingsList) Insert(i DocID) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) error {
+func (d *roaringPostingsList) Intersect(other index.PostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
 		return errIntersectRoaringOnly
@@ -68,7 +70,7 @@ func (d *roaringPostingsList) Intersect(other ImmutablePostingsList) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Difference(other ImmutablePostingsList) error {
+func (d *roaringPostingsList) Difference(other index.PostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
 		return errDifferenceRoaringOnly
@@ -82,7 +84,7 @@ func (d *roaringPostingsList) Difference(other ImmutablePostingsList) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Union(other ImmutablePostingsList) error {
+func (d *roaringPostingsList) Union(other index.PostingsList) error {
 	o, ok := other.(*roaringPostingsList)
 	if !ok {
 		return errUnionRoaringOnly
@@ -102,7 +104,7 @@ func (d *roaringPostingsList) Reset() {
 	d.Unlock()
 }
 
-func (d *roaringPostingsList) Contains(i DocID) bool {
+func (d *roaringPostingsList) Contains(i index.DocID) bool {
 	d.RLock()
 	contains := d.bitmap.Contains(uint32(i))
 	d.RUnlock()
@@ -123,13 +125,13 @@ func (d *roaringPostingsList) Size() uint64 {
 	return size
 }
 
-func (d *roaringPostingsList) Iter() PostingsIter {
+func (d *roaringPostingsList) Iter() index.PostingsIterator {
 	return &roaringIter{
 		i: d.bitmap.Iterator(),
 	}
 }
 
-func (d *roaringPostingsList) Clone() PostingsList {
+func (d *roaringPostingsList) Clone() index.MutablePostingsList {
 	d.RLock()
 	// TODO: It's cheaper to Clone than to cache roaring bitmaps, see
 	// `postings_list_bench_test.go`. Their internals don't allow for
@@ -146,8 +148,8 @@ type roaringIter struct {
 	i roaring.IntIterable
 }
 
-func (r *roaringIter) Current() DocID {
-	return DocID(r.i.Next())
+func (r *roaringIter) Current() index.DocID {
+	return index.DocID(r.i.Next())
 }
 
 func (r *roaringIter) Next() bool {

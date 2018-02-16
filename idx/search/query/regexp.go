@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,46 +18,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package segment
+package query
 
 import (
-	"testing"
-
-	"github.com/RoaringBitmap/roaring"
+	"github.com/m3db/m3ninx/idx/index"
+	"github.com/m3db/m3ninx/idx/search"
 )
 
-func BenchmarkClone(b *testing.B) {
-	initPL := roaring.New()
-	for i := 0; i < b.N; i++ {
-		initPL.Add(uint32(i))
-	}
+// RegexpQuery finds documents which match the given regular expression.
+type RegexpQuery struct {
+	field   []byte
+	pattern []byte
+	// compiled regex
+}
 
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
-		copy := initPL.Clone()
-		if copy.GetCardinality() != initPL.GetCardinality() {
-			b.Error("unequal duplicate size")
-		}
+// NewRegexpQuery constructs a new RegexpQuery for the given field and pattern.
+func NewRegexpQuery(field, pattern []byte) search.Query {
+	return &RegexpQuery{
+		field:   field,
+		pattern: pattern,
 	}
 }
 
-func BenchmarkCachedObject(b *testing.B) {
-	initPL := roaring.New()
-	for i := 0; i < b.N; i++ {
-		initPL.Add(uint32(i))
-	}
-
-	copy := roaring.New()
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
-		copy.Clear()
-		copy.Or(initPL)
-		if copy.GetCardinality() != initPL.GetCardinality() {
-			b.Error("unequal duplicate size")
-		}
-	}
+// Execute returns an iterator over documents matching the given regular expression.
+func (q *RegexpQuery) Execute(r index.Reader) (index.PostingsList, error) {
+	return r.MatchRegex(q.field, q.pattern)
 }

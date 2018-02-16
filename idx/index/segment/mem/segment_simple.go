@@ -37,7 +37,7 @@ var (
 // TODO(prateek): investigate impact of native heap
 type simpleSegment struct {
 	opts     Options
-	id       segment.ID
+	id       doc.ID
 	docIDGen *atomic.Uint32
 
 	// internal docID -> document
@@ -49,7 +49,6 @@ type simpleSegment struct {
 	// field (Name+Value) -> postingsManagerOffset
 	termsDict *simpleTermsDictionary
 
-	searcher searcher
 	// TODO(prateek): add a delete documents bitmap to optimise fetch
 }
 
@@ -60,7 +59,7 @@ type document struct {
 }
 
 // New returns a new in-memory index.
-func New(id segment.ID, opts Options) (Segment, error) {
+func New(id doc.ID, opts Options) (segment.MutableSegment, error) {
 	seg := &simpleSegment{
 		opts:      opts,
 		id:        id,
@@ -68,8 +67,6 @@ func New(id segment.ID, opts Options) (Segment, error) {
 		termsDict: newSimpleTermsDictionary(opts),
 	}
 	seg.docs.values = make([]document, opts.InitialCapacity())
-	searcher := newSequentialSearcher(seg, differenceNegationFn, opts.PostingsListPool())
-	seg.searcher = searcher
 	return seg, nil
 }
 
@@ -127,45 +124,18 @@ func (i *simpleSegment) insertTerms(doc document) error {
 	return nil
 }
 
-func (i *simpleSegment) Query(query segment.Query) (segment.ResultsIter, error) {
-	ids, pendingFn, err := i.searcher.Query(query)
-	if err != nil {
-		return nil, err
-	}
-
-	return newResultsIter(ids, pendingFn, i), nil
-}
-
-func (i *simpleSegment) Filter(
-	f segment.Filter,
-) (segment.PostingsList, matchPredicate, error) {
-	docs, err := i.termsDict.Fetch(f.FieldName, f.FieldValueFilter, termFetchOptions{isRegexp: f.Regexp})
-	return docs, nil, err
-}
-
-func (i *simpleSegment) Delete(d doc.Document) error {
+func (i *simpleSegment) Delete(d doc.ID) error {
 	panic("not implemented")
 }
 
-func (i *simpleSegment) Size() uint32 {
-	return i.docIDGen.Load()
+func (i *simpleSegment) MatchTerm(field, value string) (segment.PostingsList, error) {
+	panic("not implemented")
 }
 
-func (i *simpleSegment) ID() segment.ID {
-	return i.id
+func (i *simpleSegment) MatchRegex(field, pattern string) (segment.PostingsList, error) {
+	panic("not implemented")
 }
 
-func (i *simpleSegment) Options() Options {
-	return i.opts
-}
-
-func (i *simpleSegment) FetchDocument(id segment.DocID) (document, error) {
-	i.docs.RLock()
-	if int(id) >= len(i.docs.values) {
-		i.docs.RUnlock()
-		return document{}, errUnknownDocID
-	}
-	d := i.docs.values[id]
-	i.docs.RUnlock()
-	return d, nil
+func (i *simpleSegment) Docs(pl segment.PostingsList, fields []string) (doc.Iterator, error) {
+	panic("not implemented")
 }

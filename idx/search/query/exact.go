@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,38 +18,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package segment
+package query
 
 import (
-	"github.com/m3db/m3x/pool"
+	"github.com/m3db/m3ninx/idx/index"
+	"github.com/m3db/m3ninx/idx/search"
 )
 
-type postingsListPool struct {
-	pool pool.ObjectPool
+// ExactQuery finds exact matches in a segment.
+type ExactQuery struct {
+	field []byte
+	value []byte
 }
 
-// PostingsListAllocateFn returns a new PostingsList.
-type PostingsListAllocateFn func() PostingsList
-
-// NewPostingsListPool returns a new PostingsListPool.
-func NewPostingsListPool(
-	opts pool.ObjectPoolOptions,
-	allocator PostingsListAllocateFn,
-) PostingsListPool {
-	p := &postingsListPool{
-		pool: pool.NewObjectPool(opts),
+// NewExactQuery constructs a new ExactQuery for the given field and value.
+func NewExactQuery(field, value []byte) search.Query {
+	return &ExactQuery{
+		field: field,
+		value: value,
 	}
-	p.pool.Init(func() interface{} {
-		return allocator()
-	})
-	return p
 }
 
-func (p *postingsListPool) Get() PostingsList {
-	return p.pool.Get().(PostingsList)
-}
-
-func (p *postingsListPool) Put(pl PostingsList) {
-	pl.Reset()
-	p.pool.Put(pl)
+// Execute returns an iterator over documents containing the given field and value.
+func (q *ExactQuery) Execute(r index.Reader) (index.PostingsList, error) {
+	return r.MatchTerm(q.field, q.value)
 }

@@ -18,30 +18,31 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package segment
+package mem
 
 import (
-	"testing"
+	"github.com/m3db/m3ninx/index/segment"
 
-	"github.com/stretchr/testify/require"
+	"github.com/m3db/m3x/instrument"
 )
 
-func TestPostingsListPoolGet(t *testing.T) {
-	pl := NewPostingsListPool(nil, NewPostingsList)
-	require.NotNil(t, pl)
+// Options is a collection of knobs for an in-memory segment.
+type Options interface {
+	// SetInstrumentOptions sets the instrument options.
+	SetInstrumentOptions(value instrument.Options) Options
 
-	p := pl.Get()
-	require.NotNil(t, p)
-	require.True(t, p.IsEmpty())
-}
+	// InstrumentOptions returns the instrument options.
+	InstrumentOptions() instrument.Options
 
-func TestPostingsListPoolPut(t *testing.T) {
-	pl := NewPostingsListPool(nil, NewPostingsList)
-	require.NotNil(t, pl)
+	// SetPostingsListPool sets the PostingsListPool.
+	SetPostingsListPool(value segment.PostingsListPool) Options
 
-	p := pl.Get()
-	require.NotNil(t, p)
-	require.True(t, p.IsEmpty())
+	// PostingsListPool returns the PostingsListPool.
+	PostingsListPool() segment.PostingsListPool
 
-	pl.Put(p)
+	// SetInitialCapacity sets the initial capacity.
+	SetInitialCapacity(value int) Options
+
+	// InitialCapacity returns the initial capacity.
+	InitialCapacity() int
 }
