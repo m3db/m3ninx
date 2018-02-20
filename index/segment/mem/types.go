@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,46 +21,24 @@
 package mem
 
 import (
-	"testing"
+	"regexp"
 
 	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index/segment"
-
-	"github.com/stretchr/testify/require"
+	"github.com/m3db/m3ninx/postings"
 )
 
-func newTestOptions() Options {
-	return NewOptions()
-}
+// termsDictionary is an internal interface for a mutable terms dictionary.
+type termsDictionary interface {
+	// Insert inserts the field with the given ID into the terms dictionary.
+	Insert(field doc.Field, id postings.ID) error
 
-func TestNewMemSegment(t *testing.T) {
-	opts := newTestOptions()
-	idx, err := New(1, opts)
-	require.NoError(t, err)
+	// MatchExact returns the postings list corresponding to documents which
+	// match the given field and value exactly.
+	MatchExact(field, value []byte) (postings.List, error)
 
-	testDoc := doc.Document{
-		ID: []byte("some-random-id"),
-		Fields: []doc.Field{
-			doc.Field{Name: []byte("abc"), Value: doc.Value("one")},
-			doc.Field{Name: []byte("def"), Value: doc.Value("two")},
-		},
-	}
-
-	require.NoError(t, idx.Insert(testDoc))
-	docsIter, err := idx.Query(segment.Query{
-		Conjunction: segment.AndConjunction,
-		Filters: []segment.Filter{
-			segment.Filter{
-				FieldName:        []byte("abc"),
-				FieldValueFilter: []byte("one"),
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	require.True(t, docsIter.Next())
-	result, tombstoned := docsIter.Current()
-	require.Equal(t, testDoc, result)
-	require.False(t, tombstoned)
-	require.False(t, docsIter.Next())
+	// MatchRegex returns the postings list corresponding to documents which
+	// match the given field and regular expression pattern. Both the compiled
+	// regular expression and the pattern it was generated from are provided
+	// since some terms dictionaries can use the pattern to optimize their search.
+	MatchRegex(field, pattern []byte, re *regexp.Regexp) (postings.List, error)
 }

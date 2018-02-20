@@ -18,31 +18,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package postings
 
 import (
-	"github.com/m3db/m3ninx/index/segment"
-
-	"github.com/m3db/m3x/instrument"
+	xpool "github.com/m3db/m3x/pool"
 )
 
-// Options is a collection of knobs for an in-memory segment.
-type Options interface {
-	// SetInstrumentOptions sets the instrument options.
-	SetInstrumentOptions(value instrument.Options) Options
+type pool struct {
+	pool xpool.ObjectPool
+}
 
-	// InstrumentOptions returns the instrument options.
-	InstrumentOptions() instrument.Options
+// PoolAllocateFn returns a new MutableList.
+type PoolAllocateFn func() MutableList
 
-	// SetPostingsListPool sets the PostingsListPool.
-	SetPostingsListPool(value segment.PostingsListPool) Options
+// NewPool returns a new Pool.
+func NewPool(
+	opts xpool.ObjectPoolOptions,
+	allocator PoolAllocateFn,
+) Pool {
+	p := &pool{
+		pool: xpool.NewObjectPool(opts),
+	}
+	p.pool.Init(func() interface{} {
+		return allocator()
+	})
+	return p
+}
 
-	// PostingsListPool returns the PostingsListPool.
-	PostingsListPool() segment.PostingsListPool
+func (p *pool) Get() MutableList {
+	return p.pool.Get().(MutableList)
+}
 
-	// SetInitialCapacity sets the initial capacity.
-	SetInitialCapacity(value int) Options
-
-	// InitialCapacity returns the initial capacity.
-	InitialCapacity() int
+func (p *pool) Put(pl MutableList) {
+	pl.Reset()
+	p.pool.Put(pl)
 }

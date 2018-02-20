@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,36 +21,22 @@
 package postings
 
 import (
-	"github.com/m3db/m3ninx/idx/index"
-	"github.com/m3db/m3x/pool"
+	"github.com/uber-go/atomic"
 )
 
-type postingsListPool struct {
-	pool pool.ObjectPool
+type idGenerator struct {
+	maxID *atomic.Uint32
 }
 
-// PoolAllocateFn returns a new MutablePostingsList.
-type PoolAllocateFn func() index.MutablePostingsList
-
-// NewPostingsListPool returns a new PostingsListPool.
-func NewPostingsListPool(
-	opts pool.ObjectPoolOptions,
-	allocator PoolAllocateFn,
-) Pool {
-	p := &postingsListPool{
-		pool: pool.NewObjectPool(opts),
-	}
-	p.pool.Init(func() interface{} {
-		return allocator()
-	})
-	return p
+// NewIDGenerator returns a new IDGenerator.
+func NewIDGenerator() IDGenerator {
+	return &idGenerator{maxID: atomic.NewUint32(0)}
 }
 
-func (p *postingsListPool) Get() index.MutablePostingsList {
-	return p.pool.Get().(index.MutablePostingsList)
+func (g *idGenerator) Next() ID {
+	return ID(g.maxID.Inc())
 }
 
-func (p *postingsListPool) Put(pl index.MutablePostingsList) {
-	pl.Reset()
-	p.pool.Put(pl)
+func (g *idGenerator) Current() ID {
+	return ID(g.maxID.Load())
 }

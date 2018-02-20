@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -42,37 +43,42 @@ func (t *trigramTermsDictionaryTestSuite) SetupTest() {
 }
 
 func (t *trigramTermsDictionaryTestSuite) TestInsert() {
-	err := t.termsDict.Insert(doc.Field{
-		Name:  []byte("foo"),
-		Value: doc.Value("bar"),
-	}, 1)
+	err := t.termsDict.Insert(
+		doc.Field{
+			Name:  []byte("foo"),
+			Value: []byte("bar"),
+		},
+		1,
+	)
 	t.Require().NoError(err)
 
-	ids, err := t.termsDict.Fetch([]byte("foo"), []byte("bar"), termFetchOptions{false})
+	pl, err := t.termsDict.MatchExact([]byte("foo"), []byte("bar"))
 	t.Require().NoError(err)
-	t.Require().NotNil(ids)
-	t.Equal(uint64(1), ids.Size())
-	t.True(ids.Contains(1))
+	t.Require().NotNil(pl)
+	t.Equal(uint64(1), pl.Size())
+	t.True(pl.Contains(1))
 }
 
-func (t *trigramTermsDictionaryTestSuite) TestFetchRegex() {
+func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 	err := t.termsDict.Insert(doc.Field{
 		Name:  []byte("foo"),
-		Value: doc.Value("bar-1"),
+		Value: []byte("bar-1"),
 	}, 1)
 	t.Require().NoError(err)
 	err = t.termsDict.Insert(doc.Field{
 		Name:  []byte("foo"),
-		Value: doc.Value("bar-2"),
+		Value: []byte("bar-2"),
 	}, 2)
 	t.Require().NoError(err)
 
-	ids, err := t.termsDict.Fetch([]byte("foo"), []byte("bar-.*"), termFetchOptions{true})
+	pattern := "bar-.*"
+	re := regexp.MustCompile(pattern)
+	pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(pattern), re)
 	t.Require().NoError(err)
-	t.Require().NotNil(ids)
-	t.Equal(uint64(2), ids.Size())
-	t.True(ids.Contains(1))
-	t.True(ids.Contains(2))
+	t.Require().NotNil(pl)
+	t.Equal(uint64(2), pl.Size())
+	t.True(pl.Contains(1))
+	t.True(pl.Contains(2))
 }
 
 func TestTrigramTermsDictionary(t *testing.T) {
