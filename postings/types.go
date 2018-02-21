@@ -36,16 +36,6 @@ const (
 	MaxID ID = ID(math.MaxUint32)
 )
 
-// IDGenerator generates a monotically increasing sequence of IDs. Multiple goroutines
-// may invoke methods on an IDGenerator simultaneously.
-type IDGenerator interface {
-	// Next generates the next ID. IDs are guaranteed to be monotonically increasing.
-	Next() ID
-
-	// Current returns the current maximum ID.
-	Current() ID
-}
-
 var (
 	// ErrEmptyList is the error returned when a postings list is unexpectedly empty.
 	ErrEmptyList = errors.New("postings list is empty")
@@ -105,11 +95,18 @@ type MutableList interface {
 
 // Iterator is an iterator over a postings list.
 type Iterator interface {
-	// Current returns the current postings ID.
-	Current() ID
-
 	// Next returns whether we have another postings ID.
 	Next() bool
+
+	// Current returns the current postings ID. It is only safe to call Current immediately
+	// after a call to Next confirms there are more elements remaining.
+	Current() ID
+
+	// Err returns any errors encountered during iteration.
+	Err() error
+
+	// Close closes the iterator.
+	Close() error
 }
 
 // Pool provides a pool for MutableLists.

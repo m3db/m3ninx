@@ -29,13 +29,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type newTrigramTermsDictFn func() *trigramTermsDictionary
+type newTrigramTermsDictFn func() *trigramTermsDict
 
 type trigramTermsDictionaryTestSuite struct {
 	suite.Suite
 
 	fn        newTrigramTermsDictFn
-	termsDict *trigramTermsDictionary
+	termsDict *trigramTermsDict
 }
 
 func (t *trigramTermsDictionaryTestSuite) SetupTest() {
@@ -84,8 +84,8 @@ func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 func TestTrigramTermsDictionary(t *testing.T) {
 	opts := NewOptions()
 	suite.Run(t, &trigramTermsDictionaryTestSuite{
-		fn: func() *trigramTermsDictionary {
-			return newTrigramTermsDictionary(opts)
+		fn: func() *trigramTermsDict {
+			return newTrigramTermsDict(opts).(*trigramTermsDict)
 		},
 	})
 }

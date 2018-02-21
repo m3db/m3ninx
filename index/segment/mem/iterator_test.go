@@ -20,25 +20,4 @@
 
 package mem
 
-import (
-	"regexp"
-
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/postings"
-)
-
-// termsDict is an internal interface for a mutable terms dictionary.
-type termsDict interface {
-	// Insert inserts the field with the given ID into the terms dictionary.
-	Insert(field doc.Field, id postings.ID) error
-
-	// MatchExact returns the postings list corresponding to documents which match the
-	// given field name and value exactly.
-	MatchExact(name, value []byte) (postings.List, error)
-
-	// MatchRegex returns the postings list corresponding to documents which match the
-	// given name field and regular expression pattern. Both the compiled regular expression
-	// and the pattern it was generated from are provided so terms dictionaries can
-	// optimize their searches.
-	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
-}
+// TODO

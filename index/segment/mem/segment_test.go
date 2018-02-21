@@ -23,8 +23,6 @@ package mem
 import (
 	"testing"
 
-	"github.com/m3db/m3ninx/postings"
-
 	"github.com/m3db/m3ninx/doc"
 	sgmt "github.com/m3db/m3ninx/index/segment"
 
@@ -47,7 +45,6 @@ func (t *segmentTestSuite) SetupTest() {
 
 func (t *segmentTestSuite) TestInsert() {
 	err := t.segment.Insert(doc.Document{
-		ID: []byte("abc=efg"),
 		Fields: []doc.Field{
 			doc.Field{Name: []byte("abc"), Value: []byte("efg")},
 		},
@@ -302,9 +299,8 @@ func (t *segmentTestSuite) TestInsert() {
 
 func TestSimpleSegment(t *testing.T) {
 	fn := func() sgmt.MutableSegment {
-		gen := postings.NewIDGenerator()
 		opts := NewOptions()
-		s, err := NewSegment(gen, opts)
+		s, err := NewSegment(0, opts)
 		require.NoError(t, err)
 		return s
 	}

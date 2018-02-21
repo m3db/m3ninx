@@ -18,27 +18,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package postings
 
 import (
-	"regexp"
-
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/postings"
+	"github.com/uber-go/atomic"
 )
 
-// termsDict is an internal interface for a mutable terms dictionary.
-type termsDict interface {
-	// Insert inserts the field with the given ID into the terms dictionary.
-	Insert(field doc.Field, id postings.ID) error
+// AtomicID is an atomic ID.
+type AtomicID struct {
+	internal *atomic.Uint32
+}
 
-	// MatchExact returns the postings list corresponding to documents which match the
-	// given field name and value exactly.
-	MatchExact(name, value []byte) (postings.List, error)
+// NewAtomicID creates a new AtomicID.
+func NewAtomicID(id ID) AtomicID {
+	return AtomicID{internal: atomic.NewUint32(uint32(id))}
+}
 
-	// MatchRegex returns the postings list corresponding to documents which match the
-	// given name field and regular expression pattern. Both the compiled regular expression
-	// and the pattern it was generated from are provided so terms dictionaries can
-	// optimize their searches.
-	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+// Load atomically loads the ID.
+func (id AtomicID) Load() ID {
+	return ID(id.internal.Load())
+}
+
+// Inc atomically increments the ID.
+func (id AtomicID) Inc() ID {
+	return ID(id.internal.Inc())
 }

@@ -49,20 +49,20 @@ var (
 //   (2) For each trigram `t` created in step 1, store the entry
 //       (value: `t`, docID: `i`) in the postings list for the field name "foo".
 //
-type trigramTermsDictionary struct {
+type trigramTermsDict struct {
 	opts Options
 
-	backingDict *simpleTermsDictionary
+	backingDict termsDict
 }
 
-func newTrigramTermsDictionary(opts Options) *trigramTermsDictionary {
-	return &trigramTermsDictionary{
+func newTrigramTermsDict(opts Options) termsDict {
+	return &trigramTermsDict{
 		opts:        opts,
-		backingDict: newSimpleTermsDictionary(opts),
+		backingDict: newSimpleTermsDict(opts),
 	}
 }
 
-func (t *trigramTermsDictionary) Insert(field doc.Field, id postings.ID) error {
+func (t *trigramTermsDict) Insert(field doc.Field, id postings.ID) error {
 	// TODO: Benchmark performance difference between first constructing a set of unique
 	// trigrams versus inserting all trigrams and relying on the backing dictionary to
 	// deduplicate them.
@@ -81,18 +81,18 @@ func (t *trigramTermsDictionary) Insert(field doc.Field, id postings.ID) error {
 	return nil
 }
 
-func (t *trigramTermsDictionary) MatchExact(field, value []byte) (postings.List, error) {
-	return t.matchRegex(field, value)
+func (t *trigramTermsDict) MatchExact(name, value []byte) (postings.List, error) {
+	return t.matchRegex(name, value)
 }
 
-func (t *trigramTermsDictionary) MatchRegex(
-	field, pattern []byte,
+func (t *trigramTermsDict) MatchRegex(
+	name, pattern []byte,
 	re *regexp.Regexp,
 ) (postings.List, error) {
-	return t.matchRegex(field, pattern)
+	return t.matchRegex(name, pattern)
 }
 
-func (t *trigramTermsDictionary) matchRegex(field, pattern []byte) (postings.List, error) {
+func (t *trigramTermsDict) matchRegex(name, pattern []byte) (postings.List, error) {
 	// TODO: Consider updating syntax.Parse to accepts a byte string so we can avoid the
 	// conversion to a string here.
 	patternStr := string(pattern)
@@ -101,15 +101,15 @@ func (t *trigramTermsDictionary) matchRegex(field, pattern []byte) (postings.Lis
 		return nil, fmt.Errorf("unable to parse regular expression %s: %v", patternStr, err)
 	}
 	q := cindex.RegexpQuery(re)
-	pl, err := t.matchQuery(field, q, nil, false)
+	pl, err := t.matchQuery(name, q, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get postings list matching query: %v", err)
 	}
 	return pl, nil
 }
 
-func (t *trigramTermsDictionary) matchQuery(
-	field []byte,
+func (t *trigramTermsDict) matchQuery(
+	name []byte,
 	q *cindex.Query,
 	candidatePL postings.MutableList,
 	created bool,
@@ -127,7 +127,7 @@ func (t *trigramTermsDictionary) matchQuery(
 
 	case cindex.QAnd:
 		for _, tri := range q.Trigram {
-			pl, err := t.matchTrigram(field, tri)
+			pl, err := t.matchTrigram(name, tri)
 			if err != nil {
 				return nil, err
 			}
@@ -146,7 +146,7 @@ func (t *trigramTermsDictionary) matchQuery(
 		}
 
 		for _, sub := range q.Sub {
-			pl, err := t.matchQuery(field, sub, candidatePL, created)
+			pl, err := t.matchQuery(name, sub, candidatePL, created)
 			if err != nil {
 				return nil, err
 			}
@@ -166,7 +166,7 @@ func (t *trigramTermsDictionary) matchQuery(
 
 	case cindex.QOr:
 		for _, tri := range q.Trigram {
-			pl, err := t.matchTrigram(field, tri)
+			pl, err := t.matchTrigram(name, tri)
 			if err != nil {
 				return nil, err
 			}
@@ -182,7 +182,7 @@ func (t *trigramTermsDictionary) matchQuery(
 		}
 
 		for _, sub := range q.Sub {
-			pl, err := t.matchQuery(field, sub, candidatePL, created)
+			pl, err := t.matchQuery(name, sub, candidatePL, created)
 			if err != nil {
 				return nil, err
 			}
@@ -201,7 +201,7 @@ func (t *trigramTermsDictionary) matchQuery(
 	return candidatePL, nil
 }
 
-func (t *trigramTermsDictionary) matchTrigram(name []byte, tri string) (postings.List, error) {
+func (t *trigramTermsDict) matchTrigram(name []byte, tri string) (postings.List, error) {
 	// TODO(jeromefroe): Consider adding a FetchString method to the simpleDictionary
 	// to avoid the string conversion here.
 	return t.backingDict.MatchExact(name, []byte(tri))

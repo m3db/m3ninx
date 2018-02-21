@@ -18,34 +18,34 @@ var (
 	benchMatchRegexRE      = regexp.MustCompile(string(benchMatchRegexPattern))
 )
 
-func BenchmarkTermsDictionary(b *testing.B) {
+func BenchmarkTermsDict(b *testing.B) {
 	benchmarks := []struct {
 		name string
 		fn   func(docs []doc.Document, b *testing.B)
 	}{
 		{
 			name: "benchmark Insert with simple terms dictionary",
-			fn:   benchmarkInsertSimpleTermsDictionary,
+			fn:   benchmarkInsertSimpleTermsDict,
 		},
 		{
 			name: "benchmark Insert with trigram terms dictionary",
-			fn:   benchmarkInsertTrigramTermsDictionary,
+			fn:   benchmarkInsertTrigramTermsDict,
 		},
 		{
 			name: "benchmark MatchExact with simple terms dictionary",
-			fn:   benchmarkMatchExactSimpleTermsDictionary,
+			fn:   benchmarkMatchExactSimpleTermsDict,
 		},
 		{
 			name: "benchmark MatchExact with trigram terms dictionary",
-			fn:   benchmarkMatchExactTrigramTermsDictionary,
+			fn:   benchmarkMatchExactTrigramTermsDict,
 		},
 		{
 			name: "benchmark MatchRegex with simple terms dictionary",
-			fn:   benchmarkMatchRegexSimpleTermsDictionary,
+			fn:   benchmarkMatchRegexSimpleTermsDict,
 		},
 		{
 			name: "benchmark MatchRegex with trigram terms dictionary",
-			fn:   benchmarkMatchRegexTrigramTermsDictionary,
+			fn:   benchmarkMatchRegexTrigramTermsDict,
 		},
 	}
 
@@ -61,12 +61,12 @@ func BenchmarkTermsDictionary(b *testing.B) {
 	}
 }
 
-func benchmarkInsertSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkInsertSimpleTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
-		dict := newSimpleTermsDictionary(NewOptions())
+		dict := newSimpleTermsDict(NewOptions())
 		b.StartTimer()
 
 		for i, d := range docs {
@@ -77,12 +77,12 @@ func benchmarkInsertSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
 	}
 }
 
-func benchmarkInsertTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkInsertTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
-		dict := newTrigramTermsDictionary(NewOptions())
+		dict := newTrigramTermsDict(NewOptions())
 		b.StartTimer()
 
 		for i, d := range docs {
@@ -93,10 +93,10 @@ func benchmarkInsertTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
 	}
 }
 
-func benchmarkMatchExactSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkMatchExactSimpleTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
-	dict := newSimpleTermsDictionary(NewOptions())
+	dict := newSimpleTermsDict(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))
@@ -113,10 +113,10 @@ func benchmarkMatchExactSimpleTermsDictionary(docs []doc.Document, b *testing.B)
 	}
 }
 
-func benchmarkMatchExactTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkMatchExactTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
-	dict := newTrigramTermsDictionary(NewOptions())
+	dict := newTrigramTermsDict(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))
@@ -136,10 +136,10 @@ func benchmarkMatchExactTrigramTermsDictionary(docs []doc.Document, b *testing.B
 	}
 }
 
-func benchmarkMatchRegexSimpleTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
-	dict := newSimpleTermsDictionary(NewOptions())
+	dict := newSimpleTermsDict(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))
@@ -152,10 +152,10 @@ func benchmarkMatchRegexSimpleTermsDictionary(docs []doc.Document, b *testing.B)
 	}
 }
 
-func benchmarkMatchRegexTrigramTermsDictionary(docs []doc.Document, b *testing.B) {
+func benchmarkMatchRegexTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
-	dict := newTrigramTermsDictionary(NewOptions())
+	dict := newTrigramTermsDict(NewOptions())
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))

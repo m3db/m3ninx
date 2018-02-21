@@ -65,13 +65,13 @@ var (
 	}
 )
 
-type newSimpleTermsDictFn func() *simpleTermsDictionary
+type newSimpleTermsDictFn func() *simpleTermsDict
 
 type simpleTermsDictionaryTestSuite struct {
 	suite.Suite
 
 	fn        newSimpleTermsDictFn
-	termsDict *simpleTermsDictionary
+	termsDict *simpleTermsDict
 }
 
 func (t *simpleTermsDictionaryTestSuite) SetupTest() {
@@ -185,8 +185,8 @@ func (t *simpleTermsDictionaryTestSuite) TestFetchRegex() {
 func TestSimpleTermsDictionary(t *testing.T) {
 	opts := NewOptions()
 	suite.Run(t, &simpleTermsDictionaryTestSuite{
-		fn: func() *simpleTermsDictionary {
-			return newSimpleTermsDictionary(opts)
+		fn: func() *simpleTermsDict {
+			return newSimpleTermsDict(opts).(*simpleTermsDict)
 		},
 	})
 }

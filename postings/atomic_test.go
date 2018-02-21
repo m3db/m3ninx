@@ -20,23 +20,4 @@
 
 package postings
 
-import (
-	"github.com/uber-go/atomic"
-)
-
-type idGenerator struct {
-	maxID *atomic.Uint32
-}
-
-// NewIDGenerator returns a new IDGenerator.
-func NewIDGenerator() IDGenerator {
-	return &idGenerator{maxID: atomic.NewUint32(0)}
-}
-
-func (g *idGenerator) Next() ID {
-	return ID(g.maxID.Inc())
-}
-
-func (g *idGenerator) Current() ID {
-	return ID(g.maxID.Load())
-}
+// TODO

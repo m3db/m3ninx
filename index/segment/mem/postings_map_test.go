@@ -18,23 +18,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postings
+package mem
 
 import (
+	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestIDGeneratorCurrentID(t *testing.T) {
-	g := NewIDGenerator()
-	next := g.Next()
-	curr := g.Current()
-	assert.Equal(t, next, curr)
-}
-func TestIDGeneratorNextID(t *testing.T) {
-	g := NewIDGenerator()
-	first := g.Next()
-	second := g.Next()
-	assert.True(t, second > first)
+func TestPostingsMap(t *testing.T) {
+	opts := NewOptions()
+	pm := newPostingsMap(opts)
+
+	require.NoError(t, pm.addID([]byte("foo"), 1))
+	require.NoError(t, pm.addID([]byte("bar"), 2))
+	require.NoError(t, pm.addID([]byte("baz"), 3))
+
+	pl := pm.getKey([]byte("foo"))
+	require.Equal(t, uint64(1), pl.Size())
+	require.True(t, pl.Contains(1))
+
+	re := regexp.MustCompile("ba.*")
+	pls := pm.getKeyRegex(re)
+	require.Equal(t, 2, len(pls))
+
+	clone := pls[0].Clone()
+	clone.Union(pls[1])
+	require.True(t, clone.Contains(2))
+	require.True(t, clone.Contains(3))
 }

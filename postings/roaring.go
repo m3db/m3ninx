@@ -31,6 +31,7 @@ var (
 	errIntersectRoaringOnly  = errors.New("Intersect only supported between roaringDocId sets")
 	errUnionRoaringOnly      = errors.New("Union only supported between roaringDocId sets")
 	errDifferenceRoaringOnly = errors.New("Difference only supported between roaringDocId sets")
+	errIteratorClosed        = errors.New("iterator has been closed")
 )
 
 // roaringPostingsList wraps a Roaring Bitmap with a mutex for thread safety.
@@ -154,7 +155,7 @@ func (d *roaringPostingsList) Size() uint64 {
 
 func (d *roaringPostingsList) Iterator() Iterator {
 	return &roaringIterator{
-		i: d.bitmap.Iterator(),
+		iter: d.bitmap.Iterator(),
 	}
 }
 
@@ -172,13 +173,31 @@ func (d *roaringPostingsList) Clone() MutableList {
 }
 
 type roaringIterator struct {
-	i roaring.IntIterable
+	iter    roaring.IntIterable
+	current ID
+	closed  bool
 }
 
-func (r *roaringIterator) Current() ID {
-	return ID(r.i.Next())
+func (it *roaringIterator) Current() ID {
+	return it.current
 }
 
-func (r *roaringIterator) Next() bool {
-	return r.i.HasNext()
+func (it *roaringIterator) Next() bool {
+	if it.closed || !it.iter.HasNext() {
+		return false
+	}
+	it.current = ID(it.iter.Next())
+	return true
+}
+
+func (it *roaringIterator) Err() error {
+	return nil
+}
+
+func (it *roaringIterator) Close() error {
+	if it.closed {
+		return errIteratorClosed
+	}
+	it.closed = true
+	return nil
 }

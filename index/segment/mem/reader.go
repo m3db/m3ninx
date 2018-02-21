@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
 )
 
@@ -42,7 +43,15 @@ type reader struct {
 	closed bool
 }
 
-func (r *reader) MatchExact(field, value []byte) (postings.List, error) {
+func newReader(s *segment, maxID postings.ID) index.Reader {
+	s.wg.Add(1)
+	return &reader{
+		segment: s,
+		maxID:   maxID,
+	}
+}
+
+func (r *reader) MatchExact(name, value []byte) (postings.List, error) {
 	r.RLock()
 	if r.closed {
 		r.RUnlock()
@@ -53,12 +62,12 @@ func (r *reader) MatchExact(field, value []byte) (postings.List, error) {
 	// permitted ID. The reader only guarantees that when fetching the documents associated
 	// with a postings list through a call to Docs will IDs greater than the maximum be
 	// filtered out.
-	pl, err := r.segment.matchExact(field, value)
+	pl, err := r.segment.matchExact(name, value)
 	r.RUnlock()
 	return pl, err
 }
 
-func (r *reader) MatchRegex(field, pattern []byte, re *regexp.Regexp) (postings.List, error) {
+func (r *reader) MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error) {
 	r.RLock()
 	if r.closed {
 		r.RUnlock()
@@ -69,12 +78,12 @@ func (r *reader) MatchRegex(field, pattern []byte, re *regexp.Regexp) (postings.
 	// permitted ID. The reader only guarantees that when fetching the documents associated
 	// with a postings list through a call to Docs will IDs greater than the maximum be
 	// filtered out.
-	pl, err := r.segment.matchRegex(field, pattern, re)
+	pl, err := r.segment.matchRegex(name, pattern, re)
 	r.RUnlock()
 	return pl, err
 }
 
-func (r *reader) Docs(pl postings.List, fields [][]byte) (doc.Iterator, error) {
+func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
 	if pl.IsEmpty() {
 		return nil, nil
 	}
@@ -84,8 +93,8 @@ func (r *reader) Docs(pl postings.List, fields [][]byte) (doc.Iterator, error) {
 		return nil, err
 	}
 
-	// Remove any IDs from the postings list which are greater than the maximum ID permitted
-	// by the reader.
+	// Remove any IDs from the postings list which are greater than the maximum ID
+	// permitted by the reader.
 	if max > r.maxID {
 		mpl, ok := pl.(postings.MutableList)
 		if !ok {
@@ -95,7 +104,7 @@ func (r *reader) Docs(pl postings.List, fields [][]byte) (doc.Iterator, error) {
 		pl = mpl
 	}
 
-	return r.segment.getDocs(pl, fields)
+	panic("unimplemented")
 }
 
 func (r *reader) Close() error {

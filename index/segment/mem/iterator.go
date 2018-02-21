@@ -21,24 +21,60 @@
 package mem
 
 import (
-	"regexp"
+	"errors"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
 )
 
-// termsDict is an internal interface for a mutable terms dictionary.
-type termsDict interface {
-	// Insert inserts the field with the given ID into the terms dictionary.
-	Insert(field doc.Field, id postings.ID) error
+var (
+	errIteratorClosed = errors.New("iterator has been closed")
+)
 
-	// MatchExact returns the postings list corresponding to documents which match the
-	// given field name and value exactly.
-	MatchExact(name, value []byte) (postings.List, error)
+type iterator struct {
+	segment      *segment
+	postingsIter postings.Iterator
+	current      doc.Document
+	err          error
+	closed       bool
+}
 
-	// MatchRegex returns the postings list corresponding to documents which match the
-	// given name field and regular expression pattern. Both the compiled regular expression
-	// and the pattern it was generated from are provided so terms dictionaries can
-	// optimize their searches.
-	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+func newIterator(s *segment, pi postings.Iterator) doc.Iterator {
+	s.wg.Add(1)
+	return &iterator{
+		segment:      s,
+		postingsIter: pi,
+	}
+}
+
+func (it *iterator) Next() bool {
+	if it.closed || it.err != nil || !it.postingsIter.Next() {
+		return false
+	}
+	id := it.postingsIter.Current()
+	d, err := it.segment.getDoc(id)
+	if err != nil {
+		it.err = err
+		return false
+	}
+	it.current = d
+	return true
+}
+
+func (it *iterator) Current() doc.Document {
+	return it.current
+}
+
+func (it *iterator) Err() error {
+	return it.err
+}
+
+func (it *iterator) Close() error {
+	if it.closed {
+		return errIteratorClosed
+	}
+	it.closed = true
+	err := it.postingsIter.Close()
+	it.segment.wg.Done()
+	return err
 }
