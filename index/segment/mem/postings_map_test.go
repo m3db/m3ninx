@@ -36,7 +36,7 @@ func TestPostingsMap(t *testing.T) {
 	require.NoError(t, pm.addID([]byte("baz"), 3))
 
 	pl := pm.get([]byte("foo"))
-	require.Equal(t, uint64(1), pl.Size())
+	require.Equal(t, 1, pl.Len())
 	require.True(t, pl.Contains(1))
 
 	re := regexp.MustCompile("ba.*")

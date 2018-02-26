@@ -55,7 +55,7 @@ func (t *trigramTermsDictionaryTestSuite) TestInsert() {
 	pl, err := t.termsDict.MatchExact([]byte("foo"), []byte("bar"))
 	t.Require().NoError(err)
 	t.Require().NotNil(pl)
-	t.Equal(uint64(1), pl.Size())
+	t.Equal(1, pl.Len())
 	t.True(pl.Contains(1))
 }
 
@@ -76,7 +76,7 @@ func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 	pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(pattern), re)
 	t.Require().NoError(err)
 	t.Require().NotNil(pl)
-	t.Equal(uint64(2), pl.Size())
+	t.Equal(2, pl.Len())
 	t.True(pl.Contains(1))
 	t.True(pl.Contains(2))
 }
