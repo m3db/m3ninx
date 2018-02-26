@@ -58,7 +58,9 @@ func TestBooleanQueryMust(t *testing.T) {
 	expected := postings.NewRoaringPostingsList()
 	expected.Insert(postings.ID(50))
 
-	q := NewBooleanQuery([]search.Query{firstQuery, secondQuery}, nil, nil)
+	q, err := NewBooleanQuery([]search.Query{firstQuery, secondQuery}, nil, nil)
+	require.NoError(t, err)
+
 	actual, err := q.Execute(reader)
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
@@ -95,7 +97,9 @@ func TestBooleanQueryShould(t *testing.T) {
 	expected.Insert(postings.ID(57))
 	expected.Insert(postings.ID(61))
 
-	q := NewBooleanQuery(nil, []search.Query{firstQuery, secondQuery}, nil)
+	q, err := NewBooleanQuery(nil, []search.Query{firstQuery, secondQuery}, nil)
+	require.NoError(t, err)
+
 	actual, err := q.Execute(reader)
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
@@ -129,7 +133,9 @@ func TestBooleanQueryMustNot(t *testing.T) {
 	expected.Insert(postings.ID(42))
 	expected.Insert(postings.ID(57))
 
-	q := NewBooleanQuery([]search.Query{firstQuery}, nil, []search.Query{secondQuery})
+	q, err := NewBooleanQuery([]search.Query{firstQuery}, nil, []search.Query{secondQuery})
+	require.NoError(t, err)
+
 	actual, err := q.Execute(reader)
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
@@ -170,8 +176,17 @@ func TestBooleanQueryAll(t *testing.T) {
 	expected := postings.NewRoaringPostingsList()
 	expected.Insert(postings.ID(57))
 
-	q := NewBooleanQuery([]search.Query{firstQuery}, []search.Query{secondQuery}, []search.Query{thirdQuery})
+	q, err := NewBooleanQuery([]search.Query{firstQuery}, []search.Query{secondQuery}, []search.Query{thirdQuery})
+	require.NoError(t, err)
+
 	actual, err := q.Execute(reader)
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
+}
+
+func TestBooleanQueryOnlyMustNot(t *testing.T) {
+	query := NewExactQuery([]byte("apple"), []byte("red"))
+
+	_, err := NewBooleanQuery(nil, nil, []search.Query{query})
+	require.Error(t, err)
 }

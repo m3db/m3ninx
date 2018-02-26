@@ -129,6 +129,31 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchExact() {
 	props.TestingRun(t.T())
 }
 
+func (t *simpleTermsDictionaryTestSuite) TestMatchExactNoResults() {
+	props := getProperties()
+	props.Property(
+		"Exact match queries which return no results are valid",
+		prop.ForAll(
+			func(f doc.Field) (bool, error) {
+				pl, err := t.termsDict.MatchExact(f.Name, []byte(f.Value))
+				if err != nil {
+					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
+				}
+				if pl == nil {
+					return false, fmt.Errorf("postings list returned should not be nil")
+				}
+				if pl.Len() != 0 {
+					return false, fmt.Errorf("postings list contains unexpected IDs")
+				}
+
+				return true, nil
+			},
+			genField(),
+		))
+
+	props.TestingRun(t.T())
+}
+
 func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 	props := getProperties()
 	props.Property(
@@ -154,6 +179,37 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 				}
 				if !pl.Contains(id) {
 					return false, fmt.Errorf("id of new document '%v' is not in list of matching documents", id)
+				}
+
+				return true, nil
+			},
+			genFieldAndRegex(),
+			genDocID(),
+		))
+
+	props.TestingRun(t.T())
+}
+
+func (t *simpleTermsDictionaryTestSuite) TestMatchRegexNoResults() {
+	props := getProperties()
+	props.Property(
+		"Regular expression queries which no results are valid",
+		prop.ForAll(
+			func(input fieldAndRegex, id postings.ID) (bool, error) {
+				var (
+					f       = input.field
+					pattern = input.pattern
+					re      = input.re
+				)
+				pl, err := t.termsDict.MatchRegex(f.Name, []byte(pattern), re)
+				if err != nil {
+					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
+				}
+				if pl == nil {
+					return false, fmt.Errorf("postings list returned should not be nil")
+				}
+				if pl.Len() != 0 {
+					return false, fmt.Errorf("postings list contains unexpected IDs")
 				}
 
 				return true, nil

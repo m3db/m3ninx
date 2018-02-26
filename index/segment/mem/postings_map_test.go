@@ -33,11 +33,17 @@ func TestPostingsMap(t *testing.T) {
 
 	require.NoError(t, pm.addID([]byte("foo"), 1))
 	require.NoError(t, pm.addID([]byte("bar"), 2))
-	require.NoError(t, pm.addID([]byte("baz"), 3))
+	require.NoError(t, pm.addID([]byte("foo"), 3))
+	require.NoError(t, pm.addID([]byte("baz"), 4))
 
 	pl := pm.get([]byte("foo"))
-	require.Equal(t, 1, pl.Len())
+	require.Equal(t, 2, pl.Len())
 	require.True(t, pl.Contains(1))
+	require.True(t, pl.Contains(3))
+
+	// No matches.
+	pl = pm.get([]byte("fizz"))
+	require.Equal(t, 0, pl.Len())
 
 	re := regexp.MustCompile("ba.*")
 	pls := pm.getRegex(re)
@@ -46,5 +52,5 @@ func TestPostingsMap(t *testing.T) {
 	clone := pls[0].Clone()
 	clone.Union(pls[1])
 	require.True(t, clone.Contains(2))
-	require.True(t, clone.Contains(3))
+	require.True(t, clone.Contains(4))
 }

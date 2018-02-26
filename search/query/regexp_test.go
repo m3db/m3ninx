@@ -55,3 +55,9 @@ func TestRegexpQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, postingsList.Equal(actual))
 }
+
+func TestRegexpQueryError(t *testing.T) {
+	name, pattern := []byte("apple"), []byte(".*(")
+	_, err := NewRegexpQuery(name, pattern)
+	require.Error(t, err)
+}

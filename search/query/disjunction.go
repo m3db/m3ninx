@@ -41,7 +41,7 @@ func newDisjuctionQuery(queries []search.Query) search.Query {
 // Execute returns an iterator over documents matching the disjunction query.
 func (q *disjuctionQuery) Execute(r index.Reader) (postings.List, error) {
 	if len(q.queries) == 0 {
-		return nil, nil
+		return postings.NewRoaringPostingsList(), nil
 	}
 
 	pl, err := q.queries[0].Execute(r)

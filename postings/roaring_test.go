@@ -33,6 +33,36 @@ func TestRoaringPostingsListEmpty(t *testing.T) {
 	require.Equal(t, 0, d.Len())
 }
 
+func TestRoaringPostingsListMax(t *testing.T) {
+	d := NewRoaringPostingsList()
+	require.NoError(t, d.Insert(42))
+	require.NoError(t, d.Insert(78))
+	require.NoError(t, d.Insert(103))
+
+	max, err := d.Max()
+	require.NoError(t, err)
+	require.Equal(t, ID(103), max)
+
+	d = NewRoaringPostingsList()
+	_, err = d.Max()
+	require.Error(t, err)
+}
+
+func TestRoaringPostingsListMin(t *testing.T) {
+	d := NewRoaringPostingsList()
+	require.NoError(t, d.Insert(42))
+	require.NoError(t, d.Insert(78))
+	require.NoError(t, d.Insert(103))
+
+	min, err := d.Min()
+	require.NoError(t, err)
+	require.Equal(t, ID(42), min)
+
+	d = NewRoaringPostingsList()
+	_, err = d.Min()
+	require.Error(t, err)
+}
+
 func TestRoaringPostingsListInsert(t *testing.T) {
 	d := NewRoaringPostingsList()
 	require.NoError(t, d.Insert(1))
@@ -156,6 +186,7 @@ func TestRoaringPostingsListIter(t *testing.T) {
 	require.Equal(t, 2, d.Len())
 
 	it := d.Iterator()
+	defer it.Close()
 	found := map[ID]bool{
 		1: false,
 		2: false,
@@ -176,6 +207,7 @@ func TestRoaringPostingsListIterInsertAfter(t *testing.T) {
 	require.Equal(t, 2, d.Len())
 
 	it := d.Iterator()
+	defer it.Close()
 	numElems := 0
 	d.Insert(3)
 	require.Equal(t, 3, d.Len())

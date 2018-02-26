@@ -63,3 +63,10 @@ func TestConjunctionQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
 }
+
+func TestConjunctionQueryNoQueries(t *testing.T) {
+	q := newConjuctionQuery(nil)
+	results, err := q.Execute(nil)
+	require.NoError(t, err)
+	require.Equal(t, 0, results.Len())
+}

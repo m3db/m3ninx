@@ -43,7 +43,15 @@ type BooleanQuery struct {
 //   - resulting documents match ALL of the must queries
 //   - resulting documents match AT LEAST ONE of the should queries
 //   - resulting documents match NONE of the mustNot queries
-func NewBooleanQuery(must []search.Query, should []search.Query, mustNot []search.Query) search.Query {
+func NewBooleanQuery(
+	must []search.Query, should []search.Query, mustNot []search.Query,
+) (search.Query, error) {
+	// Any queries which include a Must Not query must also include either a Must or Should
+	// query to constrain the results. In the future this restriction may be removed.
+	if len(mustNot) > 0 && len(must) == 0 && len(should) == 0 {
+		return nil, errMustNotQuery
+	}
+
 	var q BooleanQuery
 
 	// TODO(jeromefroe): Investigate rewriting the queries to improve performance. For
@@ -58,7 +66,7 @@ func NewBooleanQuery(must []search.Query, should []search.Query, mustNot []searc
 		q.mustNot = newConjuctionQuery(mustNot)
 	}
 
-	return &q
+	return &q, nil
 }
 
 // Execute returns an iterator over documents matching the boolean query.
@@ -98,12 +106,6 @@ func (q *BooleanQuery) Execute(r index.Reader) (postings.List, error) {
 	}
 
 	if q.mustNot != nil {
-		// Any queries which include a Must Not query must also include either a Must or Should
-		// query to constrain the results. In the future this restriction may be removed.
-		if mpl == nil {
-			return nil, errMustNotQuery
-		}
-
 		pl, err := q.mustNot.Execute(r)
 		if err != nil {
 			return nil, err

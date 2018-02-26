@@ -83,7 +83,6 @@ func TestIterator(t *testing.T) {
 	)
 
 	it := newIterator(segment, postingsIter, new(sync.WaitGroup))
-	defer it.Close()
 
 	require.True(t, it.Next())
 	require.Equal(t, docs[0], it.Current())
@@ -94,4 +93,16 @@ func TestIterator(t *testing.T) {
 
 	require.False(t, it.Next())
 	require.NoError(t, it.Err())
+
+	require.NoError(t, it.Close())
+	require.Error(t, it.Close())
+}
+
+func TestEmptyIterator(t *testing.T) {
+	it := emptyIter
+
+	require.False(t, it.Next())
+	require.Equal(t, doc.Document{}, it.Current())
+	require.NoError(t, it.Err())
+	require.NoError(t, it.Close())
 }

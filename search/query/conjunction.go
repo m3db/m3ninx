@@ -41,7 +41,7 @@ func newConjuctionQuery(queries []search.Query) search.Query {
 // Execute returns an iterator over documents matching the conjuction query.
 func (q *conjuctionQuery) Execute(r index.Reader) (postings.List, error) {
 	if len(q.queries) == 0 {
-		return nil, nil
+		return postings.NewRoaringPostingsList(), nil
 	}
 
 	pl, err := q.queries[0].Execute(r)

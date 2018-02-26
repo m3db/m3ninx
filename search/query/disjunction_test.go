@@ -67,3 +67,10 @@ func TestDisjunctionQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, expected.Equal(actual))
 }
+
+func TestDisjunctionQueryNoQueries(t *testing.T) {
+	q := newDisjuctionQuery(nil)
+	results, err := q.Execute(nil)
+	require.NoError(t, err)
+	require.Equal(t, 0, results.Len())
+}
