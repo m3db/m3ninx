@@ -77,14 +77,14 @@ func (m *postingsMap) addID(key []byte, id postings.ID) error {
 	return p.Insert(id)
 }
 
-func (m *postingsMap) getKey(key []byte) postings.List {
+func (m *postingsMap) get(key []byte) postings.List {
 	m.RLock()
 	p := m.postings[string(key)]
 	m.RUnlock()
 	return p
 }
 
-func (m *postingsMap) getKeyRegex(re *regexp.Regexp) []postings.List {
+func (m *postingsMap) getRegex(re *regexp.Regexp) []postings.List {
 	m.RLock()
 
 	initLen := int(regexpMatchFactor * float64(len(m.postings)))

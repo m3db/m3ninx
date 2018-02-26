@@ -35,12 +35,12 @@ func TestPostingsMap(t *testing.T) {
 	require.NoError(t, pm.addID([]byte("bar"), 2))
 	require.NoError(t, pm.addID([]byte("baz"), 3))
 
-	pl := pm.getKey([]byte("foo"))
+	pl := pm.get([]byte("foo"))
 	require.Equal(t, uint64(1), pl.Size())
 	require.True(t, pl.Contains(1))
 
 	re := regexp.MustCompile("ba.*")
-	pls := pm.getKeyRegex(re)
+	pls := pm.getRegex(re)
 	require.Equal(t, 2, len(pls))
 
 	clone := pls[0].Clone()

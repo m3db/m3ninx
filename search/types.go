@@ -21,8 +21,8 @@
 package search
 
 import (
-	"github.com/m3db/m3ninx/idx/doc"
-	"github.com/m3db/m3ninx/idx/index"
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index"
 )
 
 // Query is a search query for documents.

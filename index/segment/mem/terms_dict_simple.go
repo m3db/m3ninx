@@ -32,10 +32,11 @@ const (
 	regexpMatchFactor = 0.01
 )
 
-// simpleTermsDict uses a two-level map to model a terms dictionary. It maps
-//   field name -> (field value -> postingsList)
+// simpleTermsDict uses a two-level map to model a terms dictionary. It maps a field
+// (name and value) to a postings list.
 type simpleTermsDict struct {
-	opts   Options
+	opts Options
+
 	fields struct {
 		sync.RWMutex
 
@@ -68,7 +69,7 @@ func (t *simpleTermsDict) MatchExact(name, value []byte) (postings.List, error) 
 		// It is not an error to not have any matching values.
 		return nil, nil
 	}
-	return postingsMap.getKey(value), nil
+	return postingsMap.get(value), nil
 }
 
 func (t *simpleTermsDict) MatchRegex(
@@ -83,7 +84,7 @@ func (t *simpleTermsDict) MatchRegex(
 		return nil, nil
 	}
 
-	pls := postingsMap.getKeyRegex(re)
+	pls := postingsMap.getRegex(re)
 	union := t.opts.PostingsListPool().Get()
 	for _, pl := range pls {
 		union.Union(pl)

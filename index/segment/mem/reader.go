@@ -104,7 +104,7 @@ func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
 		pl = mpl
 	}
 
-	panic("unimplemented")
+	return newIterator(r.segment, pl.Iterator()), nil
 }
 
 func (r *reader) Close() error {

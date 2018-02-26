@@ -20,4 +20,76 @@
 
 package mem
 
-// TODO
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/postings"
+
+	"github.com/golang/mock/gomock"
+)
+
+func TestIterator(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	offset := postings.ID(41)
+	docs := []doc.Document{
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("apple"),
+					Value: []byte("red"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("banana"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("carrot"),
+					Value: []byte("orange"),
+				},
+			},
+		},
+	}
+
+	s, err := NewSegment(offset, NewOptions())
+	require.NoError(t, err)
+	segment := s.(*segment)
+	segment.docs.data = docs
+
+	postingsIter := postings.NewMockIterator(mockCtrl)
+	gomock.InOrder(
+		postingsIter.EXPECT().Next().Return(true),
+		postingsIter.EXPECT().Current().Return(offset+1),
+		postingsIter.EXPECT().Next().Return(true),
+		postingsIter.EXPECT().Current().Return(offset+2),
+		postingsIter.EXPECT().Next().Return(true),
+		postingsIter.EXPECT().Current().Return(offset+3),
+		postingsIter.EXPECT().Next().Return(false),
+		postingsIter.EXPECT().Close().Return(nil),
+	)
+
+	it := newIterator(segment, postingsIter)
+	defer it.Close()
+
+	require.True(t, it.Next())
+	require.Equal(t, docs[0], it.Current())
+	require.True(t, it.Next())
+	require.Equal(t, docs[1], it.Current())
+	require.True(t, it.Next())
+	require.Equal(t, docs[2], it.Current())
+
+	require.False(t, it.Next())
+	require.NoError(t, it.Err())
+}

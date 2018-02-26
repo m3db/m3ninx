@@ -1,5 +1,5 @@
-hash: 9369108084d181614800f6f01439818f5bcddbcbec9503cf94d6041bdb9291d8
-updated: 2018-02-13T18:14:26.930516-05:00
+hash: b304db35700aca4bdb3982a7f9165bffacf95290d967062edb0214a205dc695c
+updated: 2018-02-21T15:54:37.908368-05:00
 imports:
 - name: github.com/apache/thrift
   version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
@@ -13,8 +13,12 @@ imports:
   version: de8695c8edbf8236f30d6e1376e20b198a028d42
   subpackages:
   - oleutil
+- name: github.com/golang/mock
+  version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
+  subpackages:
+  - gomock
 - name: github.com/golang/snappy
-  version: d7b1e156f50d3c4664f683603af70e3e47fa0aa2
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/google/codesearch
   version: a45d81b686e85d01f2838439deaf72126ccd5a96
   subpackages:
@@ -24,13 +28,14 @@ imports:
   subpackages:
   - index
 - name: github.com/m3db/m3x
-  version: 640bad305baa75986e8b4cbacd23b530374f9c76
+  version: 1e5d5308d8cd07753da2f6775921d7640d50f1df
   subpackages:
   - checked
   - instrument
   - log
   - pool
   - process
+  - resource
 - name: github.com/mschoch/smat
   version: 90eadee771aeab36e8bf796039b8c261bebebe4f
 - name: github.com/philhofer/fwd
@@ -51,20 +56,32 @@ imports:
 - name: github.com/StackExchange/wmi
   version: e542ed97d15e640bdc14b5c12162d59e8fc67324
 - name: github.com/tinylib/msgp
-  version: 4b2b2ac00eb1c1f32da648403859ea59033f0bab
+  version: 3b5c87ab5fb00c660bf85b888445d9a01db64db4
   subpackages:
   - msgp
 - name: github.com/uber-go/atomic
   version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
 - name: github.com/uber-go/tally
-  version: 6c4631652c6aab57c64f65c2e0aaec2e9aae3a64
+  version: 522328b48efad0c6034dba92bf39228694e9d31f
   subpackages:
   - m3
   - m3/customtransports
   - m3/thrift
   - m3/thriftudp
 - name: github.com/willf/bitset
-  version: 1ea0245d2bc8ce44623f24a1ae162beb06ad8cd6
+  version: 1a37ad96e8c1a11b20900a232874843b5174221f
+- name: go.uber.org/atomic
+  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+- name: go.uber.org/zap
+  version: f85c78b1dd998214c5f2138155b320a4a43fbe36
+  subpackages:
+  - buffer
+  - internal/bufferpool
+  - internal/color
+  - internal/exit
+  - zapcore
 testImports:
 - name: github.com/davecgh/go-spew
   version: 346938d642f2ec3594ed81d874461961cd0faa76

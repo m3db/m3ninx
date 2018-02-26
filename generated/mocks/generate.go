@@ -18,18 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postings
+package mocks
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
-
-func TestAtomicID(t *testing.T) {
-	atom := NewAtomicID(42)
-
-	require.Equal(t, ID(42), atom.Load(), "Load returned unexpected value")
-	require.Equal(t, ID(43), atom.Inc(), "Inc returned unexpected value")
-	require.Equal(t, ID(43), atom.Load(), "Load didn't return new value")
-}
+// mockgen rules for generating mocks (file mode)
+//go:generate sh -c "mockgen -package=postings -destination=$GOPATH/src/$PACKAGE/postings/postings_mock.go -source=$GOPATH/src/$PACKAGE/postings/types.go"

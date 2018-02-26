@@ -21,9 +21,9 @@
 package searcher
 
 import (
-	"github.com/m3db/m3ninx/idx/doc"
-	"github.com/m3db/m3ninx/idx/index"
-	"github.com/m3db/m3ninx/idx/search"
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/search"
 )
 
 type searcher struct{}

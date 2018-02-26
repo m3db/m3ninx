@@ -81,7 +81,27 @@ func (t *simpleTermsDictionaryTestSuite) SetupTest() {
 func (t *simpleTermsDictionaryTestSuite) TestInsert() {
 	props := getProperties()
 	props.Property(
-		"Inserted fields should be immediately searchable",
+		"The dictionary should supporting inserting fields",
+		prop.ForAll(
+			func(f doc.Field, id postings.ID) (bool, error) {
+				err := t.termsDict.Insert(f, id)
+				if err != nil {
+					return false, fmt.Errorf("unexpected error inserting %v into terms dictionary: %v", f, err)
+				}
+
+				return true, nil
+			},
+			genField(),
+			genDocID(),
+		))
+
+	props.TestingRun(t.T())
+}
+
+func (t *simpleTermsDictionaryTestSuite) TestMatchExact() {
+	props := getProperties()
+	props.Property(
+		"The dictionary should support exact match queries",
 		prop.ForAll(
 			func(f doc.Field, id postings.ID) (bool, error) {
 				err := t.termsDict.Insert(f, id)
@@ -109,44 +129,7 @@ func (t *simpleTermsDictionaryTestSuite) TestInsert() {
 	props.TestingRun(t.T())
 }
 
-func (t *simpleTermsDictionaryTestSuite) TestInsertIdempotent() {
-	props := getProperties()
-	props.Property(
-		"Inserting the same field into the terms dictionary should be idempotent",
-		prop.ForAll(
-			func(f doc.Field, id postings.ID) (bool, error) {
-				err := t.termsDict.Insert(f, id)
-				if err != nil {
-					return false, fmt.Errorf("unexpected error inserting %v into terms dictionary: %v", f, err)
-				}
-
-				// Inserting the same field is a valid operation.
-				err = t.termsDict.Insert(f, id)
-				if err != nil {
-					return false, fmt.Errorf("unexpected error re-inserting %v into terms dictionary: %v", f, err)
-				}
-
-				pl, err := t.termsDict.MatchExact(f.Name, []byte(f.Value))
-				if err != nil {
-					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
-				}
-				if pl == nil {
-					return false, fmt.Errorf("postings list of documents matching query should not be nil")
-				}
-				if !pl.Contains(postings.ID(id)) {
-					return false, fmt.Errorf("id of new document '%v' is not in postings list of matching documents", id)
-				}
-
-				return true, nil
-			},
-			genField(),
-			genDocID(),
-		))
-
-	props.TestingRun(t.T())
-}
-
-func (t *simpleTermsDictionaryTestSuite) TestFetchRegex() {
+func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 	props := getProperties()
 	props.Property(
 		"The dictionary should support regular expression queries",

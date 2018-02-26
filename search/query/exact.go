@@ -21,8 +21,8 @@
 package query
 
 import (
-	"github.com/m3db/m3ninx/idx/index"
-	"github.com/m3db/m3ninx/idx/search"
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/search"
 )
 
 // ExactQuery finds exact matches in a segment.
