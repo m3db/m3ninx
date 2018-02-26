@@ -37,17 +37,19 @@ var (
 type reader struct {
 	sync.RWMutex
 
-	segment *segment
+	segment readableSegment
 	maxID   postings.ID
+	wg      *sync.WaitGroup
 
 	closed bool
 }
 
-func newReader(s *segment, maxID postings.ID) index.Reader {
-	s.wg.Add(1)
+func newReader(s readableSegment, maxID postings.ID, wg *sync.WaitGroup) index.Reader {
+	wg.Add(1)
 	return &reader{
 		segment: s,
 		maxID:   maxID,
+		wg:      wg,
 	}
 }
 
@@ -84,6 +86,11 @@ func (r *reader) MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.L
 }
 
 func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
+	// TODO: Add filter for names.
+	if len(names) != 0 {
+		panic("names filter is unimplemented")
+	}
+
 	if pl.IsEmpty() {
 		return nil, nil
 	}
@@ -104,7 +111,7 @@ func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
 		pl = mpl
 	}
 
-	return newIterator(r.segment, pl.Iterator()), nil
+	return newIterator(r.segment, pl.Iterator(), r.wg), nil
 }
 
 func (r *reader) Close() error {
@@ -116,6 +123,6 @@ func (r *reader) Close() error {
 	r.closed = true
 	r.Unlock()
 
-	r.segment.wg.Done()
+	r.wg.Done()
 	return nil
 }

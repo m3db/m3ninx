@@ -20,4 +20,114 @@
 
 package mem
 
-// TODO: Add reader tests
+import (
+	"regexp"
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/postings"
+
+	gomock "github.com/golang/mock/gomock"
+)
+
+func TestReaderMatchExact(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	maxID := postings.ID(55)
+
+	name, value := []byte("apple"), []byte("red")
+	postingsList := postings.NewRoaringPostingsList()
+	postingsList.Insert(postings.ID(42))
+	postingsList.Insert(postings.ID(50))
+	postingsList.Insert(postings.ID(57))
+
+	segment := NewMockreadableSegment(mockCtrl)
+	gomock.InOrder(
+		segment.EXPECT().matchExact(name, value).Return(postingsList, nil),
+	)
+
+	reader := newReader(segment, maxID, new(sync.WaitGroup))
+
+	actual, err := reader.MatchExact(name, value)
+	require.NoError(t, err)
+	require.True(t, postingsList.Equal(actual))
+}
+
+func TestReaderMatchRegex(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	maxID := postings.ID(55)
+
+	name, pattern := []byte("apple"), []byte("r.*")
+	re := regexp.MustCompile(string(pattern))
+	postingsList := postings.NewRoaringPostingsList()
+	postingsList.Insert(postings.ID(42))
+	postingsList.Insert(postings.ID(50))
+	postingsList.Insert(postings.ID(57))
+
+	segment := NewMockreadableSegment(mockCtrl)
+	gomock.InOrder(
+		segment.EXPECT().matchRegex(name, pattern, re).Return(postingsList, nil),
+	)
+
+	reader := newReader(segment, maxID, new(sync.WaitGroup))
+
+	actual, err := reader.MatchRegex(name, pattern, re)
+	require.NoError(t, err)
+	require.True(t, postingsList.Equal(actual))
+}
+
+func TestReaderDocs(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	maxID := postings.ID(50)
+	docs := []doc.Document{
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("apple"),
+					Value: []byte("red"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("banana"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+	}
+
+	segment := NewMockreadableSegment(mockCtrl)
+	gomock.InOrder(
+		segment.EXPECT().getDoc(postings.ID(42)).Return(docs[0], nil),
+		segment.EXPECT().getDoc(postings.ID(47)).Return(docs[1], nil),
+	)
+
+	postingsList := postings.NewRoaringPostingsList()
+	postingsList.Insert(postings.ID(42))
+	postingsList.Insert(postings.ID(47))
+	postingsList.Insert(postings.ID(57)) // IDs past maxID should be ignored.
+
+	reader := newReader(segment, maxID, new(sync.WaitGroup))
+	defer reader.Close()
+
+	iter, err := reader.Docs(postingsList, nil)
+	require.NoError(t, err)
+
+	actualDocs := make([]doc.Document, 0, len(docs))
+	for iter.Next() {
+		actualDocs = append(actualDocs, iter.Current())
+	}
+
+	require.NoError(t, iter.Err())
+	require.Equal(t, docs, actualDocs)
+}

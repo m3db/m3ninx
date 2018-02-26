@@ -22,6 +22,7 @@ package mem
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
@@ -32,18 +33,21 @@ var (
 )
 
 type iterator struct {
-	segment      *segment
+	segment      readableSegment
 	postingsIter postings.Iterator
-	current      doc.Document
-	err          error
-	closed       bool
+	wg           *sync.WaitGroup
+
+	current doc.Document
+	err     error
+	closed  bool
 }
 
-func newIterator(s *segment, pi postings.Iterator) doc.Iterator {
-	s.wg.Add(1)
+func newIterator(s readableSegment, pi postings.Iterator, wg *sync.WaitGroup) doc.Iterator {
+	wg.Add(1)
 	return &iterator{
 		segment:      s,
 		postingsIter: pi,
+		wg:           wg,
 	}
 }
 
@@ -75,6 +79,6 @@ func (it *iterator) Close() error {
 	}
 	it.closed = true
 	err := it.postingsIter.Close()
-	it.segment.wg.Done()
+	it.wg.Done()
 	return err
 }

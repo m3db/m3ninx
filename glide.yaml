@@ -4,12 +4,17 @@ import:
 - package: github.com/RoaringBitmap/roaring
   version: 0.3.9
 - package: github.com/m3db/m3x
+  version: 6db245044ad8602027d9ed396ae503947d74328a
   subpackages:
   - instrument
 - package: github.com/uber-go/atomic
   version: ^1.2.0
 - package: github.com/m3db/codesearch
   version: a45d81b686e85d01f2838439deaf72126ccd5a96
+- package: github.com/golang/mock
+  version: ^1.0.0
+  subpackages:
+  - gomock
 testImport:
 - package: github.com/stretchr/testify
   version: ^1.2.0
@@ -19,9 +24,3 @@ testImport:
   version: ^1.0.0
 - package: github.com/leanovate/gopter
   version: 0.2.0
-- package: github.com/golang/mock
-  # TODO: We have to pin to a SHA below because m3x does. We should update m3x to use
-  # a release instead and then update below.
-  version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
-  subpackages:
-  - gomock

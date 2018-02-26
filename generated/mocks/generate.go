@@ -23,3 +23,4 @@ package mocks
 // mockgen rules for generating mocks (file mode)
 //go:generate sh -c "mockgen -package=postings -destination=$GOPATH/src/$PACKAGE/postings/postings_mock.go -source=$GOPATH/src/$PACKAGE/postings/types.go"
 //go:generate sh -c "mockgen -package=index -destination=$GOPATH/src/$PACKAGE/index/index_mock.go -source=$GOPATH/src/$PACKAGE/index/types.go"
+//go:generate sh -c "mockgen -package=mem -destination=$GOPATH/src/$PACKAGE/index/segment/mem/mem_mock.go -source=$GOPATH/src/$PACKAGE/index/segment/mem/types.go"

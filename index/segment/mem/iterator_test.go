@@ -21,14 +21,14 @@
 package mem
 
 import (
+	"sync"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIterator(t *testing.T) {
@@ -63,24 +63,26 @@ func TestIterator(t *testing.T) {
 		},
 	}
 
-	s, err := NewSegment(offset, NewOptions())
-	require.NoError(t, err)
-	segment := s.(*segment)
-	segment.docs.data = docs
+	segment := NewMockreadableSegment(mockCtrl)
+	gomock.InOrder(
+		segment.EXPECT().getDoc(offset+1).Return(docs[0], nil),
+		segment.EXPECT().getDoc(offset+4).Return(docs[1], nil),
+		segment.EXPECT().getDoc(offset+11).Return(docs[2], nil),
+	)
 
 	postingsIter := postings.NewMockIterator(mockCtrl)
 	gomock.InOrder(
 		postingsIter.EXPECT().Next().Return(true),
 		postingsIter.EXPECT().Current().Return(offset+1),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(offset+2),
+		postingsIter.EXPECT().Current().Return(offset+4),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(offset+3),
+		postingsIter.EXPECT().Current().Return(offset+11),
 		postingsIter.EXPECT().Next().Return(false),
 		postingsIter.EXPECT().Close().Return(nil),
 	)
 
-	it := newIterator(segment, postingsIter)
+	it := newIterator(segment, postingsIter, new(sync.WaitGroup))
 	defer it.Close()
 
 	require.True(t, it.Next())

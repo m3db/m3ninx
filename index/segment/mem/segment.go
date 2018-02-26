@@ -124,7 +124,7 @@ func (s *segment) Reader() (index.Reader, error) {
 	}
 
 	maxID := s.ids.reader.Load()
-	r := newReader(s, maxID)
+	r := newReader(s, maxID, &s.wg)
 	return r, nil
 }
 

@@ -42,3 +42,17 @@ type termsDict interface {
 	// optimize their searches.
 	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
 }
+
+// readableSegment is an internal interface for reading from a segment.
+type readableSegment interface {
+	// matchExact returns the postings list of documents which match the given name and
+	// value exactly.
+	matchExact(name, value []byte) (postings.List, error)
+
+	// matchRegex returns the postings list of documents which match the given name and
+	// regular expression.
+	matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+
+	// getDoc returns the document associated with the given ID.
+	getDoc(id postings.ID) (doc.Document, error)
+}
