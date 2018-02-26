@@ -20,4 +20,38 @@
 
 package query
 
-// TODO(jeromefroe)
+import (
+	"regexp"
+	"testing"
+
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRegexpQuery(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	name, pattern := []byte("apple"), []byte("r.*")
+	re := regexp.MustCompile(string(pattern))
+
+	postingsList := postings.NewRoaringPostingsList()
+	postingsList.Insert(postings.ID(42))
+	postingsList.Insert(postings.ID(50))
+	postingsList.Insert(postings.ID(57))
+
+	reader := index.NewMockReader(mockCtrl)
+	gomock.InOrder(
+		reader.EXPECT().MatchRegex(name, pattern, re).Return(postingsList, nil),
+	)
+
+	q, err := NewRegexpQuery(name, pattern)
+	require.NoError(t, err)
+
+	actual, err := q.Execute(reader)
+	require.NoError(t, err)
+	require.True(t, postingsList.Equal(actual))
+}

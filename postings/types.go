@@ -57,14 +57,17 @@ type List interface {
 	// Max returns the maximum ID in the postings list or an error if it is empty.
 	Max() (ID, error)
 
-	// Size returns the numbers of IDs in the postings list.
-	Size() uint64
+	// Len returns the numbers of IDs in the postings list.
+	Len() int
 
 	// Iterator returns an iterator over the IDs in the postings list.
 	Iterator() Iterator
 
 	// Clone returns a copy of the postings list.
 	Clone() MutableList
+
+	// Equal returns whether this postings list contains the same posting IDs as other.
+	Equal(other List) bool
 }
 
 // MutableList is a postings list implementation which also supports mutable operations.

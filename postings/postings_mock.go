@@ -90,14 +90,14 @@ func (_mr *_MockListRecorder) Max() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Max")
 }
 
-func (_m *MockList) Size() uint64 {
-	ret := _m.ctrl.Call(_m, "Size")
-	ret0, _ := ret[0].(uint64)
+func (_m *MockList) Len() int {
+	ret := _m.ctrl.Call(_m, "Len")
+	ret0, _ := ret[0].(int)
 	return ret0
 }
 
-func (_mr *_MockListRecorder) Size() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Size")
+func (_mr *_MockListRecorder) Len() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Len")
 }
 
 func (_m *MockList) Iterator() Iterator {
@@ -118,6 +118,16 @@ func (_m *MockList) Clone() MutableList {
 
 func (_mr *_MockListRecorder) Clone() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clone")
+}
+
+func (_m *MockList) Equal(other List) bool {
+	ret := _m.ctrl.Call(_m, "Equal", other)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockListRecorder) Equal(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Equal", arg0)
 }
 
 // Mock of MutableList interface
@@ -183,14 +193,14 @@ func (_mr *_MockMutableListRecorder) Max() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Max")
 }
 
-func (_m *MockMutableList) Size() uint64 {
-	ret := _m.ctrl.Call(_m, "Size")
-	ret0, _ := ret[0].(uint64)
+func (_m *MockMutableList) Len() int {
+	ret := _m.ctrl.Call(_m, "Len")
+	ret0, _ := ret[0].(int)
 	return ret0
 }
 
-func (_mr *_MockMutableListRecorder) Size() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Size")
+func (_mr *_MockMutableListRecorder) Len() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Len")
 }
 
 func (_m *MockMutableList) Iterator() Iterator {
@@ -211,6 +221,16 @@ func (_m *MockMutableList) Clone() MutableList {
 
 func (_mr *_MockMutableListRecorder) Clone() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clone")
+}
+
+func (_m *MockMutableList) Equal(other List) bool {
+	ret := _m.ctrl.Call(_m, "Equal", other)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockMutableListRecorder) Equal(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Equal", arg0)
 }
 
 func (_m *MockMutableList) Insert(i ID) error {

@@ -20,4 +20,46 @@
 
 package query
 
-// TODO(jeromefroe)
+import (
+	"testing"
+
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/search"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestConjunctionQuery(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	firstName, firstValue := []byte("apple"), []byte("red")
+	firstQuery := NewExactQuery(firstName, firstValue)
+	firstPostingsList := postings.NewRoaringPostingsList()
+	firstPostingsList.Insert(postings.ID(42))
+	firstPostingsList.Insert(postings.ID(50))
+	firstPostingsList.Insert(postings.ID(57))
+
+	secondName, secondValue := []byte("banana"), []byte("yellow")
+	secondQuery := NewExactQuery(secondName, secondValue)
+	secondPostingsList := postings.NewRoaringPostingsList()
+	secondPostingsList.Insert(postings.ID(44))
+	secondPostingsList.Insert(postings.ID(50))
+	secondPostingsList.Insert(postings.ID(61))
+
+	reader := index.NewMockReader(mockCtrl)
+	gomock.InOrder(
+		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
+	)
+
+	expected := postings.NewRoaringPostingsList()
+	expected.Insert(postings.ID(50))
+
+	q := newConjuctionQuery([]search.Query{firstQuery, secondQuery})
+	actual, err := q.Execute(reader)
+	require.NoError(t, err)
+	require.True(t, expected.Equal(actual))
+}

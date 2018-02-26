@@ -146,11 +146,11 @@ func (d *roaringPostingsList) Min() (ID, error) {
 	return ID(min), nil
 }
 
-func (d *roaringPostingsList) Size() uint64 {
+func (d *roaringPostingsList) Len() int {
 	d.RLock()
-	size := d.bitmap.GetCardinality()
+	l := d.bitmap.GetCardinality()
 	d.RUnlock()
-	return size
+	return int(l)
 }
 
 func (d *roaringPostingsList) Iterator() Iterator {
@@ -170,6 +170,31 @@ func (d *roaringPostingsList) Clone() MutableList {
 	return &roaringPostingsList{
 		bitmap: clone,
 	}
+}
+
+func (d *roaringPostingsList) Equal(other List) bool {
+	if d.Len() != other.Len() {
+		return false
+	}
+
+	o, ok := other.(*roaringPostingsList)
+	if ok {
+		return d.bitmap.Equals(o.bitmap)
+	}
+
+	iter := d.Iterator()
+	otherIter := other.Iterator()
+
+	for iter.Next() {
+		if !otherIter.Next() {
+			return false
+		}
+		if iter.Current() != otherIter.Current() {
+			return false
+		}
+	}
+
+	return true
 }
 
 type roaringIterator struct {

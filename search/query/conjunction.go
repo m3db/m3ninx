@@ -22,6 +22,7 @@ package query
 
 import (
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
@@ -38,7 +39,7 @@ func newConjuctionQuery(queries []search.Query) search.Query {
 }
 
 // Execute returns an iterator over documents matching the conjuction query.
-func (q *conjuctionQuery) Execute(r index.Reader) (index.PostingsList, error) {
+func (q *conjuctionQuery) Execute(r index.Reader) (postings.List, error) {
 	if len(q.queries) == 0 {
 		return nil, nil
 	}

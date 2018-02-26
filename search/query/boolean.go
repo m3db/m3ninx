@@ -24,6 +24,7 @@ import (
 	"errors"
 
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
@@ -61,8 +62,8 @@ func NewBooleanQuery(must []search.Query, should []search.Query, mustNot []searc
 }
 
 // Execute returns an iterator over documents matching the boolean query.
-func (q *BooleanQuery) Execute(r index.Reader) (index.PostingsList, error) {
-	var mpl segment.MutablePostingsList
+func (q *BooleanQuery) Execute(r index.Reader) (postings.List, error) {
+	var mpl postings.MutableList
 
 	if q.must != nil {
 		pl, err := q.must.Execute(r)

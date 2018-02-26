@@ -20,4 +20,34 @@
 
 package query
 
-// TODO(jeromefroe)
+import (
+	"testing"
+
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestExactQuery(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	name, value := []byte("apple"), []byte("red")
+
+	postingsList := postings.NewRoaringPostingsList()
+	postingsList.Insert(postings.ID(42))
+	postingsList.Insert(postings.ID(50))
+	postingsList.Insert(postings.ID(57))
+
+	reader := index.NewMockReader(mockCtrl)
+	gomock.InOrder(
+		reader.EXPECT().MatchExact(name, value).Return(postingsList, nil),
+	)
+
+	q := NewExactQuery(name, value)
+	actual, err := q.Execute(reader)
+	require.NoError(t, err)
+	require.True(t, postingsList.Equal(actual))
+}

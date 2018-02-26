@@ -23,13 +23,14 @@ package search
 import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
 )
 
 // Query is a search query for documents.
 type Query interface {
 	// Execute executes the query against the given reader and returns a postings
 	// list of documents matching the query.
-	Execute(r index.Reader) (index.PostingsList, error)
+	Execute(r index.Reader) (postings.List, error)
 }
 
 // Searcher executes a query against a snapshot.

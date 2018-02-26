@@ -22,24 +22,25 @@ package query
 
 import (
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
 // ExactQuery finds exact matches in a segment.
 type ExactQuery struct {
-	field []byte
+	name  []byte
 	value []byte
 }
 
-// NewExactQuery constructs a new ExactQuery for the given field and value.
-func NewExactQuery(field, value []byte) search.Query {
+// NewExactQuery constructs a new ExactQuery for the given field name and value.
+func NewExactQuery(name, value []byte) search.Query {
 	return &ExactQuery{
-		field: field,
+		name:  name,
 		value: value,
 	}
 }
 
-// Execute returns an iterator over documents containing the given field and value.
-func (q *ExactQuery) Execute(r index.Reader) (index.PostingsList, error) {
-	return r.MatchTerm(q.field, q.value)
+// Execute returns an iterator over documents containing the given field name and value.
+func (q *ExactQuery) Execute(r index.Reader) (postings.List, error) {
+	return r.MatchExact(q.name, q.value)
 }
