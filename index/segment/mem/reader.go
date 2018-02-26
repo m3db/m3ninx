@@ -92,7 +92,7 @@ func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
 	}
 
 	if pl.IsEmpty() {
-		return nil, nil
+		return emptyIter, nil
 	}
 
 	max, err := pl.Max()

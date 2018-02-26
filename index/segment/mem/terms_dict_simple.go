@@ -67,7 +67,7 @@ func (t *simpleTermsDict) MatchExact(name, value []byte) (postings.List, error) 
 	t.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
-		return nil, nil
+		return t.opts.PostingsListPool().Get(), nil
 	}
 	return postingsMap.get(value), nil
 }
@@ -81,7 +81,7 @@ func (t *simpleTermsDict) MatchRegex(
 	t.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
-		return nil, nil
+		return t.opts.PostingsListPool().Get(), nil
 	}
 
 	pls := postingsMap.getRegex(re)

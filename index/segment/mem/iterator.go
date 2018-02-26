@@ -82,3 +82,14 @@ func (it *iterator) Close() error {
 	it.wg.Done()
 	return err
 }
+
+var (
+	emptyIter = new(emptyIterator)
+)
+
+type emptyIterator struct{}
+
+func (it *emptyIterator) Next() bool            { return false }
+func (it *emptyIterator) Current() doc.Document { return doc.Document{} }
+func (it *emptyIterator) Err() error            { return nil }
+func (it *emptyIterator) Close() error          { return nil }

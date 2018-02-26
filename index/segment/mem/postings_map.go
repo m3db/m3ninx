@@ -81,6 +81,9 @@ func (m *postingsMap) get(key []byte) postings.List {
 	m.RLock()
 	p := m.postings[string(key)]
 	m.RUnlock()
+	if p == nil {
+		p = m.opts.PostingsListPool().Get()
+	}
 	return p
 }
 
@@ -91,9 +94,9 @@ func (m *postingsMap) getRegex(re *regexp.Regexp) []postings.List {
 	ps := make([]postings.List, 0, initLen)
 
 	for key, p := range m.postings {
-		// TODO: evaluate lock contention caused by holding on to the read lock while evaluating
-		// this predicate.
-		// TODO: evaluate if performing a prefix match would speed up the common case.
+		// TODO: Evaluate lock contention caused by holding on to the read lock while
+		// evaluating this predicate.
+		// TODO: Evaluate if performing a prefix match would speed up the common case.
 		if re.MatchString(key) {
 			ps = append(ps, p)
 		}

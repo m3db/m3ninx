@@ -25,12 +25,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
 
 	gomock "github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReaderMatchExact(t *testing.T) {

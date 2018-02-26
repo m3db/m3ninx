@@ -21,45 +21,180 @@
 package mem
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
-	sgmt "github.com/m3db/m3ninx/index/segment"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
-type newMutableSegmentFn func() sgmt.MutableSegment
-
-type segmentTestSuite struct {
-	suite.Suite
-
-	fn      newMutableSegmentFn
-	segment sgmt.MutableSegment
-}
-
-func (t *segmentTestSuite) SetupTest() {
-	t.segment = t.fn()
-}
-
-func (t *segmentTestSuite) TestInsert() {
-	err := t.segment.Insert(doc.Document{
+func TestSegmentInsert(t *testing.T) {
+	name, value := []byte("apple"), []byte("red")
+	doc := doc.Document{
 		Fields: []doc.Field{
-			doc.Field{Name: []byte("abc"), Value: []byte("efg")},
+			doc.Field{
+				Name:  name,
+				Value: value,
+			},
 		},
-	})
-	t.NoError(err)
+	}
+
+	segment, err := NewSegment(0, NewOptions())
+	require.NoError(t, err)
+
+	err = segment.Insert(doc)
+	require.NoError(t, err)
+
+	reader, err := segment.Reader()
+	require.NoError(t, err)
+
+	pl, err := reader.MatchExact(name, value)
+	require.NoError(t, err)
+
+	iter, err := reader.Docs(pl, nil)
+	require.NoError(t, err)
+
+	require.True(t, iter.Next())
+	require.Equal(t, doc, iter.Current())
+	require.False(t, iter.Next())
+	require.NoError(t, iter.Err())
 }
 
-// TODO: Expand segment test suite.
-
-func TestSimpleSegment(t *testing.T) {
-	fn := func() sgmt.MutableSegment {
-		opts := NewOptions()
-		s, err := NewSegment(0, opts)
-		require.NoError(t, err)
-		return s
+func TestSegmentReaderMatchExact(t *testing.T) {
+	docs := []doc.Document{
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("apple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("red"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("banana"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("apple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("green"),
+				},
+			},
+		},
 	}
-	suite.Run(t, &segmentTestSuite{fn: fn})
+
+	segment, err := NewSegment(0, NewOptions())
+	require.NoError(t, err)
+
+	for _, doc := range docs {
+		err = segment.Insert(doc)
+		require.NoError(t, err)
+	}
+
+	reader, err := segment.Reader()
+	require.NoError(t, err)
+
+	pl, err := reader.MatchExact([]byte("fruit"), []byte("apple"))
+	require.NoError(t, err)
+
+	iter, err := reader.Docs(pl, nil)
+	require.NoError(t, err)
+
+	actualDocs := make([]doc.Document, 0)
+	for iter.Next() {
+		actualDocs = append(actualDocs, iter.Current())
+	}
+
+	require.NoError(t, iter.Err())
+
+	expectedDocs := []doc.Document{docs[0], docs[2]}
+	require.Equal(t, expectedDocs, actualDocs)
+}
+
+func TestSegmentReaderMatchRegex(t *testing.T) {
+	docs := []doc.Document{
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("banana"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("apple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("red"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("pineapple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+	}
+
+	segment, err := NewSegment(0, NewOptions())
+	require.NoError(t, err)
+
+	for _, doc := range docs {
+		err = segment.Insert(doc)
+		require.NoError(t, err)
+	}
+
+	reader, err := segment.Reader()
+	require.NoError(t, err)
+
+	name, pattern := []byte("fruit"), []byte(".*ple")
+	re := regexp.MustCompile(string(pattern))
+	pl, err := reader.MatchRegex(name, pattern, re)
+	require.NoError(t, err)
+
+	iter, err := reader.Docs(pl, nil)
+	require.NoError(t, err)
+
+	actualDocs := make([]doc.Document, 0)
+	for iter.Next() {
+		actualDocs = append(actualDocs, iter.Current())
+	}
+
+	require.NoError(t, iter.Err())
+
+	expectedDocs := []doc.Document{docs[1], docs[2]}
+	require.Equal(t, expectedDocs, actualDocs)
 }

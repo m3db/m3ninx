@@ -4,7 +4,7 @@ import:
 - package: github.com/RoaringBitmap/roaring
   version: 0.3.9
 - package: github.com/m3db/m3x
-  version: 6db245044ad8602027d9ed396ae503947d74328a
+  version: c67bc0f6effede3c0db07835859b52b203b5677c
   subpackages:
   - instrument
 - package: github.com/uber-go/atomic
