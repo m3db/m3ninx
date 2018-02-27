@@ -100,10 +100,9 @@ metalint: install-metalinter
 test: test-base
 	gocov convert $(coverfile) | gocov report
 
-# Do not test native pooling for now due to slow travis builds
 .PHONY: test-integration
 test-integration:
-	TEST_NATIVE_POOLING=false make test-base-integration
+	make test-base-integration
 
 .PHONY: test-xml
 test-xml: test-base-xml
@@ -114,10 +113,9 @@ testhtml: test-base-html
 .PHONY: test-ci-unit
 test-ci-unit: test-base-ci-unit
 
-# Do not test native pooling for now due to slow travis builds
 .PHONY: test-ci-integration
 test-ci-integration:
-	INTEGRATION_TIMEOUT=4m TEST_NATIVE_POOLING=false make test-base-ci-integration
+	INTEGRATION_TIMEOUT=4m make test-base-ci-integration
 
 .PHONY: clean
 clean:
