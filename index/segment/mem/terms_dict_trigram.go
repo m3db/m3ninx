@@ -101,7 +101,7 @@ func (t *trigramTermsDict) matchRegex(name, pattern []byte) (postings.List, erro
 		return nil, fmt.Errorf("unable to parse regular expression %s: %v", patternStr, err)
 	}
 	q := cindex.RegexpQuery(re)
-	pl, err := t.matchQuery(name, q, nil, false)
+	pl, err := t.matchQuery(name, q, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get postings list matching query: %v", err)
 	}
@@ -111,16 +111,17 @@ func (t *trigramTermsDict) matchRegex(name, pattern []byte) (postings.List, erro
 func (t *trigramTermsDict) matchQuery(
 	name []byte,
 	q *cindex.Query,
-	candidatePL postings.MutableList,
-	created bool,
+	restrict postings.MutableList,
 ) (postings.MutableList, error) {
+	var list postings.MutableList
+
 	switch q.Op {
 	case cindex.QNone:
 		// Do nothing.
 
 	case cindex.QAll:
-		if candidatePL != nil {
-			return candidatePL, nil
+		if restrict != nil {
+			return restrict, nil
 		}
 		// Match all queries are not supported by the trigram terms dictionary.
 		return nil, errUnsupportedQuery
@@ -131,36 +132,30 @@ func (t *trigramTermsDict) matchQuery(
 			if err != nil {
 				return nil, err
 			}
-			if pl == nil {
-				return t.opts.PostingsListPool().Get(), nil
-			}
-			if !created {
-				candidatePL = pl.Clone()
-				created = true
+
+			if list == nil {
+				list = pl.Clone()
+				if restrict != nil {
+					list.Intersect(restrict)
+				}
 			} else {
-				candidatePL.Intersect(pl)
+				list.Intersect(pl)
 			}
-			if candidatePL.IsEmpty() {
-				return candidatePL, nil
+
+			if list.IsEmpty() {
+				return list, nil
 			}
 		}
 
 		for _, sub := range q.Sub {
-			pl, err := t.matchQuery(name, sub, candidatePL, created)
+			var err error
+			list, err = t.matchQuery(name, sub, list)
 			if err != nil {
 				return nil, err
 			}
-			if pl == nil {
-				return t.opts.PostingsListPool().Get(), nil
-			}
-			if !created {
-				candidatePL = pl
-				created = true
-			} else {
-				candidatePL.Intersect(pl)
-			}
-			if candidatePL.IsEmpty() {
-				return candidatePL, nil
+
+			if list.IsEmpty() {
+				return list, nil
 			}
 		}
 
@@ -170,35 +165,31 @@ func (t *trigramTermsDict) matchQuery(
 			if err != nil {
 				return nil, err
 			}
-			if pl == nil {
-				continue
-			}
-			if !created {
-				candidatePL = pl.Clone()
-				created = true
+
+			if list == nil {
+				list = pl.Clone()
 			} else {
-				candidatePL.Union(pl)
+				list.Union(pl)
 			}
 		}
 
 		for _, sub := range q.Sub {
-			pl, err := t.matchQuery(name, sub, candidatePL, created)
+			pl, err := t.matchQuery(name, sub, restrict)
 			if err != nil {
 				return nil, err
 			}
-			if pl == nil {
-				return t.opts.PostingsListPool().Get(), nil
-			}
-			if !created {
-				candidatePL = pl
-				created = true
+
+			if list == nil {
+				list = pl.Clone()
 			} else {
-				candidatePL.Union(pl)
+				list.Union(pl)
 			}
 		}
+
+		list.Intersect(restrict)
 	}
 
-	return candidatePL, nil
+	return list, nil
 }
 
 func (t *trigramTermsDict) matchTrigram(name []byte, tri string) (postings.List, error) {

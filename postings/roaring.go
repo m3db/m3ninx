@@ -75,11 +75,11 @@ func (d *roaringPostingsList) Difference(other List) error {
 		return errDifferenceRoaringOnly
 	}
 
-	d.Lock()
 	o.RLock()
+	d.Lock()
 	d.bitmap.AndNot(o.bitmap)
-	o.RUnlock()
 	d.Unlock()
+	o.RUnlock()
 	return nil
 }
 

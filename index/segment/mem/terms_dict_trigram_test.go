@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/postings"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -71,14 +72,33 @@ func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 	}, 2)
 	t.Require().NoError(err)
 
-	pattern := "bar-.*"
-	re := regexp.MustCompile(pattern)
-	pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(pattern), re)
-	t.Require().NoError(err)
-	t.Require().NotNil(pl)
-	t.Equal(2, pl.Len())
-	t.True(pl.Contains(1))
-	t.True(pl.Contains(2))
+	tests := []struct {
+		name     string
+		pattern  string
+		expected []int
+	}{
+		{
+			name:     "regex with match all",
+			pattern:  "bar-.*",
+			expected: []int{1, 2},
+		},
+		{
+			name:     "regex with match either",
+			pattern:  "bar-(1|2)",
+			expected: []int{1, 2},
+		},
+	}
+
+	for _, test := range tests {
+		re := regexp.MustCompile(test.pattern)
+		pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(test.pattern), re)
+		t.Require().NoError(err)
+
+		t.Equal(len(test.expected), pl.Len())
+		for _, e := range test.expected {
+			t.True(pl.Contains(postings.ID(e)))
+		}
+	}
 }
 
 func TestTrigramTermsDictionary(t *testing.T) {
