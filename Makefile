@@ -101,8 +101,7 @@ test: test-base
 	gocov convert $(coverfile) | gocov report
 
 .PHONY: test-integration
-test-integration:
-	make test-base-integration
+test-integration: test-base-integration
 
 .PHONY: test-xml
 test-xml: test-base-xml
