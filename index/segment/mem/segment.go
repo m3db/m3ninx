@@ -22,8 +22,10 @@ package mem
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
@@ -99,6 +101,16 @@ func (s *segment) Insert(d doc.Document) error {
 	if s.state.sealed {
 		s.state.RUnlock()
 		return errSegmentSealed
+	}
+
+	// Validate that the documents contains only valid UTF-8.
+	for _, f := range d.Fields {
+		if !utf8.Valid(f.Name) {
+			return fmt.Errorf("document contains invalid field name: %v", f.Name)
+		}
+		if !utf8.Valid(f.Value) {
+			return fmt.Errorf("document contains invalid field value: %v", f.Value)
+		}
 	}
 
 	// TODO: Consider supporting concurrent writes by relaxing the requirement that
