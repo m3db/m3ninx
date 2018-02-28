@@ -28,10 +28,6 @@ import (
 	"github.com/m3db/m3ninx/postings"
 )
 
-const (
-	regexpMatchFactor = 0.01
-)
-
 // simpleTermsDict uses a two-level map to model a terms dictionary. It maps a field
 // (name and value) to a postings list.
 type simpleTermsDict struct {

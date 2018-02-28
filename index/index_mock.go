@@ -24,11 +24,13 @@
 package index
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	doc "github.com/m3db/m3ninx/doc"
-	postings "github.com/m3db/m3ninx/postings"
-	reflect "reflect"
-	regexp "regexp"
+	"reflect"
+	"regexp"
+
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/postings"
+
+	"github.com/golang/mock/gomock"
 )
 
 // MockIndex is a mock of Index interface

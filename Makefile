@@ -74,7 +74,7 @@ install-proto-bin: install-vendor
 	go install $(m3ninx_package)/$(vendor_prefix)/$(protoc_go_package)
 
 .PHONY: mock-gen
-mock-gen: install-mockgen install-license-bin
+mock-gen: install-mockgen install-util-mockclean install-license-bin
 	@echo Generating mocks
 	PACKAGE=$(m3ninx_package) $(auto_gen) $(mocks_output_dir) $(mocks_rules_dir)
 

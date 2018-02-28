@@ -78,6 +78,7 @@ func (it *iterator) Close() error {
 		return errIteratorClosed
 	}
 	it.closed = true
+	it.current = doc.Document{}
 	err := it.postingsIter.Close()
 	it.wg.Done()
 	return err

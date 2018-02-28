@@ -21,10 +21,16 @@
 package mem
 
 import (
+	"math"
 	"regexp"
 	"sync"
 
 	"github.com/m3db/m3ninx/postings"
+)
+
+const (
+	regexpMatchFactor = 0.01
+	regexMatchMaxLen  = 1024.0
 )
 
 // postingsMap maps a byte slice to a postings list of all documents associated with
@@ -90,8 +96,8 @@ func (m *postingsMap) get(key []byte) postings.List {
 func (m *postingsMap) getRegex(re *regexp.Regexp) []postings.List {
 	m.RLock()
 
-	initLen := int(regexpMatchFactor * float64(len(m.postings)))
-	ps := make([]postings.List, 0, initLen)
+	initLen := math.Min(regexpMatchFactor*float64(len(m.postings)), regexMatchMaxLen)
+	ps := make([]postings.List, 0, int(initLen))
 
 	for key, p := range m.postings {
 		// TODO: Evaluate lock contention caused by holding on to the read lock while

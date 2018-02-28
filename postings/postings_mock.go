@@ -24,8 +24,9 @@
 package postings
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
+	"reflect"
+
+	"github.com/golang/mock/gomock"
 )
 
 // MockList is a mock of List interface
