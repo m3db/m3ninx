@@ -18,46 +18,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package query
+package searcher
 
 import (
 	"regexp"
-	"testing"
 
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
+	"github.com/m3db/m3ninx/search"
 )
 
-func TestRegexpQuery(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
+type regexpSearcher struct {
+	field, regex []byte
+	compiled     *regexp.Regexp
+	snapshot     index.Snapshot
 
-	name, pattern := []byte("apple"), []byte("r.*")
-	re := regexp.MustCompile(string(pattern))
-
-	postingsList := postings.NewRoaringPostingsList()
-	postingsList.Insert(postings.ID(42))
-	postingsList.Insert(postings.ID(50))
-	postingsList.Insert(postings.ID(57))
-
-	reader := index.NewMockReader(mockCtrl)
-	gomock.InOrder(
-		reader.EXPECT().MatchRegex(name, pattern, re).Return(postingsList, nil),
-	)
-
-	q, err := NewRegexpQuery(name, pattern)
-	require.NoError(t, err)
-
-	actual, err := q.Execute(reader)
-	require.NoError(t, err)
-	require.True(t, postingsList.Equal(actual))
+	current doc.Document
+	closed  bool
 }
 
-func TestRegexpQueryError(t *testing.T) {
-	name, pattern := []byte("apple"), []byte(".*(")
-	_, err := NewRegexpQuery(name, pattern)
-	require.Error(t, err)
+// NewRegexpSearcher returns a new Searcher for matching a term exactly.
+func NewRegexpSearcher(field, regex []byte, compiled *regexp.Regexp, s index.Snapshot) search.Searcher {
+	return &regexpSearcher{
+		field:    field,
+		regex:    regex,
+		compiled: compiled,
+		snapshot: s,
+	}
 }
+
+func (s *regexpSearcher) Next() bool            { return false }
+func (s *regexpSearcher) Current() doc.Document { return doc.Document{} }
+func (s *regexpSearcher) Err() error            { return nil }
+func (s *regexpSearcher) Close() error          { return nil }

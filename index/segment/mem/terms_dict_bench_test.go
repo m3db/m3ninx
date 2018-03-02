@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	benchMatchRegexName    = []byte("__name__")
-	benchMatchRegexPattern = []byte("node_netstat_Tcp_.*")
-	benchMatchRegexRE      = regexp.MustCompile(string(benchMatchRegexPattern))
+	benchField      = []byte("__name__")
+	benchRegex      = []byte("node_netstat_Tcp_.*")
+	benchCompiledRE = regexp.MustCompile(string(benchRegex))
 )
 
 func BenchmarkTermsDict(b *testing.B) {
@@ -32,12 +32,12 @@ func BenchmarkTermsDict(b *testing.B) {
 			fn:   benchmarkInsertTrigramTermsDict,
 		},
 		{
-			name: "benchmark MatchExact with simple terms dictionary",
-			fn:   benchmarkMatchExactSimpleTermsDict,
+			name: "benchmark MatchTerm with simple terms dictionary",
+			fn:   benchmarkMatchTermSimpleTermsDict,
 		},
 		{
-			name: "benchmark MatchExact with trigram terms dictionary",
-			fn:   benchmarkMatchExactTrigramTermsDict,
+			name: "benchmark MatchTerm with trigram terms dictionary",
+			fn:   benchmarkMatchTermTrigramTermsDict,
 		},
 		{
 			name: "benchmark MatchRegex with simple terms dictionary",
@@ -93,7 +93,7 @@ func benchmarkInsertTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	}
 }
 
-func benchmarkMatchExactSimpleTermsDict(docs []doc.Document, b *testing.B) {
+func benchmarkMatchTermSimpleTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
 	dict := newSimpleTermsDict(NewOptions())
@@ -107,13 +107,13 @@ func benchmarkMatchExactSimpleTermsDict(docs []doc.Document, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		for _, d := range docs {
 			for _, f := range d.Fields {
-				dict.MatchExact(f.Name, f.Value)
+				dict.MatchTerm(f.Name, f.Value)
 			}
 		}
 	}
 }
 
-func benchmarkMatchExactTrigramTermsDict(docs []doc.Document, b *testing.B) {
+func benchmarkMatchTermTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
 
 	dict := newTrigramTermsDict(NewOptions())
@@ -130,7 +130,7 @@ func benchmarkMatchExactTrigramTermsDict(docs []doc.Document, b *testing.B) {
 				// The trigram terms dictionary can return false postives so we may want to
 				// consider verifying the results returned are matches to provide a more
 				// fair comparison with the simple terms dictionary.
-				dict.MatchExact(f.Name, f.Value)
+				dict.MatchTerm(f.Name, f.Value)
 			}
 		}
 	}
@@ -148,7 +148,7 @@ func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		dict.MatchRegex(benchMatchRegexName, benchMatchRegexPattern, benchMatchRegexRE)
+		dict.MatchRegex(benchField, benchRegex, benchCompiledRE)
 	}
 }
 
@@ -167,7 +167,7 @@ func benchmarkMatchRegexTrigramTermsDict(docs []doc.Document, b *testing.B) {
 		// The trigram terms dictionary can return false postives so we may want to
 		// consider verifying the results returned are matches to provide a more
 		// fair comparison with the simple terms dictionary.
-		dict.MatchRegex(benchMatchRegexName, benchMatchRegexPattern, benchMatchRegexRE)
+		dict.MatchRegex(benchField, benchRegex, benchCompiledRE)
 	}
 }
 

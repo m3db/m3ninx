@@ -18,24 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package search
+package util
 
-import (
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index"
-)
+// RefCount is an interface for a reference counted object.
+type RefCount interface {
+	// Inc increments the reference count.
+	Inc()
 
-// Query is a search query for documents.
-type Query interface {
-	// Searcher returns a Searcher for executing the query over a snapshot.
-	Searcher(s index.Snapshot) (Searcher, error)
-}
+	// Dec decrements the reference count.
+	Dec()
 
-// Searcher executes a query against a snapshot. It is not safe for concurrent access.
-type Searcher interface {
-	// Next ...
-	Next() (doc.Document, error)
-
-	// Error releases any internal resources used by the iterator.
-	Close() error
+	// Count returns the current number of references.
+	Count() int
 }

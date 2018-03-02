@@ -25,6 +25,7 @@ import (
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/util"
 )
 
 // termsDict is an internal interface for a mutable terms dictionary.
@@ -32,25 +33,28 @@ type termsDict interface {
 	// Insert inserts the field with the given ID into the terms dictionary.
 	Insert(field doc.Field, id postings.ID) error
 
-	// MatchExact returns the postings list corresponding to documents which match the
-	// given field name and value exactly.
-	MatchExact(name, value []byte) (postings.List, error)
+	// MatchTerm returns the postings list corresponding to documents which match the
+	// given field term exactly.
+	MatchTerm(field, term []byte) (postings.List, error)
 
 	// MatchRegex returns the postings list corresponding to documents which match the
-	// given name field and regular expression pattern. Both the compiled regular expression
-	// and the pattern it was generated from are provided so terms dictionaries can
-	// optimize their searches.
-	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+	// given egular expression.
+	MatchRegex(field, regex []byte, compiled *regexp.Regexp) (postings.List, error)
 }
 
-// readableSegment is an internal interface for reading from a segment.
-type readableSegment interface {
-	// matchExact returns the postings list of documents which match the given name and
-	// value exactly.
-	matchExact(name, value []byte) (postings.List, error)
+// ReadableSegment is an internal interface for reading from a segment.
+//
+// NB(jeromefroe): Currently mockgen requires that interfaces with embedded interfaces be
+// generated with reflection mode, but private interfaces can only be generated with file
+// mode so we can't mock this interface if its private. Once mockgen supports mocking
+// private interfaces which contain embedded interfaces we can make this interface private.
+type ReadableSegment interface {
+	util.RefCount
 
-	// matchRegex returns the postings list of documents which match the given name and
-	// regular expression.
+	// matchTerm returns the postings list of documents which match the given term exactly.
+	matchTerm(field, term []byte) (postings.List, error)
+
+	// matchRegex returns the postings list of documents which match the given regular expression.
 	matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
 
 	// getDoc returns the document associated with the given ID.

@@ -25,6 +25,7 @@ import (
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/util"
 )
 
 // Index is a collection of searchable documents.
@@ -57,19 +58,18 @@ type Snapshot interface {
 
 // Reader provides a point-in-time accessor to the documents in an index.
 type Reader interface {
-	// MatchExact returns a postings list over all documents which exactly match the
-	// given field name and value.
-	MatchExact(name, value []byte) (postings.List, error)
+	util.RefCount
 
-	// MatchRegex returns a postings list over all documents which match the given field
-	// name and regular expression. The client can optionally pass the compiled regex so
-	// that the Reader need not compile it themselves.
-	MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+	// MatchTerm returns a postings list over all documents which match the given term.
+	MatchTerm(field, term []byte) (postings.List, error)
 
-	// Docs returns an iterator over the documents corresponding to the provided postings
-	// list. If name is non-empty then only the specified names are returned in the
-	// documents.
-	Docs(pl postings.List, names [][]byte) (doc.Iterator, error)
+	// MatchRegex returns a postings list over all documents which match the given
+	// regular expression.
+	MatchRegex(name, regex []byte, compiled *regexp.Regexp) (postings.List, error)
+
+	// Docs returns an iterator over the documents whose IDs are in the provided
+	//  postings list.
+	Docs(pl postings.List) (doc.Iterator, error)
 
 	// Close closes the reader and releases any internal resources.
 	Close() error

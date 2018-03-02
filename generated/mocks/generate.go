@@ -22,5 +22,7 @@ package mocks
 
 // mockgen rules for generating mocks (file mode)
 //go:generate sh -c "mockgen -package=postings -destination=$GOPATH/src/github.com/m3db/m3ninx/postings/postings_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/postings/types.go"
-//go:generate sh -c "mockgen -package=index -destination=$GOPATH/src/github.com/m3db/m3ninx/index/index_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/index/types.go"
-//go:generate sh -c "mockgen -package=mem -destination=$GOPATH/src/github.com/m3db/m3ninx/index/segment/mem/mem_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/index/segment/mem/types.go"
+
+// mockgen rules for generating mocks (reflection mode)
+//go:generate sh -c "mockgen -package=index -destination=$GOPATH/src/github.com/m3db/m3ninx/index/index_mock.go github.com/m3db/m3ninx/index Reader"
+//go:generate sh -c "mockgen -package=mem -destination=$GOPATH/src/github.com/m3db/m3ninx/index/segment/mem/mem_mock.go github.com/m3db/m3ninx/index/segment/mem ReadableSegment"

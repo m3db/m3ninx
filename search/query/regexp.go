@@ -24,32 +24,30 @@ import (
 	"regexp"
 
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
-// RegexpQuery finds documents which match the given regular expression.
-type RegexpQuery struct {
-	name    []byte
-	pattern []byte
-	re      *regexp.Regexp
+// regexpQuery finds documents which match the given regular expression.
+type regexpQuery struct {
+	field    []byte
+	regex    []byte
+	compiled *regexp.Regexp
 }
 
-// NewRegexpQuery constructs a new RegexpQuery for the given field name and regular expression.
-func NewRegexpQuery(name, pattern []byte) (search.Query, error) {
-	re, err := regexp.Compile(string(pattern))
+// NewRegexpQuery constructs a new query for the given regular expression.
+func NewRegexpQuery(field, regex []byte) (search.Query, error) {
+	compiled, err := regexp.Compile(string(regex))
 	if err != nil {
 		return nil, err
 	}
 
-	return &RegexpQuery{
-		name:    name,
-		pattern: pattern,
-		re:      re,
+	return &regexpQuery{
+		field:    field,
+		regex:    regex,
+		compiled: compiled,
 	}, nil
 }
 
-// Execute returns an iterator over documents matching the given regular expression.
-func (q *RegexpQuery) Execute(r index.Reader) (postings.List, error) {
-	return r.MatchRegex(q.name, q.pattern, q.re)
+func (q *regexpQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
+	return searcher.NewRegexpSearcher(q.field, q.term, s), nil
 }

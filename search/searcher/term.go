@@ -18,36 +18,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package query
+package searcher
 
 import (
-	"testing"
-
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
+	"github.com/m3db/m3ninx/search"
 )
 
-func TestExactQuery(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
+type termSearcher struct {
+	field, term []byte
+	snapshot    index.Snapshot
 
-	name, value := []byte("apple"), []byte("red")
-
-	postingsList := postings.NewRoaringPostingsList()
-	postingsList.Insert(postings.ID(42))
-	postingsList.Insert(postings.ID(50))
-	postingsList.Insert(postings.ID(57))
-
-	reader := index.NewMockReader(mockCtrl)
-	gomock.InOrder(
-		reader.EXPECT().MatchExact(name, value).Return(postingsList, nil),
-	)
-
-	q := NewExactQuery(name, value)
-	actual, err := q.Execute(reader)
-	require.NoError(t, err)
-	require.True(t, postingsList.Equal(actual))
+	current doc.Document
+	closed  bool
 }
+
+// NewTermSearcher returns a new Searcher for matching a term exactly.
+func NewTermSearcher(s index.Snapshot, field, term []byte) (search.Searcher, error) {
+	for _, r := range s.Readers() {
+		pl, err := r.MatchTerm(field, term)
+		if err != nil {
+
+		}
+	}
+
+	return &termSearcher{
+		field:    field,
+		term:     term,
+		snapshot: s,
+	}
+}
+
+func (s *termSearcher) Next() (doc.Document, error) { return doc.Document{}, nil }
+func (s *termSearcher) Close() error                { return nil }

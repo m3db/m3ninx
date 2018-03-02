@@ -22,7 +22,6 @@ package query
 
 import (
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
@@ -31,42 +30,13 @@ type disjuctionQuery struct {
 	queries []search.Query
 }
 
-// newDisjuctionQuery constructs a new DisjuctionQuery from the given queries.
-func newDisjuctionQuery(queries []search.Query) search.Query {
+// NewDisjuctionQuery constructs a new DisjuctionQuery from the given queries.
+func NewDisjuctionQuery(queries []search.Query) search.Query {
 	return &disjuctionQuery{
 		queries: queries,
 	}
 }
 
-// Execute returns an iterator over documents matching the disjunction query.
-func (q *disjuctionQuery) Execute(r index.Reader) (postings.List, error) {
-	if len(q.queries) == 0 {
-		return postings.NewRoaringPostingsList(), nil
-	}
-
-	pl, err := q.queries[0].Execute(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fast path for when we have only one internal query so we can avoid cloning the
-	// postings list.
-	if len(q.queries) == 1 {
-		return pl, nil
-	}
-
-	mpl := pl.Clone()
-	for _, qy := range q.queries[1:] {
-		pl, err := qy.Execute(r)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO(jeromefroe): Instead of unioning in order we should instead get all the
-		// postings lists, clone the largest one, and then union them in order of
-		// decreasing size.
-		mpl.Union(pl)
-	}
-
-	return mpl, nil
+func (q *disjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
+	return searcher.NewDisjunctionSearcher(queries s), nil
 }

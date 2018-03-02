@@ -21,7 +21,6 @@
 package mem
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -35,7 +34,7 @@ func TestIterator(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	offset := postings.ID(41)
+	maxID := postings.ID(41)
 	docs := []doc.Document{
 		doc.Document{
 			Fields: []doc.Field{
@@ -61,28 +60,39 @@ func TestIterator(t *testing.T) {
 				},
 			},
 		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("date"),
+					Value: []byte("brown"),
+				},
+			},
+		},
 	}
 
-	segment := NewMockreadableSegment(mockCtrl)
+	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().getDoc(offset+1).Return(docs[0], nil),
-		segment.EXPECT().getDoc(offset+4).Return(docs[1], nil),
-		segment.EXPECT().getDoc(offset+11).Return(docs[2], nil),
+		segment.EXPECT().Inc(),
+		segment.EXPECT().getDoc(maxID-2).Return(docs[0], nil),
+		segment.EXPECT().getDoc(maxID-1).Return(docs[1], nil),
+		segment.EXPECT().getDoc(maxID).Return(docs[2], nil),
+		segment.EXPECT().Dec(),
 	)
 
 	postingsIter := postings.NewMockIterator(mockCtrl)
 	gomock.InOrder(
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(offset+1),
+		postingsIter.EXPECT().Current().Return(maxID-2),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(offset+4),
+		postingsIter.EXPECT().Current().Return(maxID-1),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(offset+11),
-		postingsIter.EXPECT().Next().Return(false),
+		postingsIter.EXPECT().Current().Return(maxID),
+		postingsIter.EXPECT().Next().Return(true),
+		postingsIter.EXPECT().Current().Return(maxID+1),
 		postingsIter.EXPECT().Close().Return(nil),
 	)
 
-	it := newIterator(segment, postingsIter, new(sync.WaitGroup))
+	it := newIterator(segment, postingsIter, maxID)
 
 	require.True(t, it.Next())
 	require.Equal(t, docs[0], it.Current())
@@ -96,13 +106,4 @@ func TestIterator(t *testing.T) {
 
 	require.NoError(t, it.Close())
 	require.Error(t, it.Close())
-}
-
-func TestEmptyIterator(t *testing.T) {
-	it := emptyIter
-
-	require.False(t, it.Next())
-	require.Equal(t, doc.Document{}, it.Current())
-	require.NoError(t, it.Err())
-	require.NoError(t, it.Close())
 }

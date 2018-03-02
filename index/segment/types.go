@@ -23,10 +23,13 @@ package segment
 import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/util"
 )
 
 // Segment is a sub-collection of documents within an index.
 type Segment interface {
+	util.RefCount
+
 	// Reader returns a point-in-time accessor to search the segment.
 	Reader() (index.Reader, error)
 

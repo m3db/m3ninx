@@ -23,25 +23,43 @@ package postings
 import (
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPoolGet(t *testing.T) {
-	pl := NewPool(nil, NewRoaringPostingsList)
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockPoolAllocateFn := func() MutableList {
+		return NewMockMutableList(mockCtrl)
+	}
+
+	pl := NewPool(nil, mockPoolAllocateFn)
 	require.NotNil(t, pl)
 
 	p := pl.Get()
 	require.NotNil(t, p)
-	require.True(t, p.IsEmpty())
 }
 
 func TestPoolPut(t *testing.T) {
-	pl := NewPool(nil, NewRoaringPostingsList)
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	l := NewMockMutableList(mockCtrl)
+	gomock.InOrder(
+		l.EXPECT().Reset(),
+	)
+
+	mockPoolAllocateFn := func() MutableList {
+		return l
+	}
+
+	pl := NewPool(nil, mockPoolAllocateFn)
 	require.NotNil(t, pl)
 
 	p := pl.Get()
 	require.NotNil(t, p)
-	require.True(t, p.IsEmpty())
 
 	pl.Put(p)
 }

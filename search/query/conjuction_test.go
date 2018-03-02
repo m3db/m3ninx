@@ -36,14 +36,14 @@ func TestConjunctionQuery(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewExactQuery(firstName, firstValue)
+	firstQuery := NewTermQuery(firstName, firstValue)
 	firstPostingsList := postings.NewRoaringPostingsList()
 	firstPostingsList.Insert(postings.ID(42))
 	firstPostingsList.Insert(postings.ID(50))
 	firstPostingsList.Insert(postings.ID(57))
 
 	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewExactQuery(secondName, secondValue)
+	secondQuery := NewTermQuery(secondName, secondValue)
 	secondPostingsList := postings.NewRoaringPostingsList()
 	secondPostingsList.Insert(postings.ID(44))
 	secondPostingsList.Insert(postings.ID(50))
@@ -51,8 +51,8 @@ func TestConjunctionQuery(t *testing.T) {
 
 	reader := index.NewMockReader(mockCtrl)
 	gomock.InOrder(
-		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
+		reader.EXPECT().MatchTerm(firstName, firstValue).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchTerm(secondName, secondValue).Return(secondPostingsList, nil),
 	)
 
 	expected := postings.NewRoaringPostingsList()

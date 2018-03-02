@@ -53,7 +53,7 @@ func (t *trigramTermsDictionaryTestSuite) TestInsert() {
 	)
 	t.Require().NoError(err)
 
-	pl, err := t.termsDict.MatchExact([]byte("foo"), []byte("bar"))
+	pl, err := t.termsDict.MatchTerm([]byte("foo"), []byte("bar"))
 	t.Require().NoError(err)
 	t.Require().NotNil(pl)
 	t.Equal(1, pl.Len())
@@ -73,25 +73,22 @@ func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 	t.Require().NoError(err)
 
 	tests := []struct {
-		name     string
-		pattern  string
+		regex    string
 		expected []int
 	}{
 		{
-			name:     "regex with match all",
-			pattern:  "bar-.*",
+			regex:    "bar-.*",
 			expected: []int{1, 2},
 		},
 		{
-			name:     "regex with match either",
-			pattern:  "bar-(1|2)",
+			regex:    "bar-(1|2)",
 			expected: []int{1, 2},
 		},
 	}
 
 	for _, test := range tests {
-		re := regexp.MustCompile(test.pattern)
-		pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(test.pattern), re)
+		re := regexp.MustCompile(test.regex)
+		pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(test.regex), re)
 		t.Require().NoError(err)
 
 		t.Equal(len(test.expected), pl.Len())

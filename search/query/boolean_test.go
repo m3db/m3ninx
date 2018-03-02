@@ -35,15 +35,15 @@ func TestBooleanQueryMust(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewExactQuery(firstName, firstValue)
+	firstField, firstTerm := []byte("apple"), []byte("red")
+	firstQuery := NewTermQuery(firstField, firstTerm)
 	firstPostingsList := postings.NewRoaringPostingsList()
 	firstPostingsList.Insert(postings.ID(42))
 	firstPostingsList.Insert(postings.ID(50))
 	firstPostingsList.Insert(postings.ID(57))
 
-	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewExactQuery(secondName, secondValue)
+	secondField, secondTerm := []byte("banana"), []byte("yellow")
+	secondQuery := NewTermQuery(secondField, secondTerm)
 	secondPostingsList := postings.NewRoaringPostingsList()
 	secondPostingsList.Insert(postings.ID(44))
 	secondPostingsList.Insert(postings.ID(50))
@@ -51,8 +51,8 @@ func TestBooleanQueryMust(t *testing.T) {
 
 	reader := index.NewMockReader(mockCtrl)
 	gomock.InOrder(
-		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
+		reader.EXPECT().MatchTerm(firstField, firstTerm).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchTerm(secondField, secondTerm).Return(secondPostingsList, nil),
 	)
 
 	expected := postings.NewRoaringPostingsList()
@@ -70,15 +70,15 @@ func TestBooleanQueryShould(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewExactQuery(firstName, firstValue)
+	firstField, firstTerm := []byte("apple"), []byte("red")
+	firstQuery := NewTermQuery(firstField, firstTerm)
 	firstPostingsList := postings.NewRoaringPostingsList()
 	firstPostingsList.Insert(postings.ID(42))
 	firstPostingsList.Insert(postings.ID(50))
 	firstPostingsList.Insert(postings.ID(57))
 
-	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewExactQuery(secondName, secondValue)
+	secondName, secondTerm := []byte("banana"), []byte("yellow")
+	secondQuery := NewTermQuery(secondName, secondTerm)
 	secondPostingsList := postings.NewRoaringPostingsList()
 	secondPostingsList.Insert(postings.ID(44))
 	secondPostingsList.Insert(postings.ID(50))
@@ -86,8 +86,8 @@ func TestBooleanQueryShould(t *testing.T) {
 
 	reader := index.NewMockReader(mockCtrl)
 	gomock.InOrder(
-		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
+		reader.EXPECT().MatchTerm(firstField, firstTerm).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchTerm(secondName, secondTerm).Return(secondPostingsList, nil),
 	)
 
 	expected := postings.NewRoaringPostingsList()
@@ -109,15 +109,15 @@ func TestBooleanQueryMustNot(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewExactQuery(firstName, firstValue)
+	firstField, firstTerm := []byte("apple"), []byte("red")
+	firstQuery := NewTermQuery(firstField, firstTerm)
 	firstPostingsList := postings.NewRoaringPostingsList()
 	firstPostingsList.Insert(postings.ID(42))
 	firstPostingsList.Insert(postings.ID(50))
 	firstPostingsList.Insert(postings.ID(57))
 
-	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewExactQuery(secondName, secondValue)
+	secondName, secondTerm := []byte("banana"), []byte("yellow")
+	secondQuery := NewTermQuery(secondName, secondTerm)
 	secondPostingsList := postings.NewRoaringPostingsList()
 	secondPostingsList.Insert(postings.ID(44))
 	secondPostingsList.Insert(postings.ID(50))
@@ -125,8 +125,8 @@ func TestBooleanQueryMustNot(t *testing.T) {
 
 	reader := index.NewMockReader(mockCtrl)
 	gomock.InOrder(
-		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
+		reader.EXPECT().MatchTerm(firstField, firstTerm).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchTerm(secondName, secondTerm).Return(secondPostingsList, nil),
 	)
 
 	expected := postings.NewRoaringPostingsList()
@@ -145,22 +145,22 @@ func TestBooleanQueryAll(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewExactQuery(firstName, firstValue)
+	firstField, firstTerm := []byte("apple"), []byte("red")
+	firstQuery := NewTermQuery(firstField, firstTerm)
 	firstPostingsList := postings.NewRoaringPostingsList()
 	firstPostingsList.Insert(postings.ID(42))
 	firstPostingsList.Insert(postings.ID(50))
 	firstPostingsList.Insert(postings.ID(57))
 
-	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewExactQuery(secondName, secondValue)
+	secondName, secondTerm := []byte("banana"), []byte("yellow")
+	secondQuery := NewTermQuery(secondName, secondTerm)
 	secondPostingsList := postings.NewRoaringPostingsList()
 	secondPostingsList.Insert(postings.ID(44))
 	secondPostingsList.Insert(postings.ID(50))
 	secondPostingsList.Insert(postings.ID(57))
 
 	thirdName, thirdValue := []byte("banana"), []byte("yellow")
-	thirdQuery := NewExactQuery(thirdName, thirdValue)
+	thirdQuery := NewTermQuery(thirdName, thirdValue)
 	thirdPostingsList := postings.NewRoaringPostingsList()
 	thirdPostingsList.Insert(postings.ID(39))
 	thirdPostingsList.Insert(postings.ID(50))
@@ -168,9 +168,9 @@ func TestBooleanQueryAll(t *testing.T) {
 
 	reader := index.NewMockReader(mockCtrl)
 	gomock.InOrder(
-		reader.EXPECT().MatchExact(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchExact(secondName, secondValue).Return(secondPostingsList, nil),
-		reader.EXPECT().MatchExact(thirdName, thirdValue).Return(thirdPostingsList, nil),
+		reader.EXPECT().MatchTerm(firstField, firstTerm).Return(firstPostingsList, nil),
+		reader.EXPECT().MatchTerm(secondName, secondTerm).Return(secondPostingsList, nil),
+		reader.EXPECT().MatchTerm(thirdName, thirdValue).Return(thirdPostingsList, nil),
 	)
 
 	expected := postings.NewRoaringPostingsList()
@@ -185,7 +185,7 @@ func TestBooleanQueryAll(t *testing.T) {
 }
 
 func TestBooleanQueryOnlyMustNot(t *testing.T) {
-	query := NewExactQuery([]byte("apple"), []byte("red"))
+	query := NewTermQuery([]byte("apple"), []byte("red"))
 
 	_, err := NewBooleanQuery(nil, nil, []search.Query{query})
 	require.Error(t, err)

@@ -98,7 +98,7 @@ func (t *simpleTermsDictionaryTestSuite) TestInsert() {
 	props.TestingRun(t.T())
 }
 
-func (t *simpleTermsDictionaryTestSuite) TestMatchExact() {
+func (t *simpleTermsDictionaryTestSuite) TestMatchTerm() {
 	props := getProperties()
 	props.Property(
 		"The dictionary should support exact match queries",
@@ -109,7 +109,7 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchExact() {
 					return false, fmt.Errorf("unexpected error inserting %v into terms dictionary: %v", f, err)
 				}
 
-				pl, err := t.termsDict.MatchExact(f.Name, []byte(f.Value))
+				pl, err := t.termsDict.MatchTerm(f.Name, []byte(f.Value))
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -129,13 +129,13 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchExact() {
 	props.TestingRun(t.T())
 }
 
-func (t *simpleTermsDictionaryTestSuite) TestMatchExactNoResults() {
+func (t *simpleTermsDictionaryTestSuite) TestMatchTermNoResults() {
 	props := getProperties()
 	props.Property(
 		"Exact match queries which return no results are valid",
 		prop.ForAll(
 			func(f doc.Field) (bool, error) {
-				pl, err := t.termsDict.MatchExact(f.Name, []byte(f.Value))
+				pl, err := t.termsDict.MatchTerm(f.Name, []byte(f.Value))
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -161,16 +161,16 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 		prop.ForAll(
 			func(input fieldAndRegex, id postings.ID) (bool, error) {
 				var (
-					f       = input.field
-					pattern = input.pattern
-					re      = input.re
+					f        = input.field
+					regex    = input.regex
+					compiled = input.compiled
 				)
 				err := t.termsDict.Insert(f, id)
 				if err != nil {
 					return false, fmt.Errorf("unexpected error inserting %v into terms dictionary: %v", f, err)
 				}
 
-				pl, err := t.termsDict.MatchRegex(f.Name, []byte(pattern), re)
+				pl, err := t.termsDict.MatchRegex(f.Name, []byte(regex), compiled)
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -197,11 +197,11 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegexNoResults() {
 		prop.ForAll(
 			func(input fieldAndRegex, id postings.ID) (bool, error) {
 				var (
-					f       = input.field
-					pattern = input.pattern
-					re      = input.re
+					f        = input.field
+					regex    = input.regex
+					compiled = input.compiled
 				)
-				pl, err := t.termsDict.MatchRegex(f.Name, []byte(pattern), re)
+				pl, err := t.termsDict.MatchRegex(f.Name, []byte(regex), compiled)
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -262,23 +262,23 @@ func genDocID() gopter.Gen {
 }
 
 type fieldAndRegex struct {
-	field   doc.Field
-	pattern string
-	re      *regexp.Regexp
+	field    doc.Field
+	regex    string
+	compiled *regexp.Regexp
 }
 
 func genFieldAndRegex() gopter.Gen {
 	return gen.OneConstOf(sampleRegexes...).
 		FlatMap(func(value interface{}) gopter.Gen {
-			pattern := value.(string)
-			return fieldFromRegex(pattern)
+			regex := value.(string)
+			return fieldFromRegex(regex)
 		}, reflect.TypeOf(fieldAndRegex{}))
 }
 
-func fieldFromRegex(pattern string) gopter.Gen {
+func fieldFromRegex(regex string) gopter.Gen {
 	return gopter.CombineGens(
 		gen.AnyString(),
-		gen.RegexMatch(pattern),
+		gen.RegexMatch(regex),
 	).Map(func(values []interface{}) fieldAndRegex {
 		var (
 			name  = values[0].(string)
@@ -289,9 +289,9 @@ func fieldFromRegex(pattern string) gopter.Gen {
 			Value: []byte(value),
 		}
 		return fieldAndRegex{
-			field:   f,
-			pattern: pattern,
-			re:      regexp.MustCompile(pattern),
+			field:    f,
+			regex:    regex,
+			compiled: regexp.MustCompile(regex),
 		}
 	})
 }

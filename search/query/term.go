@@ -18,22 +18,27 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package searcher
+package query
 
 import (
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
 )
 
-type searcher struct{}
-
-// New returns a new searcher for an index snapshot.
-func New() search.Searcher {
-	return &searcher{}
+// termQuery finds document which match the given term exactly.
+type termQuery struct {
+	field []byte
+	term  []byte
 }
 
-// Search executes a query against an index
-func (s *searcher) Search(sn index.Snapshot, q search.Query) (doc.Iterator, error) {
-	panic("not implemented")
+// NewTermQuery constructs a new TermQuery for the given field and term.
+func NewTermQuery(field, term []byte) search.Query {
+	return &TermQuery{
+		field: field,
+		term:  term,
+	}
+}
+
+func (q *termQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
+	return searcher.NewTermSearcher(s, q.field, q.term), nil
 }

@@ -18,11 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postings
+package roaring
 
 import (
 	"errors"
 	"sync"
+
+	"github.com/m3db/m3ninx/postings"
 
 	"github.com/RoaringBitmap/roaring"
 )
@@ -34,20 +36,20 @@ var (
 	errIteratorClosed        = errors.New("iterator has been closed")
 )
 
-// roaringPostingsList wraps a Roaring Bitmap with a mutex for thread safety.
-type roaringPostingsList struct {
+// postingsList wraps a Roaring Bitmap with a mutex for thread safety.
+type postingsList struct {
 	sync.RWMutex
 	bitmap *roaring.Bitmap
 }
 
-// NewRoaringPostingsList returns a new mutable postings list backed by a Roaring Bitmap.
-func NewRoaringPostingsList() MutableList {
-	return &roaringPostingsList{
+// NewPostingsList returns a new mutable postings list backed by a Roaring Bitmap.
+func NewPostingsList() postings.MutableList {
+	return &postingsList{
 		bitmap: roaring.NewBitmap(),
 	}
 }
 
-func (d *roaringPostingsList) Insert(i ID) error {
+func (d *postingsList) Insert(i postings.ID) error {
 	d.Lock()
 	d.bitmap.Add(uint32(i))
 	d.Unlock()
@@ -55,8 +57,8 @@ func (d *roaringPostingsList) Insert(i ID) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Intersect(other List) error {
-	o, ok := other.(*roaringPostingsList)
+func (d *postingsList) Intersect(other postings.List) error {
+	o, ok := other.(*postingsList)
 	if !ok {
 		return errIntersectRoaringOnly
 	}
@@ -69,8 +71,8 @@ func (d *roaringPostingsList) Intersect(other List) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Difference(other List) error {
-	o, ok := other.(*roaringPostingsList)
+func (d *postingsList) Difference(other postings.List) error {
+	o, ok := other.(*postingsList)
 	if !ok {
 		return errDifferenceRoaringOnly
 	}
@@ -83,8 +85,8 @@ func (d *roaringPostingsList) Difference(other List) error {
 	return nil
 }
 
-func (d *roaringPostingsList) Union(other List) error {
-	o, ok := other.(*roaringPostingsList)
+func (d *postingsList) Union(other postings.List) error {
+	o, ok := other.(*postingsList)
 	if !ok {
 		return errUnionRoaringOnly
 	}
@@ -97,69 +99,69 @@ func (d *roaringPostingsList) Union(other List) error {
 	return nil
 }
 
-func (d *roaringPostingsList) RemoveRange(min, max ID) error {
+func (d *postingsList) RemoveRange(min, max postings.ID) error {
 	d.Lock()
 	d.bitmap.RemoveRange(uint64(min), uint64(max))
 	d.Unlock()
 	return nil
 }
 
-func (d *roaringPostingsList) Reset() {
+func (d *postingsList) Reset() {
 	d.Lock()
 	d.bitmap.Clear()
 	d.Unlock()
 }
 
-func (d *roaringPostingsList) Contains(i ID) bool {
+func (d *postingsList) Contains(i postings.ID) bool {
 	d.RLock()
 	contains := d.bitmap.Contains(uint32(i))
 	d.RUnlock()
 	return contains
 }
 
-func (d *roaringPostingsList) IsEmpty() bool {
+func (d *postingsList) IsEmpty() bool {
 	d.RLock()
 	empty := d.bitmap.IsEmpty()
 	d.RUnlock()
 	return empty
 }
 
-func (d *roaringPostingsList) Max() (ID, error) {
+func (d *postingsList) Max() (postings.ID, error) {
 	d.RLock()
 	if d.bitmap.IsEmpty() {
 		d.RUnlock()
-		return 0, ErrEmptyList
+		return 0, postings.ErrEmptyList
 	}
 	max := d.bitmap.Maximum()
 	d.RUnlock()
-	return ID(max), nil
+	return postings.ID(max), nil
 }
 
-func (d *roaringPostingsList) Min() (ID, error) {
+func (d *postingsList) Min() (postings.ID, error) {
 	d.RLock()
 	if d.bitmap.IsEmpty() {
 		d.RUnlock()
-		return 0, ErrEmptyList
+		return 0, postings.ErrEmptyList
 	}
 	min := d.bitmap.Minimum()
 	d.RUnlock()
-	return ID(min), nil
+	return postings.ID(min), nil
 }
 
-func (d *roaringPostingsList) Len() int {
+func (d *postingsList) Len() int {
 	d.RLock()
 	l := d.bitmap.GetCardinality()
 	d.RUnlock()
 	return int(l)
 }
 
-func (d *roaringPostingsList) Iterator() Iterator {
+func (d *postingsList) Iterator() postings.Iterator {
 	return &roaringIterator{
 		iter: d.bitmap.Iterator(),
 	}
 }
 
-func (d *roaringPostingsList) Clone() MutableList {
+func (d *postingsList) Clone() postings.MutableList {
 	d.RLock()
 	// TODO: It's cheaper to Clone than to cache roaring bitmaps, see
 	// `postings_list_bench_test.go`. Their internals don't allow for
@@ -167,17 +169,17 @@ func (d *roaringPostingsList) Clone() MutableList {
 	// (move to another implementation / address deficiencies).
 	clone := d.bitmap.Clone()
 	d.RUnlock()
-	return &roaringPostingsList{
+	return &postingsList{
 		bitmap: clone,
 	}
 }
 
-func (d *roaringPostingsList) Equal(other List) bool {
+func (d *postingsList) Equal(other postings.List) bool {
 	if d.Len() != other.Len() {
 		return false
 	}
 
-	o, ok := other.(*roaringPostingsList)
+	o, ok := other.(*postingsList)
 	if ok {
 		return d.bitmap.Equals(o.bitmap)
 	}
@@ -199,11 +201,11 @@ func (d *roaringPostingsList) Equal(other List) bool {
 
 type roaringIterator struct {
 	iter    roaring.IntIterable
-	current ID
+	current postings.ID
 	closed  bool
 }
 
-func (it *roaringIterator) Current() ID {
+func (it *roaringIterator) Current() postings.ID {
 	return it.current
 }
 
@@ -211,7 +213,7 @@ func (it *roaringIterator) Next() bool {
 	if it.closed || !it.iter.HasNext() {
 		return false
 	}
-	it.current = ID(it.iter.Next())
+	it.current = postings.ID(it.iter.Next())
 	return true
 }
 

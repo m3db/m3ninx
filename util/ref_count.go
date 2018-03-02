@@ -18,71 +18,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package util
 
 import (
-	"errors"
-
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/postings"
+	"github.com/uber-go/atomic"
 )
 
-var (
-	errIteratorClosed = errors.New("iterator has been closed")
-)
-
-type iterator struct {
-	segment      ReadableSegment
-	postingsIter postings.Iterator
-	maxID        postings.ID
-
-	current doc.Document
-	err     error
-	closed  bool
+type refCount struct {
+	n *atomic.Int32
 }
 
-func newIterator(s ReadableSegment, pi postings.Iterator, maxID postings.ID) doc.Iterator {
-	s.Inc()
-	return &iterator{
-		segment:      s,
-		postingsIter: pi,
-		maxID:        maxID,
+// NewRefCount returns a new reference count.
+func NewRefCount() RefCount {
+	return &refCount{n: atomic.NewInt32(0)}
+}
+
+func (rc *refCount) Inc() {
+	rc.n.Inc()
+}
+
+func (rc *refCount) Dec() {
+	n := rc.n.Dec()
+	if n < 0 {
+		panic("invalid decrement of reference count")
 	}
 }
 
-func (it *iterator) Next() bool {
-	if it.closed || it.err != nil || !it.postingsIter.Next() {
-		return false
-	}
-	id := it.postingsIter.Current()
-	if id > it.maxID {
-		return false
-	}
-
-	d, err := it.segment.getDoc(id)
-	if err != nil {
-		it.err = err
-		return false
-	}
-	it.current = d
-	return true
-}
-
-func (it *iterator) Current() doc.Document {
-	return it.current
-}
-
-func (it *iterator) Err() error {
-	return it.err
-}
-
-func (it *iterator) Close() error {
-	if it.closed {
-		return errIteratorClosed
-	}
-	it.closed = true
-	it.current = doc.Document{}
-	err := it.postingsIter.Close()
-	it.segment.Dec()
-	return err
+func (rc *refCount) Count() int {
+	return int(rc.n.Load())
 }

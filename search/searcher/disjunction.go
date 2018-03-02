@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,46 +18,31 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postings
+package searcher
 
 import (
-	"testing"
-
-	"github.com/RoaringBitmap/roaring"
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/search"
 )
 
-func BenchmarkClone(b *testing.B) {
-	b.ReportAllocs()
+type disjunctionSearcher struct {
+	searchers []search.Searcher
+	snapshot  index.Snapshot
 
-	initPL := roaring.New()
-	for i := 0; i < b.N; i++ {
-		initPL.Add(uint32(i))
-	}
+	current doc.Document
+	closed  bool
+}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		copy := initPL.Clone()
-		if copy.GetCardinality() != initPL.GetCardinality() {
-			b.Error("unequal duplicate size")
-		}
+// NewDisjunctionSearcher returns a new Searcher for matching any.
+func NewDisjunctionSearcher(ss []search.Searcher, s index.Snapshot) search.Searcher {
+	return &disjunctionSearcher{
+		searchers: ss,
+		snapshot:  s,
 	}
 }
 
-func BenchmarkCachedObject(b *testing.B) {
-	b.ReportAllocs()
-
-	initPL := roaring.New()
-	for i := 0; i < b.N; i++ {
-		initPL.Add(uint32(i))
-	}
-	copy := roaring.New()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		copy.Clear()
-		copy.Or(initPL)
-		if copy.GetCardinality() != initPL.GetCardinality() {
-			b.Error("unequal duplicate size")
-		}
-	}
-}
+func (s *disjunctionSearcher) Next() bool            { return false }
+func (s *disjunctionSearcher) Current() doc.Document { return doc.Document{} }
+func (s *disjunctionSearcher) Err() error            { return nil }
+func (s *disjunctionSearcher) Close() error          { return nil }

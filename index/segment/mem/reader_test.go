@@ -22,11 +22,11 @@ package mem
 
 import (
 	"regexp"
-	"sync"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/postings/roaring"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -39,21 +39,25 @@ func TestReaderMatchExact(t *testing.T) {
 	maxID := postings.ID(55)
 
 	name, value := []byte("apple"), []byte("red")
-	postingsList := postings.NewRoaringPostingsList()
+	postingsList := roaring.NewPostingsList()
 	postingsList.Insert(postings.ID(42))
 	postingsList.Insert(postings.ID(50))
 	postingsList.Insert(postings.ID(57))
 
-	segment := NewMockreadableSegment(mockCtrl)
+	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().matchExact(name, value).Return(postingsList, nil),
+		segment.EXPECT().Inc(),
+		segment.EXPECT().matchTerm(name, value).Return(postingsList, nil),
+		segment.EXPECT().Dec(),
 	)
 
-	reader := newReader(segment, maxID, new(sync.WaitGroup))
+	reader := newReader(segment, maxID)
 
-	actual, err := reader.MatchExact(name, value)
+	actual, err := reader.MatchTerm(name, value)
 	require.NoError(t, err)
 	require.True(t, postingsList.Equal(actual))
+
+	require.NoError(t, reader.Close())
 }
 
 func TestReaderMatchRegex(t *testing.T) {
@@ -64,21 +68,25 @@ func TestReaderMatchRegex(t *testing.T) {
 
 	name, pattern := []byte("apple"), []byte("r.*")
 	re := regexp.MustCompile(string(pattern))
-	postingsList := postings.NewRoaringPostingsList()
+	postingsList := roaring.NewPostingsList()
 	postingsList.Insert(postings.ID(42))
 	postingsList.Insert(postings.ID(50))
 	postingsList.Insert(postings.ID(57))
 
-	segment := NewMockreadableSegment(mockCtrl)
+	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
+		segment.EXPECT().Inc(),
 		segment.EXPECT().matchRegex(name, pattern, re).Return(postingsList, nil),
+		segment.EXPECT().Dec(),
 	)
 
-	reader := newReader(segment, maxID, new(sync.WaitGroup))
+	reader := newReader(segment, maxID)
 
 	actual, err := reader.MatchRegex(name, pattern, re)
 	require.NoError(t, err)
 	require.True(t, postingsList.Equal(actual))
+
+	require.NoError(t, reader.Close())
 }
 
 func TestReaderDocs(t *testing.T) {
@@ -105,21 +113,24 @@ func TestReaderDocs(t *testing.T) {
 		},
 	}
 
-	segment := NewMockreadableSegment(mockCtrl)
+	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
+		segment.EXPECT().Inc(),
+		segment.EXPECT().Inc(),
 		segment.EXPECT().getDoc(postings.ID(42)).Return(docs[0], nil),
 		segment.EXPECT().getDoc(postings.ID(47)).Return(docs[1], nil),
+		segment.EXPECT().Dec(),
+		segment.EXPECT().Dec(),
 	)
 
-	postingsList := postings.NewRoaringPostingsList()
+	postingsList := roaring.NewPostingsList()
 	postingsList.Insert(postings.ID(42))
 	postingsList.Insert(postings.ID(47))
 	postingsList.Insert(postings.ID(57)) // IDs past maxID should be ignored.
 
-	reader := newReader(segment, maxID, new(sync.WaitGroup))
-	defer reader.Close()
+	reader := newReader(segment, maxID)
 
-	iter, err := reader.Docs(postingsList, nil)
+	iter, err := reader.Docs(postingsList)
 	require.NoError(t, err)
 
 	actualDocs := make([]doc.Document, 0, len(docs))
@@ -128,5 +139,9 @@ func TestReaderDocs(t *testing.T) {
 	}
 
 	require.NoError(t, iter.Err())
+	require.NoError(t, iter.Close())
+
 	require.Equal(t, docs, actualDocs)
+
+	require.NoError(t, reader.Close())
 }

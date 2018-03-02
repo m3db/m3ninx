@@ -81,27 +81,27 @@ func (t *trigramTermsDict) Insert(field doc.Field, id postings.ID) error {
 	return nil
 }
 
-func (t *trigramTermsDict) MatchExact(name, value []byte) (postings.List, error) {
-	return t.matchRegex(name, value)
+func (t *trigramTermsDict) MatchTerm(field, term []byte) (postings.List, error) {
+	return t.matchRegex(field, term)
 }
 
 func (t *trigramTermsDict) MatchRegex(
-	name, pattern []byte,
-	re *regexp.Regexp,
+	field, regex []byte,
+	compiled *regexp.Regexp,
 ) (postings.List, error) {
-	return t.matchRegex(name, pattern)
+	return t.matchRegex(field, regex)
 }
 
-func (t *trigramTermsDict) matchRegex(name, pattern []byte) (postings.List, error) {
+func (t *trigramTermsDict) matchRegex(field, regex []byte) (postings.List, error) {
 	// TODO: Consider updating syntax.Parse to accepts a byte string so we can avoid the
 	// conversion to a string here.
-	patternStr := string(pattern)
-	re, err := syntax.Parse(patternStr, syntax.Perl)
+	regexStr := string(regex)
+	re, err := syntax.Parse(regexStr, syntax.Perl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse regular expression %s: %v", patternStr, err)
+		return nil, fmt.Errorf("unable to parse regular expression %s: %v", regexStr, err)
 	}
 	q := cindex.RegexpQuery(re)
-	pl, err := t.matchQuery(name, q, nil)
+	pl, err := t.matchQuery(field, q, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get postings list matching query: %v", err)
 	}
@@ -109,7 +109,7 @@ func (t *trigramTermsDict) matchRegex(name, pattern []byte) (postings.List, erro
 }
 
 func (t *trigramTermsDict) matchQuery(
-	name []byte,
+	field []byte,
 	q *cindex.Query,
 	restrict postings.MutableList,
 ) (postings.MutableList, error) {
@@ -128,7 +128,7 @@ func (t *trigramTermsDict) matchQuery(
 
 	case cindex.QAnd:
 		for _, tri := range q.Trigram {
-			pl, err := t.matchTrigram(name, tri)
+			pl, err := t.matchTrigram(field, tri)
 			if err != nil {
 				return nil, err
 			}
@@ -149,7 +149,7 @@ func (t *trigramTermsDict) matchQuery(
 
 		for _, sub := range q.Sub {
 			var err error
-			list, err = t.matchQuery(name, sub, list)
+			list, err = t.matchQuery(field, sub, list)
 			if err != nil {
 				return nil, err
 			}
@@ -161,7 +161,7 @@ func (t *trigramTermsDict) matchQuery(
 
 	case cindex.QOr:
 		for _, tri := range q.Trigram {
-			pl, err := t.matchTrigram(name, tri)
+			pl, err := t.matchTrigram(field, tri)
 			if err != nil {
 				return nil, err
 			}
@@ -174,7 +174,7 @@ func (t *trigramTermsDict) matchQuery(
 		}
 
 		for _, sub := range q.Sub {
-			pl, err := t.matchQuery(name, sub, restrict)
+			pl, err := t.matchQuery(field, sub, restrict)
 			if err != nil {
 				return nil, err
 			}
@@ -192,10 +192,10 @@ func (t *trigramTermsDict) matchQuery(
 	return list, nil
 }
 
-func (t *trigramTermsDict) matchTrigram(name []byte, tri string) (postings.List, error) {
+func (t *trigramTermsDict) matchTrigram(field []byte, tri string) (postings.List, error) {
 	// TODO(jeromefroe): Consider adding a FetchString method to the simpleDictionary
 	// to avoid the string conversion here.
-	return t.backingDict.MatchExact(name, []byte(tri))
+	return t.backingDict.MatchTerm(field, []byte(tri))
 }
 
 // computeTrigrams returns the trigrams composing a byte slice. The slice of trigrams

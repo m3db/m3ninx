@@ -24,10 +24,12 @@ import (
 	"errors"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/util"
 )
 
 var (
@@ -36,24 +38,24 @@ var (
 
 type reader struct {
 	sync.RWMutex
+	util.RefCount
 
-	segment readableSegment
+	segment ReadableSegment
 	maxID   postings.ID
-	wg      *sync.WaitGroup
 
 	closed bool
 }
 
-func newReader(s readableSegment, maxID postings.ID, wg *sync.WaitGroup) index.Reader {
-	wg.Add(1)
+func newReader(s ReadableSegment, maxID postings.ID) index.Reader {
+	s.Inc()
 	return &reader{
-		segment: s,
-		maxID:   maxID,
-		wg:      wg,
+		RefCount: util.NewRefCount(),
+		segment:  s,
+		maxID:    maxID,
 	}
 }
 
-func (r *reader) MatchExact(name, value []byte) (postings.List, error) {
+func (r *reader) MatchTerm(field, term []byte) (postings.List, error) {
 	r.RLock()
 	if r.closed {
 		r.RUnlock()
@@ -64,12 +66,12 @@ func (r *reader) MatchExact(name, value []byte) (postings.List, error) {
 	// permitted ID. The reader only guarantees that when fetching the documents associated
 	// with a postings list through a call to Docs will IDs greater than the maximum be
 	// filtered out.
-	pl, err := r.segment.matchExact(name, value)
+	pl, err := r.segment.matchTerm(field, term)
 	r.RUnlock()
 	return pl, err
 }
 
-func (r *reader) MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error) {
+func (r *reader) MatchRegex(field, regex []byte, compiled *regexp.Regexp) (postings.List, error) {
 	r.RLock()
 	if r.closed {
 		r.RUnlock()
@@ -80,38 +82,13 @@ func (r *reader) MatchRegex(name, pattern []byte, re *regexp.Regexp) (postings.L
 	// permitted ID. The reader only guarantees that when fetching the documents associated
 	// with a postings list through a call to Docs will IDs greater than the maximum be
 	// filtered out.
-	pl, err := r.segment.matchRegex(name, pattern, re)
+	pl, err := r.segment.matchRegex(field, regex, compiled)
 	r.RUnlock()
 	return pl, err
 }
 
-func (r *reader) Docs(pl postings.List, names [][]byte) (doc.Iterator, error) {
-	// TODO: Add filter for names.
-	if len(names) != 0 {
-		panic("names filter is unimplemented")
-	}
-
-	if pl.IsEmpty() {
-		return emptyIter, nil
-	}
-
-	max, err := pl.Max()
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove any IDs from the postings list which are greater than the maximum ID
-	// permitted by the reader.
-	if max > r.maxID {
-		mpl, ok := pl.(postings.MutableList)
-		if !ok {
-			mpl = pl.Clone()
-		}
-		mpl.RemoveRange(r.maxID, postings.MaxID)
-		pl = mpl
-	}
-
-	return newIterator(r.segment, pl.Iterator(), r.wg), nil
+func (r *reader) Docs(pl postings.List) (doc.Iterator, error) {
+	return newIterator(r.segment, pl.Iterator(), r.maxID), nil
 }
 
 func (r *reader) Close() error {
@@ -123,6 +100,15 @@ func (r *reader) Close() error {
 	r.closed = true
 	r.Unlock()
 
-	r.wg.Done()
+	r.segment.Dec()
+
+	// Wait for all references to the reader to be released.
+	for {
+		if r.RefCount.Count() == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	return nil
 }

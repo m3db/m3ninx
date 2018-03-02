@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"github.com/m3db/m3ninx/postings/roaring"
 	"github.com/m3db/m3ninx/postings"
 
 	"github.com/m3db/m3x/instrument"
@@ -61,7 +62,7 @@ type opts struct {
 func NewOptions() Options {
 	return &opts{
 		iopts:           instrument.NewOptions(),
-		postingsPool:    postings.NewPool(nil, postings.NewRoaringPostingsList),
+		postingsPool:    postings.NewPool(nil, roaring.NewPostingsList),
 		initialCapacity: defaultInitialCapacity,
 	}
 }

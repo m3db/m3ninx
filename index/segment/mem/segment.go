@@ -25,12 +25,14 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	sgmt "github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/util"
 )
 
 var (
@@ -40,10 +42,10 @@ var (
 )
 
 type segment struct {
+	util.RefCount
+
 	opts   Options
 	offset int
-
-	wg sync.WaitGroup
 
 	// Internal state of the segment. The allowed transitions are:
 	//   - Open -> Sealed -> Closed
@@ -79,6 +81,7 @@ type segment struct {
 // postings IDs at offset+1.
 func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 	s := &segment{
+		RefCount:  util.NewRefCount(),
 		opts:      opts,
 		offset:    int(offset) + 1, // The first ID assigned by the segment is offset + 1.
 		termsDict: newSimpleTermsDict(opts),
@@ -136,7 +139,7 @@ func (s *segment) Reader() (index.Reader, error) {
 	}
 
 	maxID := s.ids.reader.Load()
-	r := newReader(s, maxID, &s.wg)
+	r := newReader(s, maxID)
 	return r, nil
 }
 
@@ -164,7 +167,13 @@ func (s *segment) Close() error {
 	s.state.Unlock()
 
 	// Wait for all references to the segment to be released.
-	s.wg.Wait()
+	for {
+		if s.RefCount.Count() == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	return nil
 }
 
@@ -216,7 +225,7 @@ func (s *segment) insertTerms(id postings.ID, d doc.Document) error {
 	return nil
 }
 
-func (s *segment) matchExact(name, value []byte) (postings.List, error) {
+func (s *segment) matchTerm(field, term []byte) (postings.List, error) {
 	// TODO: Consider removing the state check by requiring that matchExact is only
 	// called through a Reader which guarantees the segment is still open.
 	s.state.RLock()
@@ -225,7 +234,7 @@ func (s *segment) matchExact(name, value []byte) (postings.List, error) {
 		return nil, errSegmentClosed
 	}
 
-	return s.termsDict.MatchExact(name, value)
+	return s.termsDict.MatchTerm(field, term)
 }
 
 func (s *segment) matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error) {

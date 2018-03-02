@@ -96,7 +96,8 @@ type MutableList interface {
 	Reset()
 }
 
-// Iterator is an iterator over a postings list.
+// Iterator is an iterator over a postings list. The iterator is guarenteed to return
+// IDs in increasing order.
 type Iterator interface {
 	// Next returns whether we have another postings ID.
 	Next() bool

@@ -18,71 +18,70 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package util
 
 import (
-	"errors"
+	"sync"
+	"testing"
 
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/postings"
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	errIteratorClosed = errors.New("iterator has been closed")
-)
+func TestRefCount(t *testing.T) {
+	rc := NewRefCount()
+	assert.Equal(t, 0, rc.Count())
 
-type iterator struct {
-	segment      ReadableSegment
-	postingsIter postings.Iterator
-	maxID        postings.ID
+	var numSteps = 100
+	for i := 0; i < numSteps; i++ {
+		rc.Inc()
+		assert.Equal(t, i+1, rc.Count())
+	}
 
-	current doc.Document
-	err     error
-	closed  bool
-}
-
-func newIterator(s ReadableSegment, pi postings.Iterator, maxID postings.ID) doc.Iterator {
-	s.Inc()
-	return &iterator{
-		segment:      s,
-		postingsIter: pi,
-		maxID:        maxID,
+	for i := 0; i < numSteps; i++ {
+		rc.Dec()
+		assert.Equal(t, numSteps-i-1, rc.Count())
 	}
 }
 
-func (it *iterator) Next() bool {
-	if it.closed || it.err != nil || !it.postingsIter.Next() {
-		return false
-	}
-	id := it.postingsIter.Current()
-	if id > it.maxID {
-		return false
+func TestRefCountConcurrentUpdates(t *testing.T) {
+	rc := NewRefCount()
+
+	var (
+		wg      sync.WaitGroup
+		numIncs = 100
+		numDecs = 50
+	)
+	wg.Add(numIncs + numDecs)
+
+	// Ensure that the reference count is high enough so that the decrements will
+	// never cause it to go negative.
+	for i := 0; i < numDecs; i++ {
+		rc.Inc()
 	}
 
-	d, err := it.segment.getDoc(id)
-	if err != nil {
-		it.err = err
-		return false
+	for i := 0; i < numIncs; i++ {
+		go func() {
+			rc.Inc()
+			wg.Done()
+		}()
 	}
-	it.current = d
-	return true
+
+	for i := 0; i < numDecs; i++ {
+		go func() {
+			rc.Dec()
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, numDecs+(numIncs-numDecs), rc.Count())
 }
 
-func (it *iterator) Current() doc.Document {
-	return it.current
-}
+func TestRefCountPanic(t *testing.T) {
+	rc := NewRefCount()
 
-func (it *iterator) Err() error {
-	return it.err
-}
-
-func (it *iterator) Close() error {
-	if it.closed {
-		return errIteratorClosed
-	}
-	it.closed = true
-	it.current = doc.Document{}
-	err := it.postingsIter.Close()
-	it.segment.Dec()
-	return err
+	assert.Panics(t, func() {
+		rc.Dec()
+	})
 }

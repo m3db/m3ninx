@@ -49,10 +49,10 @@ func TestSegmentInsert(t *testing.T) {
 	reader, err := segment.Reader()
 	require.NoError(t, err)
 
-	pl, err := reader.MatchExact(name, value)
+	pl, err := reader.MatchTerm(name, value)
 	require.NoError(t, err)
 
-	iter, err := reader.Docs(pl, nil)
+	iter, err := reader.Docs(pl)
 	require.NoError(t, err)
 
 	require.True(t, iter.Next())
@@ -112,10 +112,10 @@ func TestSegmentReaderMatchExact(t *testing.T) {
 	reader, err := segment.Reader()
 	require.NoError(t, err)
 
-	pl, err := reader.MatchExact([]byte("fruit"), []byte("apple"))
+	pl, err := reader.MatchTerm([]byte("fruit"), []byte("apple"))
 	require.NoError(t, err)
 
-	iter, err := reader.Docs(pl, nil)
+	iter, err := reader.Docs(pl)
 	require.NoError(t, err)
 
 	actualDocs := make([]doc.Document, 0)
@@ -185,7 +185,7 @@ func TestSegmentReaderMatchRegex(t *testing.T) {
 	pl, err := reader.MatchRegex(name, pattern, re)
 	require.NoError(t, err)
 
-	iter, err := reader.Docs(pl, nil)
+	iter, err := reader.Docs(pl)
 	require.NoError(t, err)
 
 	actualDocs := make([]doc.Document, 0)

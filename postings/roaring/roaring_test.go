@@ -18,53 +18,55 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postings
+package roaring
 
 import (
 	"testing"
+
+	"github.com/m3db/m3ninx/postings"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRoaringPostingsListEmpty(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.True(t, d.IsEmpty())
 	require.Equal(t, 0, d.Len())
 }
 
 func TestRoaringPostingsListMax(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(42))
 	require.NoError(t, d.Insert(78))
 	require.NoError(t, d.Insert(103))
 
 	max, err := d.Max()
 	require.NoError(t, err)
-	require.Equal(t, ID(103), max)
+	require.Equal(t, postings.ID(103), max)
 
-	d = NewRoaringPostingsList()
+	d = NewPostingsList()
 	_, err = d.Max()
 	require.Error(t, err)
 }
 
 func TestRoaringPostingsListMin(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(42))
 	require.NoError(t, d.Insert(78))
 	require.NoError(t, d.Insert(103))
 
 	min, err := d.Min()
 	require.NoError(t, err)
-	require.Equal(t, ID(42), min)
+	require.Equal(t, postings.ID(42), min)
 
-	d = NewRoaringPostingsList()
+	d = NewPostingsList()
 	_, err = d.Min()
 	require.Error(t, err)
 }
 
 func TestRoaringPostingsListInsert(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -75,7 +77,7 @@ func TestRoaringPostingsListInsert(t *testing.T) {
 }
 
 func TestRoaringPostingsListClone(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -93,7 +95,7 @@ func TestRoaringPostingsListClone(t *testing.T) {
 }
 
 func TestRoaringPostingsListIntersect(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -113,7 +115,7 @@ func TestRoaringPostingsListIntersect(t *testing.T) {
 }
 
 func TestRoaringPostingsListDifference(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -134,7 +136,7 @@ func TestRoaringPostingsListDifference(t *testing.T) {
 }
 
 func TestRoaringPostingsListUnion(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -155,7 +157,7 @@ func TestRoaringPostingsListUnion(t *testing.T) {
 }
 
 func TestRoaringPostingsListRemoveRange(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.NoError(t, d.Insert(2))
 	require.NoError(t, d.Insert(7))
@@ -170,7 +172,7 @@ func TestRoaringPostingsListRemoveRange(t *testing.T) {
 }
 
 func TestRoaringPostingsListReset(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.True(t, d.Contains(1))
 	require.Equal(t, 1, d.Len())
@@ -180,14 +182,14 @@ func TestRoaringPostingsListReset(t *testing.T) {
 }
 
 func TestRoaringPostingsListIter(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.NoError(t, d.Insert(2))
 	require.Equal(t, 2, d.Len())
 
 	it := d.Iterator()
 	defer it.Close()
-	found := map[ID]bool{
+	found := map[postings.ID]bool{
 		1: false,
 		2: false,
 	}
@@ -201,7 +203,7 @@ func TestRoaringPostingsListIter(t *testing.T) {
 }
 
 func TestRoaringPostingsListIterInsertAfter(t *testing.T) {
-	d := NewRoaringPostingsList()
+	d := NewPostingsList()
 	require.NoError(t, d.Insert(1))
 	require.NoError(t, d.Insert(2))
 	require.Equal(t, 2, d.Len())
@@ -211,7 +213,7 @@ func TestRoaringPostingsListIterInsertAfter(t *testing.T) {
 	numElems := 0
 	d.Insert(3)
 	require.Equal(t, 3, d.Len())
-	found := map[ID]bool{
+	found := map[postings.ID]bool{
 		1: false,
 		2: false,
 	}
@@ -227,12 +229,12 @@ func TestRoaringPostingsListIterInsertAfter(t *testing.T) {
 }
 
 func TestRoaringPostingsListEqualWithOtherRoaring(t *testing.T) {
-	first := NewRoaringPostingsList()
+	first := NewPostingsList()
 	first.Insert(42)
 	first.Insert(44)
 	first.Insert(51)
 
-	second := NewRoaringPostingsList()
+	second := NewPostingsList()
 	second.Insert(42)
 	second.Insert(44)
 	second.Insert(51)
@@ -241,12 +243,12 @@ func TestRoaringPostingsListEqualWithOtherRoaring(t *testing.T) {
 }
 
 func TestRoaringPostingsListNotEqualWithOtherRoaring(t *testing.T) {
-	first := NewRoaringPostingsList()
+	first := NewPostingsList()
 	first.Insert(42)
 	first.Insert(44)
 	first.Insert(51)
 
-	second := NewRoaringPostingsList()
+	second := NewPostingsList()
 	second.Insert(42)
 	second.Insert(44)
 	second.Insert(51)
@@ -259,22 +261,22 @@ func TestRoaringPostingsListEqualWithOtherNonRoaring(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	first := NewRoaringPostingsList()
+	first := NewPostingsList()
 	first.Insert(42)
 	first.Insert(44)
 	first.Insert(51)
 
-	postingsIter := NewMockIterator(mockCtrl)
+	postingsIter := postings.NewMockIterator(mockCtrl)
 	gomock.InOrder(
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(42)),
+		postingsIter.EXPECT().Current().Return(postings.ID(42)),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(44)),
+		postingsIter.EXPECT().Current().Return(postings.ID(44)),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(51)),
+		postingsIter.EXPECT().Current().Return(postings.ID(51)),
 	)
 
-	second := NewMockList(mockCtrl)
+	second := postings.NewMockList(mockCtrl)
 	gomock.InOrder(
 		second.EXPECT().Len().Return(3),
 		second.EXPECT().Iterator().Return(postingsIter),
@@ -287,22 +289,22 @@ func TestRoaringPostingsListNotEqualWithOtherNonRoaring(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	first := NewRoaringPostingsList()
+	first := NewPostingsList()
 	first.Insert(42)
 	first.Insert(44)
 	first.Insert(51)
 
-	postingsIter := NewMockIterator(mockCtrl)
+	postingsIter := postings.NewMockIterator(mockCtrl)
 	gomock.InOrder(
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(42)),
+		postingsIter.EXPECT().Current().Return(postings.ID(42)),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(44)),
+		postingsIter.EXPECT().Current().Return(postings.ID(44)),
 		postingsIter.EXPECT().Next().Return(true),
-		postingsIter.EXPECT().Current().Return(ID(53)),
+		postingsIter.EXPECT().Current().Return(postings.ID(53)),
 	)
 
-	second := NewMockList(mockCtrl)
+	second := postings.NewMockList(mockCtrl)
 	gomock.InOrder(
 		second.EXPECT().Len().Return(3),
 		second.EXPECT().Iterator().Return(postingsIter),

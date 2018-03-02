@@ -57,30 +57,30 @@ func (t *simpleTermsDict) Insert(field doc.Field, id postings.ID) error {
 	return postingsMap.addID(field.Value, id)
 }
 
-func (t *simpleTermsDict) MatchExact(name, value []byte) (postings.List, error) {
+func (t *simpleTermsDict) MatchTerm(field, term []byte) (postings.List, error) {
 	t.fields.RLock()
-	postingsMap, ok := t.fields.names[string(name)]
+	postingsMap, ok := t.fields.names[string(field)]
 	t.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
 		return t.opts.PostingsListPool().Get(), nil
 	}
-	return postingsMap.get(value), nil
+	return postingsMap.get(term), nil
 }
 
 func (t *simpleTermsDict) MatchRegex(
-	name, pattern []byte,
-	re *regexp.Regexp,
+	field, regex []byte,
+	compiled *regexp.Regexp,
 ) (postings.List, error) {
 	t.fields.RLock()
-	postingsMap, ok := t.fields.names[string(name)]
+	postingsMap, ok := t.fields.names[string(field)]
 	t.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
 		return t.opts.PostingsListPool().Get(), nil
 	}
 
-	pls := postingsMap.getRegex(re)
+	pls := postingsMap.getRegex(compiled)
 	union := t.opts.PostingsListPool().Get()
 	for _, pl := range pls {
 		union.Union(pl)
