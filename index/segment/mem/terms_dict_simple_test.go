@@ -23,7 +23,7 @@ package mem
 import (
 	"fmt"
 	"reflect"
-	"regexp"
+	re "regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -39,7 +39,7 @@ var (
 	testRandomSeed         int64 = 42
 	testMinSuccessfulTests       = 1000
 
-	sampleRegexes = []interface{}{
+	sampleRegexps = []interface{}{
 		`a`,
 		`a.`,
 		`a.b`,
@@ -159,10 +159,10 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 	props.Property(
 		"The dictionary should support regular expression queries",
 		prop.ForAll(
-			func(input fieldAndRegex, id postings.ID) (bool, error) {
+			func(input fieldAndRegexp, id postings.ID) (bool, error) {
 				var (
 					f        = input.field
-					regex    = input.regex
+					regexp   = input.regexp
 					compiled = input.compiled
 				)
 				err := t.termsDict.Insert(f, id)
@@ -170,7 +170,7 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegex() {
 					return false, fmt.Errorf("unexpected error inserting %v into terms dictionary: %v", f, err)
 				}
 
-				pl, err := t.termsDict.MatchRegex(f.Name, []byte(regex), compiled)
+				pl, err := t.termsDict.MatchRegexp(f.Name, []byte(regexp), compiled)
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -195,13 +195,13 @@ func (t *simpleTermsDictionaryTestSuite) TestMatchRegexNoResults() {
 	props.Property(
 		"Regular expression queries which no results are valid",
 		prop.ForAll(
-			func(input fieldAndRegex, id postings.ID) (bool, error) {
+			func(input fieldAndRegexp, id postings.ID) (bool, error) {
 				var (
 					f        = input.field
-					regex    = input.regex
+					regexp   = input.regexp
 					compiled = input.compiled
 				)
-				pl, err := t.termsDict.MatchRegex(f.Name, []byte(regex), compiled)
+				pl, err := t.termsDict.MatchRegexp(f.Name, []byte(regexp), compiled)
 				if err != nil {
 					return false, fmt.Errorf("unexpexted error retrieving postings list: %v", err)
 				}
@@ -261,25 +261,25 @@ func genDocID() gopter.Gen {
 		})
 }
 
-type fieldAndRegex struct {
+type fieldAndRegexp struct {
 	field    doc.Field
-	regex    string
-	compiled *regexp.Regexp
+	regexp   string
+	compiled *re.Regexp
 }
 
 func genFieldAndRegex() gopter.Gen {
-	return gen.OneConstOf(sampleRegexes...).
+	return gen.OneConstOf(sampleRegexps...).
 		FlatMap(func(value interface{}) gopter.Gen {
 			regex := value.(string)
-			return fieldFromRegex(regex)
-		}, reflect.TypeOf(fieldAndRegex{}))
+			return fieldFromRegexp(regex)
+		}, reflect.TypeOf(fieldAndRegexp{}))
 }
 
-func fieldFromRegex(regex string) gopter.Gen {
+func fieldFromRegexp(regexp string) gopter.Gen {
 	return gopter.CombineGens(
 		gen.AnyString(),
-		gen.RegexMatch(regex),
-	).Map(func(values []interface{}) fieldAndRegex {
+		gen.RegexMatch(regexp),
+	).Map(func(values []interface{}) fieldAndRegexp {
 		var (
 			name  = values[0].(string)
 			value = values[1].(string)
@@ -288,10 +288,10 @@ func fieldFromRegex(regex string) gopter.Gen {
 			Name:  []byte(name),
 			Value: []byte(value),
 		}
-		return fieldAndRegex{
+		return fieldAndRegexp{
 			field:    f,
-			regex:    regex,
-			compiled: regexp.MustCompile(regex),
+			regexp:   regexp,
+			compiled: re.MustCompile(regexp),
 		}
 	})
 }

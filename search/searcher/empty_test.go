@@ -21,66 +21,32 @@
 package searcher
 
 import (
-	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/search"
+	"testing"
+
+	"github.com/m3db/m3ninx/postings/roaring"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
-type termSearcher struct {
-	field, term []byte
-	readers     index.Readers
+func TestEmptySearcher(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
-	idx  int
-	curr postings.List
+	n := 42
+	s := NewEmptySearcher(42)
 
-	closed bool
-	err    error
-}
+	require.Equal(t, 42, s.Len())
 
-// NewTermSearcher returns a new searcher for finding documents which match the given term.
-// It is not safe for concurrent access.
-func NewTermSearcher(rs index.Readers, field, term []byte) search.Searcher {
-	return &termSearcher{
-		field:   field,
-		term:    term,
-		readers: rs,
-		idx:     -1,
-	}
-}
+	emptyPL := roaring.NewPostingsList()
 
-func (s *termSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == len(s.readers)-1 {
-		return false
+	for i := 0; i < n; i++ {
+		require.True(t, s.Next())
+		require.True(t, s.Current().Equal(emptyPL))
 	}
 
-	s.idx++
-	r := s.readers[s.idx]
-	pl, err := r.MatchTerm(s.field, s.term)
-	if err != nil {
-		s.err = err
-		return false
-	}
-	s.curr = pl
+	require.False(t, s.Next())
+	require.NoError(t, s.Err())
 
-	return true
-}
-
-func (s *termSearcher) Current() postings.List {
-	return s.curr
-}
-
-func (s *termSearcher) Len() int {
-	return len(s.readers)
-}
-
-func (s *termSearcher) Err() error {
-	return s.err
-}
-
-func (s *termSearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return s.readers.Close()
+	require.NoError(t, s.Close())
 }

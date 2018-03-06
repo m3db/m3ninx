@@ -23,6 +23,7 @@ package query
 import (
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/search/searcher"
 )
 
 // termQuery finds document which match the given term exactly.
@@ -33,12 +34,12 @@ type termQuery struct {
 
 // NewTermQuery constructs a new TermQuery for the given field and term.
 func NewTermQuery(field, term []byte) search.Query {
-	return &TermQuery{
+	return &termQuery{
 		field: field,
 		term:  term,
 	}
 }
 
-func (q *termQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
-	return searcher.NewTermSearcher(s, q.field, q.term), nil
+func (q *termQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+	return searcher.NewTermSearcher(rs, q.field, q.term), nil
 }

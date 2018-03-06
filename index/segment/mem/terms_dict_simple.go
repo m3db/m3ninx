@@ -21,7 +21,7 @@
 package mem
 
 import (
-	"regexp"
+	re "regexp"
 	"sync"
 
 	"github.com/m3db/m3ninx/doc"
@@ -68,9 +68,9 @@ func (t *simpleTermsDict) MatchTerm(field, term []byte) (postings.List, error) {
 	return postingsMap.get(term), nil
 }
 
-func (t *simpleTermsDict) MatchRegex(
-	field, regex []byte,
-	compiled *regexp.Regexp,
+func (t *simpleTermsDict) MatchRegexp(
+	field, regexp []byte,
+	compiled *re.Regexp,
 ) (postings.List, error) {
 	t.fields.RLock()
 	postingsMap, ok := t.fields.names[string(field)]

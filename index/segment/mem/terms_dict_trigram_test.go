@@ -21,7 +21,7 @@
 package mem
 
 import (
-	"regexp"
+	re "regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -73,22 +73,22 @@ func (t *trigramTermsDictionaryTestSuite) TestMatchRegex() {
 	t.Require().NoError(err)
 
 	tests := []struct {
-		regex    string
+		regexp   string
 		expected []int
 	}{
 		{
-			regex:    "bar-.*",
+			regexp:   "bar-.*",
 			expected: []int{1, 2},
 		},
 		{
-			regex:    "bar-(1|2)",
+			regexp:   "bar-(1|2)",
 			expected: []int{1, 2},
 		},
 	}
 
 	for _, test := range tests {
-		re := regexp.MustCompile(test.regex)
-		pl, err := t.termsDict.MatchRegex([]byte("foo"), []byte(test.regex), re)
+		re := re.MustCompile(test.regexp)
+		pl, err := t.termsDict.MatchRegexp([]byte("foo"), []byte(test.regexp), re)
 		t.Require().NoError(err)
 
 		t.Equal(len(test.expected), pl.Len())

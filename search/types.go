@@ -21,21 +21,54 @@
 package search
 
 import (
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
+
+	"github.com/m3db/m3x/errors"
 )
 
 // Query is a search query for documents.
 type Query interface {
-	// Searcher returns a Searcher for executing the query over a snapshot.
-	Searcher(s index.Snapshot) (Searcher, error)
+	// Searcher returns a Searcher for executing the query over a collection of Readers.
+	Searcher(rs index.Readers) (Searcher, error)
 }
 
-// Searcher executes a query against a snapshot. It is not safe for concurrent access.
+// Searcher executes a query against a collection of Readers. It is an iterator which
+// returns the postings lists of the documents it matches for each segment. It is not
+// safe for concurrent access.
 type Searcher interface {
-	// Next ...
-	Next() (doc.Document, error)
+	// Next returns the whether the iterator has another postings list.
+	Next() bool
 
-	// Error releases any internal resources used by the iterator.
+	// Current returns the current postings list. It is only safe to call Current immediately
+	// after a call to Next confirms there are more postings lists remaining.
+	Current() postings.List
+
+	// Len returns the number of Readers that the Searcher is searching over.
+	Len() int
+
+	// Err returns any errors encountered during iteration.
+	Err() error
+
+	// Close closes the iterator.
 	Close() error
+}
+
+// Searchers is a slice of Searcher.
+type Searchers []Searcher
+
+// Close closes all of the Searchers in ss.
+func (ss Searchers) Close() error {
+	multiErr := errors.NewMultiError()
+	for _, s := range ss {
+		err := s.Close()
+		if err != nil {
+			multiErr.Add(err)
+		}
+	}
+
+	if multiErr.Empty() {
+		return nil
+	}
+	return multiErr
 }

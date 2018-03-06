@@ -23,6 +23,7 @@ package query
 import (
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/search/searcher"
 )
 
 // disjuctionQuery finds documents which match at least one of the given queries.
@@ -30,13 +31,60 @@ type disjuctionQuery struct {
 	queries []search.Query
 }
 
-// NewDisjuctionQuery constructs a new DisjuctionQuery from the given queries.
-func NewDisjuctionQuery(queries []search.Query) search.Query {
+// newDisjuctionQuery constructs a new query which matches documents which match any
+// of the given queries.
+func newDisjuctionQuery(queries ...search.Query) search.Query {
+	qs := make([]search.Query, 0, len(queries))
+	for _, query := range queries {
+		// Merge disjunction queries into slice of top-level queries.
+		q, ok := query.(*disjuctionQuery)
+		if ok {
+			qs = append(qs, q.queries...)
+			continue
+		}
+
+		qs = append(qs, query)
+	}
 	return &disjuctionQuery{
-		queries: queries,
+		queries: qs,
 	}
 }
 
-func (q *disjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
-	return searcher.NewDisjunctionSearcher(queries s), nil
+func (q *disjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+	switch l := len(q.queries); l {
+	case 0:
+		l := len(rs)
+
+		// Close the readers since the empty searcher does not take a reference to them.
+		rs.Close()
+
+		return searcher.NewEmptySearcher(l), nil
+
+	case 1:
+		// If there is only a single query we can return the Searcher for just that query.
+		return q.queries[0].Searcher(rs)
+
+	default:
+	}
+
+	ss := make(search.Searchers, 0, len(q.queries))
+	for _, q := range q.queries {
+		clone, err := rs.Clone()
+		if err != nil {
+			ss.Close()
+			return nil, err
+		}
+
+		s, err := q.Searcher(clone)
+		if err != nil {
+			ss.Close()
+			return nil, err
+		}
+		ss = append(ss, s)
+	}
+
+	// Close the readers since we pass a clone of them to each of the internal Searchers.
+	rs.Close()
+
+	return searcher.NewDisjunctionSearcher(ss)
 }

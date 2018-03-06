@@ -21,33 +21,70 @@
 package searcher
 
 import (
-	"regexp"
+	re "regexp"
 
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
+	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
 )
 
 type regexpSearcher struct {
-	field, regex []byte
-	compiled     *regexp.Regexp
-	snapshot     index.Snapshot
+	field, regexp []byte
+	compiled      *re.Regexp
+	readers       index.Readers
 
-	current doc.Document
-	closed  bool
+	idx  int
+	curr postings.List
+
+	closed bool
+	err    error
 }
 
-// NewRegexpSearcher returns a new Searcher for matching a term exactly.
-func NewRegexpSearcher(field, regex []byte, compiled *regexp.Regexp, s index.Snapshot) search.Searcher {
+// NewRegexpSearcher returns a new searcher for finding documents which match the given regular
+// expression. It is not safe for concurrent access.
+func NewRegexpSearcher(rs index.Readers, field, regexp []byte, compiled *re.Regexp) search.Searcher {
 	return &regexpSearcher{
 		field:    field,
-		regex:    regex,
+		regexp:   regexp,
 		compiled: compiled,
-		snapshot: s,
+		readers:  rs,
+		idx:      -1,
 	}
 }
 
-func (s *regexpSearcher) Next() bool            { return false }
-func (s *regexpSearcher) Current() doc.Document { return doc.Document{} }
-func (s *regexpSearcher) Err() error            { return nil }
-func (s *regexpSearcher) Close() error          { return nil }
+func (s *regexpSearcher) Next() bool {
+	if s.closed || s.err != nil || s.idx == len(s.readers)-1 {
+		return false
+	}
+
+	s.idx++
+	r := s.readers[s.idx]
+	pl, err := r.MatchRegexp(s.field, s.regexp, s.compiled)
+	if err != nil {
+		s.err = err
+		return false
+	}
+	s.curr = pl
+
+	return true
+}
+
+func (s *regexpSearcher) Current() postings.List {
+	return s.curr
+}
+
+func (s *regexpSearcher) Len() int {
+	return len(s.readers)
+}
+
+func (s *regexpSearcher) Err() error {
+	return s.err
+}
+
+func (s *regexpSearcher) Close() error {
+	if s.closed {
+		return errSearcherClosed
+	}
+	s.closed = true
+	return s.readers.Close()
+}

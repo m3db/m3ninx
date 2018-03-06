@@ -21,7 +21,7 @@
 package mem
 
 import (
-	"regexp"
+	re "regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -66,8 +66,8 @@ func TestReaderMatchRegex(t *testing.T) {
 
 	maxID := postings.ID(55)
 
-	name, pattern := []byte("apple"), []byte("r.*")
-	re := regexp.MustCompile(string(pattern))
+	name, regexp := []byte("apple"), []byte("r.*")
+	compiled := re.MustCompile(string(regexp))
 	postingsList := roaring.NewPostingsList()
 	postingsList.Insert(postings.ID(42))
 	postingsList.Insert(postings.ID(50))
@@ -76,13 +76,13 @@ func TestReaderMatchRegex(t *testing.T) {
 	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
 		segment.EXPECT().Inc(),
-		segment.EXPECT().matchRegex(name, pattern, re).Return(postingsList, nil),
+		segment.EXPECT().matchRegexp(name, regexp, compiled).Return(postingsList, nil),
 		segment.EXPECT().Dec(),
 	)
 
 	reader := newReader(segment, maxID)
 
-	actual, err := reader.MatchRegex(name, pattern, re)
+	actual, err := reader.MatchRegexp(name, regexp, compiled)
 	require.NoError(t, err)
 	require.True(t, postingsList.Equal(actual))
 
@@ -144,4 +144,27 @@ func TestReaderDocs(t *testing.T) {
 	require.Equal(t, docs, actualDocs)
 
 	require.NoError(t, reader.Close())
+}
+
+func TestReaderClone(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	maxID := postings.ID(55)
+
+	segment := NewMockReadableSegment(mockCtrl)
+	gomock.InOrder(
+		segment.EXPECT().Inc(),
+		segment.EXPECT().Inc(),
+		segment.EXPECT().Dec(),
+		segment.EXPECT().Dec(),
+	)
+
+	reader := newReader(segment, maxID)
+
+	clone, err := reader.Clone()
+	require.NoError(t, err)
+
+	require.NoError(t, reader.Close())
+	require.NoError(t, clone.Close())
 }

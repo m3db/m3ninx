@@ -18,55 +18,65 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package query
+package searcher
 
 import (
 	"testing"
 
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/postings/roaring"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestConjunctionQuery(t *testing.T) {
+func TestTermSearcher(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstName, firstValue := []byte("apple"), []byte("red")
-	firstQuery := NewTermQuery(firstName, firstValue)
-	firstPostingsList := postings.NewRoaringPostingsList()
-	firstPostingsList.Insert(postings.ID(42))
-	firstPostingsList.Insert(postings.ID(50))
-	firstPostingsList.Insert(postings.ID(57))
+	field, term := []byte("fruit"), []byte("apple")
 
-	secondName, secondValue := []byte("banana"), []byte("yellow")
-	secondQuery := NewTermQuery(secondName, secondValue)
-	secondPostingsList := postings.NewRoaringPostingsList()
-	secondPostingsList.Insert(postings.ID(44))
-	secondPostingsList.Insert(postings.ID(50))
-	secondPostingsList.Insert(postings.ID(61))
+	// First reader.
+	firstPL := roaring.NewPostingsList()
+	firstPL.Insert(postings.ID(42))
+	firstPL.Insert(postings.ID(50))
+	firstReader := index.NewMockReader(mockCtrl)
 
-	reader := index.NewMockReader(mockCtrl)
+	// Second reader.
+	secondPL := roaring.NewPostingsList()
+	secondPL.Insert(postings.ID(57))
+	secondReader := index.NewMockReader(mockCtrl)
+
 	gomock.InOrder(
-		reader.EXPECT().MatchTerm(firstName, firstValue).Return(firstPostingsList, nil),
-		reader.EXPECT().MatchTerm(secondName, secondValue).Return(secondPostingsList, nil),
+		// Query the first reader.
+		firstReader.EXPECT().MatchTerm(field, term).Return(firstPL, nil),
+
+		// Query the second reader.
+		secondReader.EXPECT().MatchTerm(field, term).Return(secondPL, nil),
+
+		// Close the readers.
+		firstReader.EXPECT().Close().Return(nil),
+		secondReader.EXPECT().Close().Return(nil),
 	)
 
-	expected := postings.NewRoaringPostingsList()
-	expected.Insert(postings.ID(50))
+	readers := []index.Reader{firstReader, secondReader}
 
-	q := newConjuctionQuery([]search.Query{firstQuery, secondQuery})
-	actual, err := q.Execute(reader)
-	require.NoError(t, err)
-	require.True(t, expected.Equal(actual))
-}
+	s := NewTermSearcher(readers, field, term)
 
-func TestConjunctionQueryNoQueries(t *testing.T) {
-	q := newConjuctionQuery(nil)
-	results, err := q.Execute(nil)
-	require.NoError(t, err)
-	require.Equal(t, 0, results.Len())
+	// Ensure the searcher is searching over two readers.
+	require.Equal(t, 2, s.Len())
+
+	// Test the postings list from the first Reader.
+	require.True(t, s.Next())
+	require.True(t, s.Current().Equal(firstPL))
+
+	// Test the postings list from the second Reader.
+	require.True(t, s.Next())
+	require.True(t, s.Current().Equal(secondPL))
+
+	require.False(t, s.Next())
+	require.NoError(t, s.Err())
+
+	require.NoError(t, s.Close())
 }

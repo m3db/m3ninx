@@ -23,7 +23,7 @@ package mem
 import (
 	"errors"
 	"fmt"
-	"regexp"
+	re "regexp"
 	"regexp/syntax"
 
 	"github.com/m3db/m3ninx/doc"
@@ -82,23 +82,23 @@ func (t *trigramTermsDict) Insert(field doc.Field, id postings.ID) error {
 }
 
 func (t *trigramTermsDict) MatchTerm(field, term []byte) (postings.List, error) {
-	return t.matchRegex(field, term)
+	return t.matchRegexp(field, term)
 }
 
-func (t *trigramTermsDict) MatchRegex(
-	field, regex []byte,
-	compiled *regexp.Regexp,
+func (t *trigramTermsDict) MatchRegexp(
+	field, regexp []byte,
+	compiled *re.Regexp,
 ) (postings.List, error) {
-	return t.matchRegex(field, regex)
+	return t.matchRegexp(field, regexp)
 }
 
-func (t *trigramTermsDict) matchRegex(field, regex []byte) (postings.List, error) {
+func (t *trigramTermsDict) matchRegexp(field, regexp []byte) (postings.List, error) {
 	// TODO: Consider updating syntax.Parse to accepts a byte string so we can avoid the
 	// conversion to a string here.
-	regexStr := string(regex)
-	re, err := syntax.Parse(regexStr, syntax.Perl)
+	regexpStr := string(regexp)
+	re, err := syntax.Parse(regexpStr, syntax.Perl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse regular expression %s: %v", regexStr, err)
+		return nil, fmt.Errorf("unable to parse regular expression %s: %v", regexpStr, err)
 	}
 	q := cindex.RegexpQuery(re)
 	pl, err := t.matchQuery(field, q, nil)

@@ -25,7 +25,7 @@ import (
 	"github.com/m3db/m3ninx/search"
 )
 
-type disjunctionSearcher struct {
+type conjunctionSearcher struct {
 	searchers search.Searchers
 	len       int
 
@@ -36,9 +36,9 @@ type disjunctionSearcher struct {
 	err    error
 }
 
-// NewDisjunctionSearcher returns a new Searcher which matches documents which are matched
-// by any of the given Searchers. It is not safe for concurrent access.
-func NewDisjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
+// NewConjunctionSearcher returns a new Searcher which matches documents which match each
+// of the given Searchers. It is not safe for concurrent access.
+func NewConjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
 	var length int
 	if len(ss) > 0 {
 		length = ss[0].Len()
@@ -50,14 +50,14 @@ func NewDisjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
 		}
 	}
 
-	return &disjunctionSearcher{
+	return &conjunctionSearcher{
 		searchers: ss,
 		len:       length,
 		idx:       -1,
 	}, nil
 }
 
-func (s *disjunctionSearcher) Next() bool {
+func (s *conjunctionSearcher) Next() bool {
 	if s.closed || s.err != nil || s.idx == s.len-1 {
 		return false
 	}
@@ -73,13 +73,18 @@ func (s *disjunctionSearcher) Next() bool {
 			s.err = err
 			return false
 		}
-
-		// TODO: Sort the iterators so that we take the union in order of decreasing size.
 		curr := sr.Current()
+
+		// TODO: Sort the iterators so that we take the intersection in order of increasing size.
 		if pl == nil {
 			pl = curr.Clone()
 		} else {
-			pl.Union(curr)
+			pl.Intersect(curr)
+		}
+
+		// We can break early if the interescted postings list is ever empty.
+		if pl.IsEmpty() {
+			break
 		}
 	}
 	s.curr = pl
@@ -87,19 +92,19 @@ func (s *disjunctionSearcher) Next() bool {
 	return true
 }
 
-func (s *disjunctionSearcher) Current() postings.List {
+func (s *conjunctionSearcher) Current() postings.List {
 	return s.curr
 }
 
-func (s *disjunctionSearcher) Len() int {
+func (s *conjunctionSearcher) Len() int {
 	return s.len
 }
 
-func (s *disjunctionSearcher) Err() error {
+func (s *conjunctionSearcher) Err() error {
 	return s.err
 }
 
-func (s *disjunctionSearcher) Close() error {
+func (s *conjunctionSearcher) Close() error {
 	if s.closed {
 		return errSearcherClosed
 	}

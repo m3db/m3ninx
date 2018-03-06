@@ -20,67 +20,10 @@
 
 package searcher
 
-import (
-	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/search"
+import "errors"
+
+var (
+	errSearcherClosed          = errors.New("searcher is closed")
+	errSearchersLengthsUnequal = errors.New("searchers are not of equal lengths")
+	errSearcherTooShort        = errors.New("searcher did not contain enough postings lists")
 )
-
-type termSearcher struct {
-	field, term []byte
-	readers     index.Readers
-
-	idx  int
-	curr postings.List
-
-	closed bool
-	err    error
-}
-
-// NewTermSearcher returns a new searcher for finding documents which match the given term.
-// It is not safe for concurrent access.
-func NewTermSearcher(rs index.Readers, field, term []byte) search.Searcher {
-	return &termSearcher{
-		field:   field,
-		term:    term,
-		readers: rs,
-		idx:     -1,
-	}
-}
-
-func (s *termSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == len(s.readers)-1 {
-		return false
-	}
-
-	s.idx++
-	r := s.readers[s.idx]
-	pl, err := r.MatchTerm(s.field, s.term)
-	if err != nil {
-		s.err = err
-		return false
-	}
-	s.curr = pl
-
-	return true
-}
-
-func (s *termSearcher) Current() postings.List {
-	return s.curr
-}
-
-func (s *termSearcher) Len() int {
-	return len(s.readers)
-}
-
-func (s *termSearcher) Err() error {
-	return s.err
-}
-
-func (s *termSearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return s.readers.Close()
-}

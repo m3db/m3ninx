@@ -21,7 +21,7 @@
 package mem
 
 import (
-	"regexp"
+	re "regexp"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/postings"
@@ -37,9 +37,9 @@ type termsDict interface {
 	// given field term exactly.
 	MatchTerm(field, term []byte) (postings.List, error)
 
-	// MatchRegex returns the postings list corresponding to documents which match the
+	// MatchRegexp returns the postings list corresponding to documents which match the
 	// given egular expression.
-	MatchRegex(field, regex []byte, compiled *regexp.Regexp) (postings.List, error)
+	MatchRegexp(field, regexp []byte, compiled *re.Regexp) (postings.List, error)
 }
 
 // ReadableSegment is an internal interface for reading from a segment.
@@ -54,8 +54,8 @@ type ReadableSegment interface {
 	// matchTerm returns the postings list of documents which match the given term exactly.
 	matchTerm(field, term []byte) (postings.List, error)
 
-	// matchRegex returns the postings list of documents which match the given regular expression.
-	matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error)
+	// matchRegexp returns the postings list of documents which match the given regular expression.
+	matchRegexp(name, regexp []byte, compiled *re.Regexp) (postings.List, error)
 
 	// getDoc returns the document associated with the given ID.
 	getDoc(id postings.ID) (doc.Document, error)

@@ -21,7 +21,7 @@
 package mem
 
 import (
-	"regexp"
+	re "regexp"
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
@@ -180,9 +180,9 @@ func TestSegmentReaderMatchRegex(t *testing.T) {
 	reader, err := segment.Reader()
 	require.NoError(t, err)
 
-	name, pattern := []byte("fruit"), []byte(".*ple")
-	re := regexp.MustCompile(string(pattern))
-	pl, err := reader.MatchRegex(name, pattern, re)
+	field, regexp := []byte("fruit"), []byte(".*ple")
+	compiled := re.MustCompile(string(regexp))
+	pl, err := reader.MatchRegexp(field, regexp, compiled)
 	require.NoError(t, err)
 
 	iter, err := reader.Docs(pl)

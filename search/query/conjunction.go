@@ -22,54 +22,69 @@ package query
 
 import (
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/search/searcher"
 )
 
-// conjuctionQuery finds documents which match all of the given queries.
+// conjuctionQuery finds documents which match at least one of the given queries.
 type conjuctionQuery struct {
 	queries []search.Query
 }
 
-// newConjuctionQuery constructs a new conjuctionQuery from the given queries.
-func newConjuctionQuery(queries []search.Query) search.Query {
+// NewConjuctionQuery constructs a new query which matches documents which match all
+// of the given queries.
+func NewConjuctionQuery(queries ...search.Query) search.Query {
+	qs := make([]search.Query, 0, len(queries))
+	for _, query := range queries {
+		// Merge conjunction queries into slice of top-level queries.
+		q, ok := query.(*conjuctionQuery)
+		if ok {
+			qs = append(qs, q.queries...)
+			continue
+		}
+
+		qs = append(qs, query)
+	}
 	return &conjuctionQuery{
-		queries: queries,
+		queries: qs,
 	}
 }
 
-// Execute returns an iterator over documents matching the conjuction query.
-func (q *conjuctionQuery) Execute(r index.Reader) (postings.List, error) {
-	if len(q.queries) == 0 {
-		return postings.NewRoaringPostingsList(), nil
+func (q *conjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+	switch l := len(q.queries); l {
+	case 0:
+		l := len(rs)
+
+		// Close the readers since the empty searcher does not take a reference to them.
+		rs.Close()
+
+		return searcher.NewEmptySearcher(l), nil
+
+	case 1:
+		// If there is only a single query we can return the Searcher for just that query.
+		return q.queries[0].Searcher(rs)
+
+	default:
 	}
 
-	pl, err := q.queries[0].Execute(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fast path for when we have only one internal query or no matches so we can
-	// avoid cloning the postings list.
-	if len(q.queries) == 1 || pl.IsEmpty() {
-		return pl, nil
-	}
-
-	mpl := pl.Clone()
-	for _, qy := range q.queries[1:] {
-		pl, err := qy.Execute(r)
+	ss := make(search.Searchers, 0, len(q.queries))
+	for _, q := range q.queries {
+		clone, err := rs.Clone()
 		if err != nil {
+			ss.Close()
 			return nil, err
 		}
 
-		// TODO(jeromefroe): Instead of intersecting in order we should instead get
-		// all the postings lists, checking along the way if any are empty, and then
-		// intersect in order of increasing size.
-		mpl.Intersect(pl)
-		if mpl.IsEmpty() {
-			return mpl, nil
+		s, err := q.Searcher(clone)
+		if err != nil {
+			ss.Close()
+			return nil, err
 		}
+		ss = append(ss, s)
 	}
 
-	return mpl, nil
+	// Close the readers since we pass a clone of them to each of the internal Searchers.
+	rs.Close()
+
+	return searcher.NewConjunctionSearcher(ss)
 }

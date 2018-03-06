@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	benchField      = []byte("__name__")
-	benchRegex      = []byte("node_netstat_Tcp_.*")
-	benchCompiledRE = regexp.MustCompile(string(benchRegex))
+	benchField    = []byte("__name__")
+	benchRegexp   = []byte("node_netstat_Tcp_.*")
+	benchCompiled = regexp.MustCompile(string(benchRegexp))
 )
 
 func BenchmarkTermsDict(b *testing.B) {
@@ -148,7 +148,7 @@ func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		dict.MatchRegex(benchField, benchRegex, benchCompiledRE)
+		dict.MatchRegexp(benchField, benchRegexp, benchCompiled)
 	}
 }
 
@@ -167,7 +167,7 @@ func benchmarkMatchRegexTrigramTermsDict(docs []doc.Document, b *testing.B) {
 		// The trigram terms dictionary can return false postives so we may want to
 		// consider verifying the results returned are matches to provide a more
 		// fair comparison with the simple terms dictionary.
-		dict.MatchRegex(benchField, benchRegex, benchCompiledRE)
+		dict.MatchRegexp(benchField, benchRegexp, benchCompiled)
 	}
 }
 

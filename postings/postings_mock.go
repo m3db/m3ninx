@@ -388,18 +388,6 @@ func (_mr *MockIteratorMockRecorder) Current() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Current", reflect.TypeOf((*MockIterator)(nil).Current))
 }
 
-// Err mocks base method
-func (_m *MockIterator) Err() error {
-	ret := _m.ctrl.Call(_m, "Err")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Err indicates an expected call of Err
-func (_mr *MockIteratorMockRecorder) Err() *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Err", reflect.TypeOf((*MockIterator)(nil).Err))
-}
-
 // Close mocks base method
 func (_m *MockIterator) Close() error {
 	ret := _m.ctrl.Call(_m, "Close")
@@ -410,6 +398,18 @@ func (_m *MockIterator) Close() error {
 // Close indicates an expected call of Close
 func (_mr *MockIteratorMockRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Close", reflect.TypeOf((*MockIterator)(nil).Close))
+}
+
+// Err mocks base method
+func (_m *MockIterator) Err() error {
+	ret := _m.ctrl.Call(_m, "Err")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Err indicates an expected call of Err
+func (_mr *MockIteratorMockRecorder) Err() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Err", reflect.TypeOf((*MockIterator)(nil).Err))
 }
 
 // MockPool is a mock of Pool interface

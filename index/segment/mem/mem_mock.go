@@ -101,17 +101,17 @@ func (_mr *MockReadableSegmentMockRecorder) getDoc(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "getDoc", reflect.TypeOf((*MockReadableSegment)(nil).getDoc), arg0)
 }
 
-// matchRegex mocks base method
-func (_m *MockReadableSegment) matchRegex(_param0 []byte, _param1 []byte, _param2 *regexp.Regexp) (postings.List, error) {
-	ret := _m.ctrl.Call(_m, "matchRegex", _param0, _param1, _param2)
+// matchRegexp mocks base method
+func (_m *MockReadableSegment) matchRegexp(_param0 []byte, _param1 []byte, _param2 *regexp.Regexp) (postings.List, error) {
+	ret := _m.ctrl.Call(_m, "matchRegexp", _param0, _param1, _param2)
 	ret0, _ := ret[0].(postings.List)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// matchRegex indicates an expected call of matchRegex
-func (_mr *MockReadableSegmentMockRecorder) matchRegex(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "matchRegex", reflect.TypeOf((*MockReadableSegment)(nil).matchRegex), arg0, arg1, arg2)
+// matchRegexp indicates an expected call of matchRegexp
+func (_mr *MockReadableSegmentMockRecorder) matchRegexp(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "matchRegexp", reflect.TypeOf((*MockReadableSegment)(nil).matchRegexp), arg0, arg1, arg2)
 }
 
 // matchTerm mocks base method

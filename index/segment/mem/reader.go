@@ -24,12 +24,10 @@ import (
 	"errors"
 	"regexp"
 	"sync"
-	"time"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/util"
 )
 
 var (
@@ -38,7 +36,6 @@ var (
 
 type reader struct {
 	sync.RWMutex
-	util.RefCount
 
 	segment ReadableSegment
 	maxID   postings.ID
@@ -49,9 +46,8 @@ type reader struct {
 func newReader(s ReadableSegment, maxID postings.ID) index.Reader {
 	s.Inc()
 	return &reader{
-		RefCount: util.NewRefCount(),
-		segment:  s,
-		maxID:    maxID,
+		segment: s,
+		maxID:   maxID,
 	}
 }
 
@@ -71,7 +67,7 @@ func (r *reader) MatchTerm(field, term []byte) (postings.List, error) {
 	return pl, err
 }
 
-func (r *reader) MatchRegex(field, regex []byte, compiled *regexp.Regexp) (postings.List, error) {
+func (r *reader) MatchRegexp(field, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
 	r.RLock()
 	if r.closed {
 		r.RUnlock()
@@ -82,13 +78,30 @@ func (r *reader) MatchRegex(field, regex []byte, compiled *regexp.Regexp) (posti
 	// permitted ID. The reader only guarantees that when fetching the documents associated
 	// with a postings list through a call to Docs will IDs greater than the maximum be
 	// filtered out.
-	pl, err := r.segment.matchRegex(field, regex, compiled)
+	pl, err := r.segment.matchRegexp(field, regexp, compiled)
 	r.RUnlock()
 	return pl, err
 }
 
 func (r *reader) Docs(pl postings.List) (doc.Iterator, error) {
 	return newIterator(r.segment, pl.Iterator(), r.maxID), nil
+}
+
+func (r *reader) Clone() (index.Reader, error) {
+	r.RLock()
+	if r.closed {
+		r.RUnlock()
+		return nil, errSegmentReaderClosed
+	}
+
+	r.segment.Inc()
+	cr := &reader{
+		segment: r.segment,
+		maxID:   r.maxID,
+	}
+	r.RUnlock()
+
+	return cr, nil
 }
 
 func (r *reader) Close() error {
@@ -99,16 +112,6 @@ func (r *reader) Close() error {
 	}
 	r.closed = true
 	r.Unlock()
-
 	r.segment.Dec()
-
-	// Wait for all references to the reader to be released.
-	for {
-		if r.RefCount.Count() == 0 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
 	return nil
 }

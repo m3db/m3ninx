@@ -22,87 +22,54 @@ package searcher
 
 import (
 	"github.com/m3db/m3ninx/postings"
+	"github.com/m3db/m3ninx/postings/roaring"
 	"github.com/m3db/m3ninx/search"
 )
 
-type disjunctionSearcher struct {
-	searchers search.Searchers
-	len       int
+type emptySearcher struct {
+	len      int
+	postings postings.List
 
-	idx  int
-	curr postings.List
+	idx int
 
 	closed bool
 	err    error
 }
 
-// NewDisjunctionSearcher returns a new Searcher which matches documents which are matched
-// by any of the given Searchers. It is not safe for concurrent access.
-func NewDisjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
-	var length int
-	if len(ss) > 0 {
-		length = ss[0].Len()
-		for _, s := range ss[1:] {
-			if s.Len() != length {
-				ss.Close()
-				return nil, errSearchersLengthsUnequal
-			}
-		}
+// NewEmptySearcher returns a new searcher which always returns an empty postings list.
+// It is not safe for concurrent access.
+func NewEmptySearcher(len int) search.Searcher {
+	return &emptySearcher{
+		len:      len,
+		postings: roaring.NewPostingsList(),
+		idx:      -1,
 	}
-
-	return &disjunctionSearcher{
-		searchers: ss,
-		len:       length,
-		idx:       -1,
-	}, nil
 }
 
-func (s *disjunctionSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == s.len-1 {
+func (s *emptySearcher) Next() bool {
+	if s.closed || s.idx == s.len-1 {
 		return false
 	}
-
 	s.idx++
-	var pl postings.MutableList
-	for _, sr := range s.searchers {
-		if !sr.Next() {
-			err := sr.Err()
-			if err == nil {
-				err = errSearcherTooShort
-			}
-			s.err = err
-			return false
-		}
-
-		// TODO: Sort the iterators so that we take the union in order of decreasing size.
-		curr := sr.Current()
-		if pl == nil {
-			pl = curr.Clone()
-		} else {
-			pl.Union(curr)
-		}
-	}
-	s.curr = pl
-
 	return true
 }
 
-func (s *disjunctionSearcher) Current() postings.List {
-	return s.curr
+func (s *emptySearcher) Current() postings.List {
+	return s.postings
 }
 
-func (s *disjunctionSearcher) Len() int {
+func (s *emptySearcher) Len() int {
 	return s.len
 }
 
-func (s *disjunctionSearcher) Err() error {
+func (s *emptySearcher) Err() error {
 	return s.err
 }
 
-func (s *disjunctionSearcher) Close() error {
+func (s *emptySearcher) Close() error {
 	if s.closed {
 		return errSearcherClosed
 	}
 	s.closed = true
-	return s.searchers.Close()
+	return nil
 }

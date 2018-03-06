@@ -21,33 +21,34 @@
 package query
 
 import (
-	"regexp"
+	re "regexp"
 
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/search/searcher"
 )
 
 // regexpQuery finds documents which match the given regular expression.
 type regexpQuery struct {
 	field    []byte
-	regex    []byte
-	compiled *regexp.Regexp
+	regexp   []byte
+	compiled *re.Regexp
 }
 
 // NewRegexpQuery constructs a new query for the given regular expression.
-func NewRegexpQuery(field, regex []byte) (search.Query, error) {
-	compiled, err := regexp.Compile(string(regex))
+func NewRegexpQuery(field, regexp []byte) (search.Query, error) {
+	compiled, err := re.Compile(string(regexp))
 	if err != nil {
 		return nil, err
 	}
 
 	return &regexpQuery{
 		field:    field,
-		regex:    regex,
+		regexp:   regexp,
 		compiled: compiled,
 	}, nil
 }
 
-func (q *regexpQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
-	return searcher.NewRegexpSearcher(q.field, q.term, s), nil
+func (q *regexpQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+	return searcher.NewRegexpSearcher(rs, q.field, q.regexp, q.compiled), nil
 }

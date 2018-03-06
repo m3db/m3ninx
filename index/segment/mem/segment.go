@@ -23,7 +23,7 @@ package mem
 import (
 	"errors"
 	"fmt"
-	"regexp"
+	re "regexp"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -237,7 +237,7 @@ func (s *segment) matchTerm(field, term []byte) (postings.List, error) {
 	return s.termsDict.MatchTerm(field, term)
 }
 
-func (s *segment) matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.List, error) {
+func (s *segment) matchRegexp(name, regexp []byte, compiled *re.Regexp) (postings.List, error) {
 	// TODO: Consider removing the state check by requiring that matchRegex is only
 	// called through a Reader which guarantees the segment is still open.
 	s.state.RLock()
@@ -246,14 +246,14 @@ func (s *segment) matchRegex(name, pattern []byte, re *regexp.Regexp) (postings.
 		return nil, errSegmentClosed
 	}
 
-	if re == nil {
+	if compiled == nil {
 		var err error
-		re, err = regexp.Compile(string(pattern))
+		compiled, err = re.Compile(string(regexp))
 		if err != nil {
 			return nil, err
 		}
 	}
-	return s.termsDict.MatchRegex(name, pattern, re)
+	return s.termsDict.MatchRegexp(name, regexp, compiled)
 }
 
 func (s *segment) getDoc(id postings.ID) (doc.Document, error) {

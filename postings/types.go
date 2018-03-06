@@ -28,6 +28,7 @@ import (
 // ID is the unique identifier of an element in the postings list.
 // TODO: Use a uint64, currently we only use uint32 because we use
 // Roaring Bitmaps for the implementation of the postings list.
+// Pilosa has an implementation of Roaring Bitmaps using uint64s.
 type ID uint32
 
 const (
@@ -97,20 +98,20 @@ type MutableList interface {
 }
 
 // Iterator is an iterator over a postings list. The iterator is guarenteed to return
-// IDs in increasing order.
+// IDs in increasing order. It is not safe for concurrent access.
 type Iterator interface {
-	// Next returns whether we have another postings ID.
+	// Next returns whether the iterator has another postings ID.
 	Next() bool
 
 	// Current returns the current postings ID. It is only safe to call Current immediately
-	// after a call to Next confirms there are more elements remaining.
+	// after a call to Next confirms there are more IDs remaining.
 	Current() ID
-
-	// Err returns any errors encountered during iteration.
-	Err() error
 
 	// Close closes the iterator.
 	Close() error
+
+	// Err returns any errors encountered during iteration.
+	Err() error
 }
 
 // Pool provides a pool for MutableLists.
