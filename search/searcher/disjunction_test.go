@@ -52,7 +52,7 @@ func TestDisjunctionSearcher(t *testing.T) {
 	secondSearcher := search.NewMockSearcher(mockCtrl)
 
 	gomock.InOrder(
-		// The mock Searcher appear to have two internal Readers.
+		// The mock Searchers have length 2, corresponding to 2 readers.
 		firstSearcher.EXPECT().Len().Return(2),
 		secondSearcher.EXPECT().Len().Return(2),
 

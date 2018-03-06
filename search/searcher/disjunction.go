@@ -62,8 +62,8 @@ func (s *disjunctionSearcher) Next() bool {
 		return false
 	}
 
-	s.idx++
 	var pl postings.MutableList
+	s.idx++
 	for _, sr := range s.searchers {
 		if !sr.Next() {
 			err := sr.Err()
