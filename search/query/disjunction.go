@@ -54,18 +54,19 @@ func (q *disjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	switch l := len(q.queries); l {
 	case 0:
 		l := len(rs)
-
-		// Close the readers since the empty searcher does not take a reference to them.
-		rs.Close()
-
+		rs.Close() // Close the readers since the empty searcher does not take a reference to them.
 		return searcher.NewEmptySearcher(l), nil
 
 	case 1:
-		// If there is only a single query we can return the Searcher for just that query.
+		// If there is only a single query we can return the Searcher for just that query
+		// and pass it ownership of the Readers.
 		return q.queries[0].Searcher(rs)
 
 	default:
 	}
+
+	// Close the readers since we will pass a clone of them to each Searcher.
+	defer rs.Close()
 
 	ss := make(search.Searchers, 0, len(q.queries))
 	for _, q := range q.queries {
@@ -82,9 +83,6 @@ func (q *disjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 		}
 		ss = append(ss, s)
 	}
-
-	// Close the readers since we pass a clone of them to each of the internal Searchers.
-	rs.Close()
 
 	return searcher.NewDisjunctionSearcher(ss)
 }

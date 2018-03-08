@@ -21,29 +21,30 @@
 package util
 
 import (
-	"github.com/uber-go/atomic"
+	"github.com/m3db/m3x/checked"
 )
 
 type refCount struct {
-	n *atomic.Int32
+	inner *checked.RefCount
 }
 
 // NewRefCount returns a new reference count.
 func NewRefCount() RefCount {
-	return &refCount{n: atomic.NewInt32(0)}
+	return &refCount{inner: new(checked.RefCount)}
 }
 
-func (rc *refCount) Inc() {
-	rc.n.Inc()
+func (rc *refCount) IncRef() {
+	rc.inner.IncRef()
 }
 
-func (rc *refCount) Dec() {
-	n := rc.n.Dec()
-	if n < 0 {
-		panic("invalid decrement of reference count")
-	}
+func (rc *refCount) DecRef() {
+	rc.inner.DecRef()
 }
 
-func (rc *refCount) Count() int {
-	return int(rc.n.Load())
+func (rc *refCount) MoveRef() {
+	rc.inner.MoveRef()
+}
+
+func (rc *refCount) NumRef() int {
+	return rc.inner.NumRef()
 }

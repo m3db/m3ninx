@@ -18,70 +18,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package util
+package query
 
 import (
-	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/m3db/m3ninx/index"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
-func TestRefCount(t *testing.T) {
-	rc := NewRefCount()
-	assert.Equal(t, 0, rc.NumRef())
-
-	var numSteps = 100
-	for i := 0; i < numSteps; i++ {
-		rc.IncRef()
-		assert.Equal(t, i+1, rc.NumRef())
+func TestTermQuery(t *testing.T) {
+	tests := []struct {
+		name        string
+		field, term []byte
+	}{
+		{
+			name:  "valid field and term should not return an error",
+			field: []byte("fruit"),
+			term:  []byte("apple"),
+		},
 	}
 
-	for i := 0; i < numSteps; i++ {
-		rc.DecRef()
-		assert.Equal(t, numSteps-i-1, rc.NumRef())
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockReaders := index.Readers{index.NewMockReader(mockCtrl)}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q := NewTermQuery(test.field, test.term)
+			_, err := q.Searcher(mockReaders)
+			require.NoError(t, err)
+		})
 	}
-}
-
-func TestRefCountConcurrentUpdates(t *testing.T) {
-	rc := NewRefCount()
-
-	var (
-		wg      sync.WaitGroup
-		numIncs = 100
-		numDecs = 50
-	)
-	wg.Add(numIncs + numDecs)
-
-	// Ensure that the reference count is high enough so that the decrements will
-	// never cause it to go negative.
-	for i := 0; i < numDecs; i++ {
-		rc.IncRef()
-	}
-
-	for i := 0; i < numIncs; i++ {
-		go func() {
-			rc.IncRef()
-			wg.Done()
-		}()
-	}
-
-	for i := 0; i < numDecs; i++ {
-		go func() {
-			rc.DecRef()
-			wg.Done()
-		}()
-	}
-
-	wg.Wait()
-
-	assert.Equal(t, numDecs+(numIncs-numDecs), rc.NumRef())
-}
-
-func TestRefCountPanic(t *testing.T) {
-	rc := NewRefCount()
-
-	assert.Panics(t, func() {
-		rc.DecRef()
-	})
 }

@@ -22,12 +22,15 @@ package util
 
 // RefCount is an interface for a reference counted object.
 type RefCount interface {
-	// Inc increments the reference count.
-	Inc()
+	// IncRef increments the reference count.
+	IncRef()
 
-	// Dec decrements the reference count.
-	Dec()
+	// DecRef decrements the reference count.
+	DecRef()
 
-	// Count returns the current number of references.
-	Count() int
+	// MoveRef signals a transfer of ownership of the reference count.
+	MoveRef()
+
+	// NumRef returns the current reference count.
+	NumRef() int
 }

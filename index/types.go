@@ -89,7 +89,7 @@ func (rs Readers) Close() error {
 	for _, r := range rs {
 		err := r.Close()
 		if err != nil {
-			multiErr.Add(err)
+			multiErr = multiErr.Add(err)
 		}
 	}
 

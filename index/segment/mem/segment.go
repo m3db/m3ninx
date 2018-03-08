@@ -66,7 +66,10 @@ type segment struct {
 
 	// Current writer and reader IDs. Writers increment the writer ID for each new
 	// document and only increment the reader ID after the document has been fully
-	// indexed by the segment. Readers do not need to acquire a lock.
+	// indexed by the segment. Readers do not need to acquire a lock since the writers
+	// only increment the readerID after they have finished inserting a new document.
+	// TODO(jeromefroe): Reevaluate using a big lock here which only permits a single
+	// writer at a time.
 	ids struct {
 		sync.RWMutex
 
@@ -168,7 +171,7 @@ func (s *segment) Close() error {
 
 	// Wait for all references to the segment to be released.
 	for {
-		if s.RefCount.Count() == 0 {
+		if s.RefCount.NumRef() == 0 {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)

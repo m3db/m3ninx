@@ -46,9 +46,9 @@ func TestReaderMatchExact(t *testing.T) {
 
 	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().Inc(),
+		segment.EXPECT().IncRef(),
 		segment.EXPECT().matchTerm(name, value).Return(postingsList, nil),
-		segment.EXPECT().Dec(),
+		segment.EXPECT().DecRef(),
 	)
 
 	reader := newReader(segment, maxID)
@@ -75,9 +75,9 @@ func TestReaderMatchRegex(t *testing.T) {
 
 	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().Inc(),
+		segment.EXPECT().IncRef(),
 		segment.EXPECT().matchRegexp(name, regexp, compiled).Return(postingsList, nil),
-		segment.EXPECT().Dec(),
+		segment.EXPECT().DecRef(),
 	)
 
 	reader := newReader(segment, maxID)
@@ -115,12 +115,12 @@ func TestReaderDocs(t *testing.T) {
 
 	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().Inc(),
-		segment.EXPECT().Inc(),
+		segment.EXPECT().IncRef(),
+		segment.EXPECT().IncRef(),
 		segment.EXPECT().getDoc(postings.ID(42)).Return(docs[0], nil),
 		segment.EXPECT().getDoc(postings.ID(47)).Return(docs[1], nil),
-		segment.EXPECT().Dec(),
-		segment.EXPECT().Dec(),
+		segment.EXPECT().DecRef(),
+		segment.EXPECT().DecRef(),
 	)
 
 	postingsList := roaring.NewPostingsList()
@@ -154,10 +154,10 @@ func TestReaderClone(t *testing.T) {
 
 	segment := NewMockReadableSegment(mockCtrl)
 	gomock.InOrder(
-		segment.EXPECT().Inc(),
-		segment.EXPECT().Inc(),
-		segment.EXPECT().Dec(),
-		segment.EXPECT().Dec(),
+		segment.EXPECT().IncRef(),
+		segment.EXPECT().IncRef(),
+		segment.EXPECT().DecRef(),
+		segment.EXPECT().DecRef(),
 	)
 
 	reader := newReader(segment, maxID)

@@ -63,7 +63,7 @@ func (ss Searchers) Close() error {
 	for _, s := range ss {
 		err := s.Close()
 		if err != nil {
-			multiErr.Add(err)
+			multiErr = multiErr.Add(err)
 		}
 	}
 

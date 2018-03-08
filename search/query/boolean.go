@@ -35,8 +35,8 @@ var (
 // booleanQuery is a compound query composed of must, should, and must not queries.
 type booleanQuery struct {
 	must    search.Query
-	mustNot search.Query
 	should  search.Query
+	mustNot search.Query
 }
 
 // NewBooleanQuery returns a new compound query such that:
@@ -67,5 +67,53 @@ func NewBooleanQuery(
 }
 
 func (q *booleanQuery) Searcher(rs index.Readers) (search.Searcher, error) {
-	return searcher.NewBooleanSearcher(rs, q.must, q.mustNot, q.should), nil
+	if q.must == nil && q.should == nil && q.mustNot == nil {
+		l := len(rs)
+		rs.Close() // Close the readers since the empty searcher does not take a reference to them.
+		return searcher.NewEmptySearcher(l), nil
+	}
+
+	// If only must is non-empty then just return its Searcher directly.
+	if q.must != nil && q.should == nil && q.mustNot == nil {
+		return q.must.Searcher(rs)
+	}
+	// If only should is non-empty then just return its Searcher directly.
+	if q.should != nil && q.must == nil && q.mustNot == nil {
+		return q.should.Searcher(rs)
+	}
+
+	// Close the readers since we will pass a clone of them to each Searcher.
+	defer rs.Close()
+
+	// Construct must Searcher.
+	clone, err := rs.Clone()
+	if err != nil {
+		return nil, err
+	}
+	must, err := q.must.Searcher(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct should Searcher.
+	clone, err = rs.Clone()
+	if err != nil {
+		return nil, err
+	}
+	should, err := q.should.Searcher(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct mustNot Searcher.
+	clone, err = rs.Clone()
+	if err != nil {
+		return nil, err
+	}
+	mustNot, err := q.mustNot.Searcher(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	return searcher.NewBooleanSearcher(must, should, mustNot)
 }
