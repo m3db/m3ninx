@@ -66,51 +66,33 @@ func NewBooleanQuery(
 	return &q, nil
 }
 
-func (q *booleanQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+func (q *booleanQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
 	if q.must == nil && q.should == nil && q.mustNot == nil {
-		l := len(rs)
-		rs.Close() // Close the readers since the empty searcher does not take a reference to them.
-		return searcher.NewEmptySearcher(l), nil
+		n, err := s.Size()
+		if err != nil {
+			return nil, err
+		}
+		return searcher.NewEmptySearcher(n), nil
 	}
 
 	// If only must is non-empty then just return its Searcher directly.
 	if q.must != nil && q.should == nil && q.mustNot == nil {
-		return q.must.Searcher(rs)
+		return q.must.Searcher(s)
 	}
 	// If only should is non-empty then just return its Searcher directly.
 	if q.should != nil && q.must == nil && q.mustNot == nil {
-		return q.should.Searcher(rs)
+		return q.should.Searcher(s)
 	}
 
-	// Close the readers since we will pass a clone of them to each Searcher.
-	defer rs.Close()
-
-	// Construct must Searcher.
-	clone, err := rs.Clone()
+	must, err := q.must.Searcher(s)
 	if err != nil {
 		return nil, err
 	}
-	must, err := q.must.Searcher(clone)
+	should, err := q.should.Searcher(s)
 	if err != nil {
 		return nil, err
 	}
-
-	// Construct should Searcher.
-	clone, err = rs.Clone()
-	if err != nil {
-		return nil, err
-	}
-	should, err := q.should.Searcher(clone)
-	if err != nil {
-		return nil, err
-	}
-
-	// Construct mustNot Searcher.
-	clone, err = rs.Clone()
-	if err != nil {
-		return nil, err
-	}
-	mustNot, err := q.mustNot.Searcher(clone)
+	mustNot, err := q.mustNot.Searcher(s)
 	if err != nil {
 		return nil, err
 	}

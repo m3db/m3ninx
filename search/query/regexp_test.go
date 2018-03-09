@@ -52,7 +52,11 @@ func TestRegexpQuery(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockReaders := index.Readers{index.NewMockReader(mockCtrl)}
+	mockSnapshot := index.NewMockSnapshot(mockCtrl)
+
+	gomock.InOrder(
+		mockSnapshot.EXPECT().Readers().Return(nil, nil),
+	)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -64,7 +68,7 @@ func TestRegexpQuery(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			_, err = q.Searcher(mockReaders)
+			_, err = q.Searcher(mockSnapshot)
 			require.NoError(t, err)
 		})
 	}

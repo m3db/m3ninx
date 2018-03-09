@@ -129,15 +129,29 @@ func (_m *MockSnapshot) EXPECT() *MockSnapshotMockRecorder {
 }
 
 // Readers mocks base method
-func (_m *MockSnapshot) Readers() Readers {
+func (_m *MockSnapshot) Readers() (Readers, error) {
 	ret := _m.ctrl.Call(_m, "Readers")
 	ret0, _ := ret[0].(Readers)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Readers indicates an expected call of Readers
 func (_mr *MockSnapshotMockRecorder) Readers() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Readers", reflect.TypeOf((*MockSnapshot)(nil).Readers))
+}
+
+// Size mocks base method
+func (_m *MockSnapshot) Size() (int, error) {
+	ret := _m.ctrl.Call(_m, "Size")
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Size indicates an expected call of Size
+func (_mr *MockSnapshotMockRecorder) Size() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Size", reflect.TypeOf((*MockSnapshot)(nil).Size))
 }
 
 // Close mocks base method

@@ -34,25 +34,25 @@ func TestDisjunctionQuery(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstMockReader := index.NewMockReader(mockCtrl)
-	secondMockReader := index.NewMockReader(mockCtrl)
-	thirdMockReader := index.NewMockReader(mockCtrl)
+	firstMockSnapshot := index.NewMockSnapshot(mockCtrl)
+	secondMockSnapshot := index.NewMockSnapshot(mockCtrl)
+	thirdMockSnapshot := index.NewMockSnapshot(mockCtrl)
 
 	tests := []struct {
-		name    string
-		queries []search.Query
-		readers index.Readers
+		name     string
+		queries  []search.Query
+		snapshot index.Snapshot
 	}{
 		{
-			name:    "no queries provided",
-			readers: index.Readers{firstMockReader},
+			name:     "no queries provided",
+			snapshot: firstMockSnapshot,
 		},
 		{
 			name: "a single query provided",
 			queries: []search.Query{
 				NewTermQuery([]byte("fruit"), []byte("apple")),
 			},
-			readers: index.Readers{secondMockReader},
+			snapshot: secondMockSnapshot,
 		},
 		{
 			name: "multiple queries provided",
@@ -60,28 +60,22 @@ func TestDisjunctionQuery(t *testing.T) {
 				NewTermQuery([]byte("fruit"), []byte("apple")),
 				NewTermQuery([]byte("vegetable"), []byte("carrot")),
 			},
-			readers: index.Readers{thirdMockReader},
+			snapshot: thirdMockSnapshot,
 		},
 	}
 
 	gomock.InOrder(
-		// When no queries are provided the readers are closed because an empty searcher doesn't
-		// take a reference to them.
-		firstMockReader.EXPECT().Close().Return(nil),
+		firstMockSnapshot.EXPECT().Size().Return(4),
 
-		// With just a single query ownership of the readers is passed directly to the Searcher
-		// so we don't need to add any methods to secondMockReader.
-
-		// With multiple queries we need to pass a clone to each Searcher.
-		thirdMockReader.EXPECT().Clone().Return(nil, nil),
-		thirdMockReader.EXPECT().Clone().Return(nil, nil),
-		thirdMockReader.EXPECT().Close().Return(nil),
+		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
+		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
+		thirdMockSnapshot.EXPECT().Readers().Return(nil),
 	)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q := newDisjuctionQuery(test.queries)
-			_, err := q.Searcher(test.readers)
+			_, err := q.Searcher(test.snapshot)
 			require.NoError(t, err)
 		})
 	}

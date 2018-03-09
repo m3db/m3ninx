@@ -34,20 +34,20 @@ func TestBooleanQuery(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	firstMockReader := index.NewMockReader(mockCtrl)
-	secondMockReader := index.NewMockReader(mockCtrl)
-	thirdMockReader := index.NewMockReader(mockCtrl)
-	fourthMockReader := index.NewMockReader(mockCtrl)
+	firstMockSnapshot := index.NewMockSnapshot(mockCtrl)
+	secondMockSnapshot := index.NewMockSnapshot(mockCtrl)
+	thirdMockSnapshot := index.NewMockSnapshot(mockCtrl)
+	fourthMockSnapshot := index.NewMockSnapshot(mockCtrl)
 
 	tests := []struct {
 		name                  string
 		must, should, mustNot []search.Query
-		readers               index.Readers
+		snapshot              index.Snapshot
 		expectErr             bool
 	}{
 		{
-			name:    "no queries provided",
-			readers: index.Readers{firstMockReader},
+			name:     "no queries provided",
+			snapshot: firstMockSnapshot,
 		},
 		{
 			name: "must, should, and mustNot queries provided",
@@ -60,21 +60,21 @@ func TestBooleanQuery(t *testing.T) {
 			mustNot: []search.Query{
 				NewTermQuery([]byte("variety"), []byte("red delicious")),
 			},
-			readers: index.Readers{secondMockReader},
+			snapshot: secondMockSnapshot,
 		},
 		{
 			name: "only a must query provided",
 			should: []search.Query{
 				NewTermQuery([]byte("color"), []byte("red")),
 			},
-			readers: index.Readers{thirdMockReader},
+			snapshot: thirdMockSnapshot,
 		},
 		{
 			name: "only a should query provided",
 			should: []search.Query{
 				NewTermQuery([]byte("color"), []byte("red")),
 			},
-			readers: index.Readers{fourthMockReader},
+			snapshot: fourthMockSnapshot,
 		},
 		{
 			name: "a mustNot query without an accompanying must or should query is invalid",
@@ -86,15 +86,11 @@ func TestBooleanQuery(t *testing.T) {
 	}
 
 	gomock.InOrder(
-		// When no queries are provided the readers are closed because an empty searcher doesn't
-		// take a reference to them.
-		firstMockReader.EXPECT().Close().Return(nil),
+		firstMockSnapshot.EXPECT().Size().Return(4),
 
-		// With multiple queries we need to pass a clone to each Searcher.
-		secondMockReader.EXPECT().Clone().Return(nil, nil),
-		secondMockReader.EXPECT().Clone().Return(nil, nil),
-		secondMockReader.EXPECT().Clone().Return(nil, nil),
-		secondMockReader.EXPECT().Close().Return(nil),
+		secondMockSnapshot.EXPECT().Readers().Return(nil, nil),
+		secondMockSnapshot.EXPECT().Readers().Return(nil, nil),
+		secondMockSnapshot.EXPECT().Readers().Return(nil),
 	)
 
 	for _, test := range tests {
@@ -106,7 +102,7 @@ func TestBooleanQuery(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			_, err = q.Searcher(test.readers)
+			_, err = q.Searcher(test.snapshot)
 			require.NoError(t, err)
 		})
 	}

@@ -50,39 +50,30 @@ func newConjuctionQuery(queries []search.Query) search.Query {
 	}
 }
 
-func (q *conjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
+func (q *conjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
 	switch l := len(q.queries); l {
 	case 0:
-		l := len(rs)
-		rs.Close() // Close the readers since the empty searcher does not take a reference to them.
-		return searcher.NewEmptySearcher(l), nil
+		n, err := s.Size()
+		if err != nil {
+			return nil, err
+		}
+		return searcher.NewEmptySearcher(n), nil
 
 	case 1:
-		// If there is only a single query we can return the Searcher for just that query
-		// and pass it ownership of the Readers.
-		return q.queries[0].Searcher(rs)
+		return q.queries[0].Searcher(s)
 
 	default:
 	}
 
-	// Close the readers since we will pass a clone of them to each Searcher.
-	defer rs.Close()
-
-	ss := make(search.Searchers, 0, len(q.queries))
+	srs := make(search.Searchers, 0, len(q.queries))
 	for _, q := range q.queries {
-		clone, err := rs.Clone()
+		sr, err := q.Searcher(s)
 		if err != nil {
-			ss.Close()
+			srs.Close()
 			return nil, err
 		}
-
-		s, err := q.Searcher(clone)
-		if err != nil {
-			ss.Close()
-			return nil, err
-		}
-		ss = append(ss, s)
+		srs = append(srs, sr)
 	}
 
-	return searcher.NewConjunctionSearcher(ss)
+	return searcher.NewConjunctionSearcher(srs)
 }

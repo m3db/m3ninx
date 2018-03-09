@@ -53,7 +53,10 @@ type Snapshot interface {
 	// Readers returns the set of readers contained in the snapshot. Each call to Readers
 	// will return independent clones of the same Readers which the caller is responsible
 	// for closing.
-	Readers() Readers
+	Readers() (Readers, error)
+
+	// Size returns the number of Readers in this snapshot.
+	Size() (int, error)
 
 	// Close closes the snapshot and releases any internal resources.
 	Close() error
