@@ -65,11 +65,12 @@ func TestDisjunctionQuery(t *testing.T) {
 	}
 
 	gomock.InOrder(
-		firstMockSnapshot.EXPECT().Size().Return(4),
+		firstMockSnapshot.EXPECT().Size().Return(4, nil),
+
+		secondMockSnapshot.EXPECT().Readers().Return(nil, nil),
 
 		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
 		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
-		thirdMockSnapshot.EXPECT().Readers().Return(nil),
 	)
 
 	for _, test := range tests {

@@ -51,7 +51,7 @@ func newConjuctionQuery(queries []search.Query) search.Query {
 }
 
 func (q *conjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
-	switch l := len(q.queries); l {
+	switch len(q.queries) {
 	case 0:
 		n, err := s.Size()
 		if err != nil {
@@ -61,8 +61,6 @@ func (q *conjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
 
 	case 1:
 		return q.queries[0].Searcher(s)
-
-	default:
 	}
 
 	srs := make(search.Searchers, 0, len(q.queries))
