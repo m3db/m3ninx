@@ -75,7 +75,7 @@ func TestDisjunctionQuery(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q := newDisjuctionQuery(test.queries)
+			q := NewDisjuctionQuery(test.queries)
 			_, err := q.Searcher(test.snapshot)
 			require.NoError(t, err)
 		})

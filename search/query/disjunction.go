@@ -31,9 +31,9 @@ type disjuctionQuery struct {
 	queries []search.Query
 }
 
-// newDisjuctionQuery constructs a new query which matches documents which match any
+// NewDisjuctionQuery constructs a new query which matches documents which match any
 // of the given queries.
-func newDisjuctionQuery(queries []search.Query) search.Query {
+func NewDisjuctionQuery(queries []search.Query) search.Query {
 	qs := make([]search.Query, 0, len(queries))
 	for _, query := range queries {
 		// Merge disjunction queries into slice of top-level queries.

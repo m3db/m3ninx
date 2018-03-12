@@ -75,7 +75,7 @@ func TestConjunctionQuery(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q := newConjuctionQuery(test.queries)
+			q := NewConjuctionQuery(test.queries)
 			_, err := q.Searcher(test.snapshot)
 			require.NoError(t, err)
 		})

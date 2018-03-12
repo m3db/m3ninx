@@ -31,9 +31,9 @@ type conjuctionQuery struct {
 	queries []search.Query
 }
 
-// newConjuctionQuery constructs a new query which matches documents which match all
+// NewConjuctionQuery constructs a new query which matches documents which match all
 // of the given queries.
-func newConjuctionQuery(queries []search.Query) search.Query {
+func NewConjuctionQuery(queries []search.Query) search.Query {
 	qs := make([]search.Query, 0, len(queries))
 	for _, query := range queries {
 		// Merge conjunction queries into slice of top-level queries.
