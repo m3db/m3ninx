@@ -20,10 +20,28 @@
 
 package searcher
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/m3db/m3ninx/search"
+)
 
 var (
 	errSearcherClosed          = errors.New("searcher is closed")
 	errSearchersLengthsUnequal = errors.New("searchers are not of equal lengths")
 	errSearcherTooShort        = errors.New("searcher did not contain enough postings lists")
 )
+
+func validateSearchers(ss search.Searchers) error {
+	var length int
+	if len(ss) > 0 {
+		length = ss[0].Len()
+		for _, s := range ss[1:] {
+			if s.Len() != length {
+				ss.Close()
+				return errSearchersLengthsUnequal
+			}
+		}
+	}
+	return nil
+}

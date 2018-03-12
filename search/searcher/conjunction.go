@@ -39,20 +39,13 @@ type conjunctionSearcher struct {
 // NewConjunctionSearcher returns a new Searcher which matches documents which match each
 // of the given Searchers. It is not safe for concurrent access.
 func NewConjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
-	var length int
-	if len(ss) > 0 {
-		length = ss[0].Len()
-		for _, s := range ss[1:] {
-			if s.Len() != length {
-				ss.Close()
-				return nil, errSearchersLengthsUnequal
-			}
-		}
+	if err := validateSearchers(ss); err != nil {
+		return nil, err
 	}
 
 	return &conjunctionSearcher{
 		searchers: ss,
-		len:       length,
+		len:       len(ss),
 		idx:       -1,
 	}, nil
 }

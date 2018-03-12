@@ -39,20 +39,13 @@ type disjunctionSearcher struct {
 // NewDisjunctionSearcher returns a new Searcher which matches documents which are matched
 // by any of the given Searchers. It is not safe for concurrent access.
 func NewDisjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
-	var length int
-	if len(ss) > 0 {
-		length = ss[0].Len()
-		for _, s := range ss[1:] {
-			if s.Len() != length {
-				ss.Close()
-				return nil, errSearchersLengthsUnequal
-			}
-		}
+	if err := validateSearchers(ss); err != nil {
+		return nil, err
 	}
 
 	return &disjunctionSearcher{
 		searchers: ss,
-		len:       length,
+		len:       len(ss),
 		idx:       -1,
 	}, nil
 }

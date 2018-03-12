@@ -26,9 +26,9 @@ import (
 	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/postings/roaring"
 	"github.com/m3db/m3ninx/search"
-	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDisjunctionSearcher(t *testing.T) {
