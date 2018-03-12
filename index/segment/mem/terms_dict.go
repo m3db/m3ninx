@@ -12,7 +12,7 @@
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENd. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -28,87 +28,83 @@ import (
 	"github.com/m3db/m3ninx/postings"
 )
 
-// simpleTermsDict uses a two-level map to model a terms dictionary. It maps a field
-// (name and value) to a postings list.
-type simpleTermsDict struct {
+// termsDict is an in-memory terms dictionary. It maps fields to postings lists.
+type termsDict struct {
 	opts Options
 
 	fields struct {
 		sync.RWMutex
 
-		names map[string]*postingsMap
-		// TODO: as noted in https://github.com/m3db/m3ninx/issues/11, evalute impact of using
-		// a custom hash map where we can avoid using string keys, both to save allocs and
-		// help perf.
+		mapping map[string]*postingsMap
 	}
 }
 
-func newSimpleTermsDict(opts Options) termsDict {
-	dict := &simpleTermsDict{
+func newTermsDict(opts Options) termsDictionary {
+	dict := &termsDict{
 		opts: opts,
 	}
-	dict.fields.names = make(map[string]*postingsMap, opts.InitialCapacity())
+	dict.fields.mapping = make(map[string]*postingsMap, opts.InitialCapacity())
 	return dict
 }
 
-func (t *simpleTermsDict) Insert(field doc.Field, id postings.ID) error {
+func (d *termsDict) Insert(field doc.Field, id postings.ID) error {
 	name := string(field.Name)
-	postingsMap := t.getOrAddName(name)
+	postingsMap := d.getOrAddName(name)
 	return postingsMap.addID(field.Value, id)
 }
 
-func (t *simpleTermsDict) MatchTerm(field, term []byte) (postings.List, error) {
-	t.fields.RLock()
-	postingsMap, ok := t.fields.names[string(field)]
-	t.fields.RUnlock()
+func (d *termsDict) MatchTerm(field, term []byte) (postings.List, error) {
+	d.fields.RLock()
+	postingsMap, ok := d.fields.mapping[string(field)]
+	d.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
-		return t.opts.PostingsListPool().Get(), nil
+		return d.opts.PostingsListPool().Get(), nil
 	}
 	return postingsMap.get(term), nil
 }
 
-func (t *simpleTermsDict) MatchRegexp(
+func (d *termsDict) MatchRegexp(
 	field, regexp []byte,
 	compiled *re.Regexp,
 ) (postings.List, error) {
-	t.fields.RLock()
-	postingsMap, ok := t.fields.names[string(field)]
-	t.fields.RUnlock()
+	d.fields.RLock()
+	postingsMap, ok := d.fields.mapping[string(field)]
+	d.fields.RUnlock()
 	if !ok {
 		// It is not an error to not have any matching values.
-		return t.opts.PostingsListPool().Get(), nil
+		return d.opts.PostingsListPool().Get(), nil
 	}
 
 	pls := postingsMap.getRegex(compiled)
-	union := t.opts.PostingsListPool().Get()
+	union := d.opts.PostingsListPool().Get()
 	for _, pl := range pls {
 		union.Union(pl)
 	}
 	return union, nil
 }
 
-func (t *simpleTermsDict) getOrAddName(name string) *postingsMap {
+func (d *termsDict) getOrAddName(name string) *postingsMap {
 	// Cheap read lock to see if it already exists.
-	t.fields.RLock()
-	postingsMap, ok := t.fields.names[name]
-	t.fields.RUnlock()
+	d.fields.RLock()
+	postingsMap, ok := d.fields.mapping[name]
+	d.fields.RUnlock()
 	if ok {
 		return postingsMap
 	}
 
 	// Acquire write lock and create.
-	t.fields.Lock()
-	postingsMap, ok = t.fields.names[name]
+	d.fields.Lock()
+	postingsMap, ok = d.fields.mapping[name]
 
 	// Check if it's been created since we last acquired the lock.
 	if ok {
-		t.fields.Unlock()
+		d.fields.Unlock()
 		return postingsMap
 	}
 
-	postingsMap = newPostingsMap(t.opts)
-	t.fields.names[name] = postingsMap
-	t.fields.Unlock()
+	postingsMap = newPostingsMap(d.opts)
+	d.fields.mapping[name] = postingsMap
+	d.fields.Unlock()
 	return postingsMap
 }

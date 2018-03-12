@@ -77,7 +77,7 @@ type segment struct {
 	}
 
 	// Mapping of field (name and value) to postings list.
-	termsDict termsDict
+	termsDict termsDictionary
 }
 
 // NewSegment returns a new in-memory mutable segment. It will start assigning
@@ -87,7 +87,7 @@ func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 		RefCount:  util.NewRefCount(),
 		opts:      opts,
 		offset:    int(offset) + 1, // The first ID assigned by the segment is offset + 1.
-		termsDict: newSimpleTermsDict(opts),
+		termsDict: newTermsDict(opts),
 	}
 
 	s.docs.data = make([]doc.Document, opts.InitialCapacity())

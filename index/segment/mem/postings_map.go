@@ -40,9 +40,6 @@ type postingsMap struct {
 
 	opts Options
 
-	// TODO: as noted in https://github.com/m3db/m3ninx/issues/11, evalute impact of using
-	// a custom hash map where we can avoid using string keys, both to save allocs and
-	// help perm.
 	postings map[string]postings.MutableList
 }
 
