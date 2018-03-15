@@ -65,7 +65,7 @@ func TestConjunctionQuery(t *testing.T) {
 	}
 
 	gomock.InOrder(
-		firstMockSnapshot.EXPECT().Size().Return(4, nil),
+		firstMockSnapshot.EXPECT().Readers().Return(index.Readers{nil}, nil),
 
 		secondMockSnapshot.EXPECT().Readers().Return(nil, nil),
 

@@ -18,13 +18,3 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mocks
-
-// mockgen rules for generating mocks (file mode)
-//go:generate sh -c "mockgen -package=postings -destination=$GOPATH/src/github.com/m3db/m3ninx/postings/postings_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/postings/types.go"
-//go:generate sh -c "mockgen -package=doc -destination=$GOPATH/src/github.com/m3db/m3ninx/doc/doc_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/doc/types.go"
-//go:generate sh -c "mockgen -package=search -destination=$GOPATH/src/github.com/m3db/m3ninx/search/search_mock.go -source=$GOPATH/src/github.com/m3db/m3ninx/search/types.go"
-
-// mockgen rules for generating mocks (reflection mode)
-//go:generate sh -c "mockgen -package=mem -destination=$GOPATH/src/github.com/m3db/m3ninx/index/segment/mem/mem_mock.go github.com/m3db/m3ninx/index/segment/mem ReadableSegment"
-//go:generate sh -c "mockgen -package=index -destination=$GOPATH/src/github.com/m3db/m3ninx/index/index_mock.go github.com/m3db/m3ninx/index Reader,Snapshot"

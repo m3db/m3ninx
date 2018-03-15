@@ -87,23 +87,6 @@ func (r *reader) Docs(pl postings.List) (doc.Iterator, error) {
 	return newIterator(r.segment, pl.Iterator(), r.maxID), nil
 }
 
-func (r *reader) Clone() (index.Reader, error) {
-	r.RLock()
-	if r.closed {
-		r.RUnlock()
-		return nil, errSegmentReaderClosed
-	}
-
-	r.segment.IncRef()
-	cr := &reader{
-		segment: r.segment,
-		maxID:   r.maxID,
-	}
-	r.RUnlock()
-
-	return cr, nil
-}
-
 func (r *reader) Close() error {
 	r.Lock()
 	if r.closed {

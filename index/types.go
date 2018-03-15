@@ -39,10 +39,6 @@ type Index interface {
 	// view for searches.
 	Snapshot() (Snapshot, error)
 
-	// Seal marks the index as immutable. After Seal is called no more documents can be
-	// inserted into the index.
-	Seal() error
-
 	// Close closes the index and releases any internal resources.
 	Close() error
 }
@@ -50,13 +46,10 @@ type Index interface {
 // Snapshot is a point-in-time snapshot of an index. It must be closed to
 // release its internal readers.
 type Snapshot interface {
-	// Readers returns the set of readers contained in the snapshot. Each call to Readers
-	// will return independent clones of the same Readers which the caller is responsible
-	// for closing.
+	// Readers returns the set of readers contained in the snapshot. It is the caller's
+	// responsibility to ensure that the lifetime of the Readers is less than that of
+	// the Snapshot.
 	Readers() (Readers, error)
-
-	// Size returns the number of Readers in this snapshot.
-	Size() (int, error)
 
 	// Close closes the snapshot and releases any internal resources.
 	Close() error
@@ -75,10 +68,6 @@ type Reader interface {
 	//  postings list.
 	Docs(pl postings.List) (doc.Iterator, error)
 
-	// Clone returns an independent clone of this Reader. The returned reader must be
-	// closed independently of this Reader.
-	Clone() (Reader, error)
-
 	// Close closes the reader and releases any internal resources.
 	Close() error
 }
@@ -95,25 +84,5 @@ func (rs Readers) Close() error {
 			multiErr = multiErr.Add(err)
 		}
 	}
-
-	if multiErr.Empty() {
-		return nil
-	}
-	return multiErr
-}
-
-// Clone returns a clone of all of the internal Readers.
-func (rs Readers) Clone() (Readers, error) {
-	clones := make(Readers, 0, len(rs))
-	for _, r := range rs {
-		clone, err := r.Clone()
-		if err != nil {
-			// Close previously cloned readers.
-			clones.Close()
-			return nil, err
-		}
-		clones = append(clones, clone)
-	}
-
-	return clones, nil
+	return multiErr.FinalError()
 }

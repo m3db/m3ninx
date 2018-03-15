@@ -21,11 +21,21 @@
 package search
 
 import (
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
 
 	"github.com/m3db/m3x/errors"
 )
+
+// Executor is responsible for executing queries over a snapshot.
+type Executor interface {
+	// Execute executes a query over the Executor's snapshot.
+	Execute(q Query) (doc.Iterator, error)
+
+	// Close closes the iterator.
+	Close() error
+}
 
 // Query is a search query for documents.
 type Query interface {
@@ -34,8 +44,9 @@ type Query interface {
 }
 
 // Searcher executes a query against a collection of Readers. It is an iterator which
-// returns the postings lists of the documents it matches for each segment. It is not
-// safe for concurrent access.
+// returns the postings lists of the documents it matches for each segment. A Searcher
+// will execute queries over segments in parallel since the segments are independent.
+// A Searcher is not safe for concurrent access.
 type Searcher interface {
 	// Next returns the whether the iterator has another postings list.
 	Next() bool
@@ -66,9 +77,5 @@ func (ss Searchers) Close() error {
 			multiErr = multiErr.Add(err)
 		}
 	}
-
-	if multiErr.Empty() {
-		return nil
-	}
-	return multiErr
+	return multiErr.FinalError()
 }

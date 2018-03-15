@@ -53,11 +53,11 @@ func NewDisjuctionQuery(queries []search.Query) search.Query {
 func (q *disjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
 	switch len(q.queries) {
 	case 0:
-		n, err := s.Size()
+		rs, err := s.Readers()
 		if err != nil {
 			return nil, err
 		}
-		return searcher.NewEmptySearcher(n), nil
+		return searcher.NewEmptySearcher(len(rs)), nil
 
 	case 1:
 		return q.queries[0].Searcher(s)

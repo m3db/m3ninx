@@ -145,26 +145,3 @@ func TestReaderDocs(t *testing.T) {
 
 	require.NoError(t, reader.Close())
 }
-
-func TestReaderClone(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	maxID := postings.ID(55)
-
-	segment := NewMockReadableSegment(mockCtrl)
-	gomock.InOrder(
-		segment.EXPECT().IncRef(),
-		segment.EXPECT().IncRef(),
-		segment.EXPECT().DecRef(),
-		segment.EXPECT().DecRef(),
-	)
-
-	reader := newReader(segment, maxID)
-
-	clone, err := reader.Clone()
-	require.NoError(t, err)
-
-	require.NoError(t, reader.Close())
-	require.NoError(t, clone.Close())
-}

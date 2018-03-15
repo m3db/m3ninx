@@ -26,11 +26,60 @@ package search
 import (
 	"reflect"
 
+	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
 
 	"github.com/golang/mock/gomock"
 )
+
+// MockExecutor is a mock of Executor interface
+type MockExecutor struct {
+	ctrl     *gomock.Controller
+	recorder *MockExecutorMockRecorder
+}
+
+// MockExecutorMockRecorder is the mock recorder for MockExecutor
+type MockExecutorMockRecorder struct {
+	mock *MockExecutor
+}
+
+// NewMockExecutor creates a new mock instance
+func NewMockExecutor(ctrl *gomock.Controller) *MockExecutor {
+	mock := &MockExecutor{ctrl: ctrl}
+	mock.recorder = &MockExecutorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (_m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
+	return _m.recorder
+}
+
+// Execute mocks base method
+func (_m *MockExecutor) Execute(q Query) (doc.Iterator, error) {
+	ret := _m.ctrl.Call(_m, "Execute", q)
+	ret0, _ := ret[0].(doc.Iterator)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Execute indicates an expected call of Execute
+func (_mr *MockExecutorMockRecorder) Execute(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Execute", reflect.TypeOf((*MockExecutor)(nil).Execute), arg0)
+}
+
+// Close mocks base method
+func (_m *MockExecutor) Close() error {
+	ret := _m.ctrl.Call(_m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (_mr *MockExecutorMockRecorder) Close() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Close", reflect.TypeOf((*MockExecutor)(nil).Close))
+}
 
 // MockQuery is a mock of Query interface
 type MockQuery struct {

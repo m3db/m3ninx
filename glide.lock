@@ -1,5 +1,5 @@
 hash: dd0cc1ba288cd5d3966cdf44ac566402378c67fbfb07edbf0f32ab0608542f93
-updated: 2018-02-26T15:36:18.118012-05:00
+updated: 2018-03-15T13:26:35.041438-04:00
 imports:
 - name: github.com/apache/thrift
   version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
@@ -31,6 +31,7 @@ imports:
   version: c67bc0f6effede3c0db07835859b52b203b5677c
   subpackages:
   - checked
+  - errors
   - instrument
   - log
   - pool
@@ -43,7 +44,7 @@ imports:
 - name: github.com/RoaringBitmap/roaring
   version: 4bbba8874933b985c9160558fddea525dde73e63
 - name: github.com/shirou/gopsutil
-  version: c432be29ccce470088d07eea25b3ea7e68a8afbb
+  version: 5776ff9c7c5d063d574ef53d740f75c68b448e53
   subpackages:
   - cpu
   - host
