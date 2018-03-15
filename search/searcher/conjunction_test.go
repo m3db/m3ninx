@@ -52,9 +52,9 @@ func TestConjunctionSearcher(t *testing.T) {
 	secondSearcher := search.NewMockSearcher(mockCtrl)
 
 	gomock.InOrder(
-		// The mock Searchers have length 2, corresponding to 2 readers.
-		firstSearcher.EXPECT().Len().Return(2),
-		secondSearcher.EXPECT().Len().Return(2),
+		// The mock Searchers have 2 readers.
+		firstSearcher.EXPECT().NumReaders().Return(2),
+		secondSearcher.EXPECT().NumReaders().Return(2),
 
 		// Get the postings lists for the first Reader.
 		firstSearcher.EXPECT().Next().Return(true),
@@ -67,10 +67,6 @@ func TestConjunctionSearcher(t *testing.T) {
 		firstSearcher.EXPECT().Current().Return(firstPL2),
 		secondSearcher.EXPECT().Next().Return(true),
 		secondSearcher.EXPECT().Current().Return(secondPL2),
-
-		// Close the searchers.
-		firstSearcher.EXPECT().Close().Return(nil),
-		secondSearcher.EXPECT().Close().Return(nil),
 	)
 
 	searchers := []search.Searcher{firstSearcher, secondSearcher}
@@ -79,7 +75,7 @@ func TestConjunctionSearcher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Ensure the searcher is searching over two readers.
-	require.Equal(t, 2, s.Len())
+	require.Equal(t, 2, s.NumReaders())
 
 	// Test the postings list from the first Reader.
 	require.True(t, s.Next())
@@ -97,6 +93,4 @@ func TestConjunctionSearcher(t *testing.T) {
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())
-
-	require.NoError(t, s.Close())
 }

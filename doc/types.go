@@ -48,6 +48,6 @@ type Iterator interface {
 	// Err returns any errors encountered during iteration.
 	Err() error
 
-	// Error releases any internal resources used by the iterator.
+	// Close releases any internal resources used by the iterator.
 	Close() error
 }

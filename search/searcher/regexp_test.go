@@ -67,7 +67,7 @@ func TestRegexpSearcher(t *testing.T) {
 	s := NewRegexpSearcher(readers, field, regexp, compiled)
 
 	// Ensure the searcher is searching over two readers.
-	require.Equal(t, 2, s.Len())
+	require.Equal(t, 2, s.NumReaders())
 
 	// Test the postings list from the first Reader.
 	require.True(t, s.Next())
@@ -79,6 +79,4 @@ func TestRegexpSearcher(t *testing.T) {
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())
-
-	require.NoError(t, s.Close())
 }

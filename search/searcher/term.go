@@ -32,9 +32,7 @@ type termSearcher struct {
 
 	idx  int
 	curr postings.List
-
-	closed bool
-	err    error
+	err  error
 }
 
 // NewTermSearcher returns a new searcher for finding documents which match the given term.
@@ -49,7 +47,7 @@ func NewTermSearcher(rs index.Readers, field, term []byte) search.Searcher {
 }
 
 func (s *termSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == len(s.readers)-1 {
+	if s.err != nil || s.idx == len(s.readers)-1 {
 		return false
 	}
 
@@ -69,18 +67,10 @@ func (s *termSearcher) Current() postings.List {
 	return s.curr
 }
 
-func (s *termSearcher) Len() int {
-	return len(s.readers)
-}
-
 func (s *termSearcher) Err() error {
 	return s.err
 }
 
-func (s *termSearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return s.readers.Close()
+func (s *termSearcher) NumReaders() int {
+	return len(s.readers)
 }

@@ -24,8 +24,6 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/postings"
-
-	"github.com/m3db/m3x/errors"
 )
 
 // Executor is responsible for executing queries over a snapshot.
@@ -55,27 +53,12 @@ type Searcher interface {
 	// after a call to Next confirms there are more postings lists remaining.
 	Current() postings.List
 
-	// Len returns the number of Readers that the Searcher is searching over.
-	Len() int
-
 	// Err returns any errors encountered during iteration.
 	Err() error
 
-	// Close closes the iterator.
-	Close() error
+	// NumReaders returns the number of Readers that the Searcher is searching over.
+	NumReaders() int
 }
 
 // Searchers is a slice of Searcher.
 type Searchers []Searcher
-
-// Close closes all of the Searchers in ss.
-func (ss Searchers) Close() error {
-	multiErr := errors.NewMultiError()
-	for _, s := range ss {
-		err := s.Close()
-		if err != nil {
-			multiErr = multiErr.Add(err)
-		}
-	}
-	return multiErr.FinalError()
-}

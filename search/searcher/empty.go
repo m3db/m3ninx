@@ -27,27 +27,25 @@ import (
 )
 
 type emptySearcher struct {
-	len      int
-	postings postings.List
+	numReaders int
+	postings   postings.List
 
 	idx int
-
-	closed bool
-	err    error
+	err error
 }
 
 // NewEmptySearcher returns a new searcher which always returns an empty postings list.
 // It is not safe for concurrent access.
-func NewEmptySearcher(len int) search.Searcher {
+func NewEmptySearcher(numReaders int) search.Searcher {
 	return &emptySearcher{
-		len:      len,
-		postings: roaring.NewPostingsList(),
-		idx:      -1,
+		numReaders: numReaders,
+		postings:   roaring.NewPostingsList(),
+		idx:        -1,
 	}
 }
 
 func (s *emptySearcher) Next() bool {
-	if s.closed || s.idx == s.len-1 {
+	if s.idx == s.numReaders-1 {
 		return false
 	}
 	s.idx++
@@ -58,18 +56,10 @@ func (s *emptySearcher) Current() postings.List {
 	return s.postings
 }
 
-func (s *emptySearcher) Len() int {
-	return s.len
-}
-
 func (s *emptySearcher) Err() error {
 	return s.err
 }
 
-func (s *emptySearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return nil
+func (s *emptySearcher) NumReaders() int {
+	return s.numReaders
 }

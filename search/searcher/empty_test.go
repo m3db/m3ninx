@@ -36,7 +36,7 @@ func TestEmptySearcher(t *testing.T) {
 	n := 42
 	s := NewEmptySearcher(42)
 
-	require.Equal(t, 42, s.Len())
+	require.Equal(t, 42, s.NumReaders())
 
 	emptyPL := roaring.NewPostingsList()
 
@@ -47,6 +47,4 @@ func TestEmptySearcher(t *testing.T) {
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())
-
-	require.NoError(t, s.Close())
 }

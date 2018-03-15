@@ -27,19 +27,18 @@ import (
 )
 
 var (
-	errSearcherClosed          = errors.New("searcher is closed")
-	errSearchersLengthsUnequal = errors.New("searchers are not of equal lengths")
-	errSearcherTooShort        = errors.New("searcher did not contain enough postings lists")
+	errSearcherClosed             = errors.New("searcher is closed")
+	errSearchersNumReadersUnequal = errors.New("searchers have different number of readers")
+	errSearcherTooShort           = errors.New("searcher did not contain enough postings lists")
 )
 
 func validateSearchers(ss search.Searchers) error {
-	var length int
+	var numReaders int
 	if len(ss) > 0 {
-		length = ss[0].Len()
+		numReaders = ss[0].NumReaders()
 		for _, s := range ss[1:] {
-			if s.Len() != length {
-				ss.Close()
-				return errSearchersLengthsUnequal
+			if s.NumReaders() != numReaders {
+				return errSearchersNumReadersUnequal
 			}
 		}
 	}

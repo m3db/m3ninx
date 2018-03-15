@@ -31,9 +31,7 @@ type disjunctionSearcher struct {
 
 	idx  int
 	curr postings.List
-
-	closed bool
-	err    error
+	err  error
 }
 
 // NewDisjunctionSearcher returns a new Searcher which matches documents which are matched
@@ -51,7 +49,7 @@ func NewDisjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
 }
 
 func (s *disjunctionSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == s.len-1 {
+	if s.err != nil || s.idx == s.len-1 {
 		return false
 	}
 
@@ -84,18 +82,10 @@ func (s *disjunctionSearcher) Current() postings.List {
 	return s.curr
 }
 
-func (s *disjunctionSearcher) Len() int {
-	return s.len
-}
-
 func (s *disjunctionSearcher) Err() error {
 	return s.err
 }
 
-func (s *disjunctionSearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return s.searchers.Close()
+func (s *disjunctionSearcher) NumReaders() int {
+	return s.len
 }

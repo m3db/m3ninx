@@ -164,18 +164,6 @@ func (_mr *MockSearcherMockRecorder) Current() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Current", reflect.TypeOf((*MockSearcher)(nil).Current))
 }
 
-// Len mocks base method
-func (_m *MockSearcher) Len() int {
-	ret := _m.ctrl.Call(_m, "Len")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// Len indicates an expected call of Len
-func (_mr *MockSearcherMockRecorder) Len() *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Len", reflect.TypeOf((*MockSearcher)(nil).Len))
-}
-
 // Err mocks base method
 func (_m *MockSearcher) Err() error {
 	ret := _m.ctrl.Call(_m, "Err")
@@ -188,14 +176,14 @@ func (_mr *MockSearcherMockRecorder) Err() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Err", reflect.TypeOf((*MockSearcher)(nil).Err))
 }
 
-// Close mocks base method
-func (_m *MockSearcher) Close() error {
-	ret := _m.ctrl.Call(_m, "Close")
-	ret0, _ := ret[0].(error)
+// NumReaders mocks base method
+func (_m *MockSearcher) NumReaders() int {
+	ret := _m.ctrl.Call(_m, "NumReaders")
+	ret0, _ := ret[0].(int)
 	return ret0
 }
 
-// Close indicates an expected call of Close
-func (_mr *MockSearcherMockRecorder) Close() *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Close", reflect.TypeOf((*MockSearcher)(nil).Close))
+// NumReaders indicates an expected call of NumReaders
+func (_mr *MockSearcherMockRecorder) NumReaders() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "NumReaders", reflect.TypeOf((*MockSearcher)(nil).NumReaders))
 }

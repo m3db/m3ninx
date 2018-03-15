@@ -31,9 +31,7 @@ type conjunctionSearcher struct {
 
 	idx  int
 	curr postings.List
-
-	closed bool
-	err    error
+	err  error
 }
 
 // NewConjunctionSearcher returns a new Searcher which matches documents which match each
@@ -51,7 +49,7 @@ func NewConjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
 }
 
 func (s *conjunctionSearcher) Next() bool {
-	if s.closed || s.err != nil || s.idx == s.len-1 {
+	if s.err != nil || s.idx == s.len-1 {
 		return false
 	}
 
@@ -89,18 +87,10 @@ func (s *conjunctionSearcher) Current() postings.List {
 	return s.curr
 }
 
-func (s *conjunctionSearcher) Len() int {
-	return s.len
-}
-
 func (s *conjunctionSearcher) Err() error {
 	return s.err
 }
 
-func (s *conjunctionSearcher) Close() error {
-	if s.closed {
-		return errSearcherClosed
-	}
-	s.closed = true
-	return s.searchers.Close()
+func (s *conjunctionSearcher) NumReaders() int {
+	return s.len
 }

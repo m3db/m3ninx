@@ -42,15 +42,13 @@ func TestValidateSearchers(t *testing.T) {
 	secondTestSeachers := search.Searchers{secondTestSearcher1, secondTestSearcher2}
 
 	gomock.InOrder(
-		// All searchers have the same length in the first test.
-		firstTestSearcher1.EXPECT().Len().Return(3),
-		firstTestSearcher2.EXPECT().Len().Return(3),
+		// All searchers have the same number of readers in the first test.
+		firstTestSearcher1.EXPECT().NumReaders().Return(3),
+		firstTestSearcher2.EXPECT().NumReaders().Return(3),
 
-		// The searchers do not all have the same length in the second test.
-		secondTestSearcher1.EXPECT().Len().Return(3),
-		secondTestSearcher2.EXPECT().Len().Return(4),
-		secondTestSearcher1.EXPECT().Close().Return(nil),
-		secondTestSearcher2.EXPECT().Close().Return(nil),
+		// The searchers do not all have the same number of readers in the second test.
+		secondTestSearcher1.EXPECT().NumReaders().Return(3),
+		secondTestSearcher2.EXPECT().NumReaders().Return(4),
 	)
 
 	tests := []struct {
