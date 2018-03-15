@@ -54,10 +54,6 @@ func TestTermSearcher(t *testing.T) {
 
 		// Query the second reader.
 		secondReader.EXPECT().MatchTerm(field, term).Return(secondPL, nil),
-
-		// Close the readers.
-		firstReader.EXPECT().Close().Return(nil),
-		secondReader.EXPECT().Close().Return(nil),
 	)
 
 	readers := []index.Reader{firstReader, secondReader}

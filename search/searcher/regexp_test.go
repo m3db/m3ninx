@@ -56,10 +56,6 @@ func TestRegexpSearcher(t *testing.T) {
 
 		// Query the second reader.
 		secondReader.EXPECT().MatchRegexp(field, regexp, compiled).Return(secondPL, nil),
-
-		// Close the readers.
-		firstReader.EXPECT().Close().Return(nil),
-		secondReader.EXPECT().Close().Return(nil),
 	)
 
 	readers := []index.Reader{firstReader, secondReader}
