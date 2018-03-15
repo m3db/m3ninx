@@ -107,11 +107,11 @@ type Iterator interface {
 	// after a call to Next confirms there are more IDs remaining.
 	Current() ID
 
-	// Close closes the iterator.
-	Close() error
-
 	// Err returns any errors encountered during iteration.
 	Err() error
+
+	// Close closes the iterator.
+	Close() error
 }
 
 // Pool provides a pool for MutableLists.
