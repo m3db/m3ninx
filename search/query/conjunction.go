@@ -63,7 +63,6 @@ func (q *conjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	for _, q := range q.queries {
 		sr, err := q.Searcher(rs)
 		if err != nil {
-			srs.Close()
 			return nil, err
 		}
 		srs = append(srs, sr)
