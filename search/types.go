@@ -39,8 +39,8 @@ type Executor interface {
 
 // Query is a search query for documents.
 type Query interface {
-	// Searcher returns a Searcher for executing the query over a Snapshot.
-	Searcher(s index.Snapshot) (Searcher, error)
+	// Searcher returns a Searcher for executing the query over a set of Readers.
+	Searcher(rs index.Readers) (Searcher, error)
 }
 
 // Searcher executes a query against a collection of Readers. It is an iterator which

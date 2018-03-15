@@ -23,7 +23,6 @@ package query
 import (
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
 
@@ -31,28 +30,18 @@ import (
 )
 
 func TestConjunctionQuery(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	firstMockSnapshot := index.NewMockSnapshot(mockCtrl)
-	secondMockSnapshot := index.NewMockSnapshot(mockCtrl)
-	thirdMockSnapshot := index.NewMockSnapshot(mockCtrl)
-
 	tests := []struct {
-		name     string
-		queries  []search.Query
-		snapshot index.Snapshot
+		name    string
+		queries []search.Query
 	}{
 		{
-			name:     "no queries provided",
-			snapshot: firstMockSnapshot,
+			name: "no queries provided",
 		},
 		{
 			name: "a single query provided",
 			queries: []search.Query{
 				NewTermQuery([]byte("fruit"), []byte("apple")),
 			},
-			snapshot: secondMockSnapshot,
 		},
 		{
 			name: "multiple queries provided",
@@ -60,23 +49,14 @@ func TestConjunctionQuery(t *testing.T) {
 				NewTermQuery([]byte("fruit"), []byte("apple")),
 				NewTermQuery([]byte("vegetable"), []byte("carrot")),
 			},
-			snapshot: thirdMockSnapshot,
 		},
 	}
 
-	gomock.InOrder(
-		firstMockSnapshot.EXPECT().Readers().Return(index.Readers{nil}, nil),
-
-		secondMockSnapshot.EXPECT().Readers().Return(nil, nil),
-
-		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
-		thirdMockSnapshot.EXPECT().Readers().Return(nil, nil),
-	)
-
+	rs := index.Readers{}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q := NewConjuctionQuery(test.queries)
-			_, err := q.Searcher(test.snapshot)
+			_, err := q.Searcher(rs)
 			require.NoError(t, err)
 		})
 	}

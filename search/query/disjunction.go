@@ -50,22 +50,18 @@ func NewDisjuctionQuery(queries []search.Query) search.Query {
 	}
 }
 
-func (q *disjuctionQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
+func (q *disjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	switch len(q.queries) {
 	case 0:
-		rs, err := s.Readers()
-		if err != nil {
-			return nil, err
-		}
 		return searcher.NewEmptySearcher(len(rs)), nil
 
 	case 1:
-		return q.queries[0].Searcher(s)
+		return q.queries[0].Searcher(rs)
 	}
 
 	srs := make(search.Searchers, 0, len(q.queries))
 	for _, q := range q.queries {
-		sr, err := q.Searcher(s)
+		sr, err := q.Searcher(rs)
 		if err != nil {
 			srs.Close()
 			return nil, err

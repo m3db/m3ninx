@@ -35,23 +35,10 @@ type Index interface {
 	// searchable once the Insert method returns.
 	Insert(d doc.Document) error
 
-	// Snapshot returns a point-in-time snapshot of the index that provides a consistent
-	// view for searches.
-	Snapshot() (Snapshot, error)
-
-	// Close closes the index and releases any internal resources.
-	Close() error
-}
-
-// Snapshot is a point-in-time snapshot of an index. It must be closed to
-// release its internal readers.
-type Snapshot interface {
-	// Readers returns the set of readers contained in the snapshot. It is the caller's
-	// responsibility to ensure that the lifetime of the Readers is less than that of
-	// the Snapshot.
+	// Readers returns a set of readers representing a point-in-time snapshot of the index.
 	Readers() (Readers, error)
 
-	// Close closes the snapshot and releases any internal resources.
+	// Close closes the index and releases any internal resources.
 	Close() error
 }
 

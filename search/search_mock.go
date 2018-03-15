@@ -105,8 +105,8 @@ func (_m *MockQuery) EXPECT() *MockQueryMockRecorder {
 }
 
 // Searcher mocks base method
-func (_m *MockQuery) Searcher(s index.Snapshot) (Searcher, error) {
-	ret := _m.ctrl.Call(_m, "Searcher", s)
+func (_m *MockQuery) Searcher(rs index.Readers) (Searcher, error) {
+	ret := _m.ctrl.Call(_m, "Searcher", rs)
 	ret0, _ := ret[0].(Searcher)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

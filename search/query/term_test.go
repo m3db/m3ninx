@@ -25,7 +25,6 @@ import (
 
 	"github.com/m3db/m3ninx/index"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,19 +40,11 @@ func TestTermQuery(t *testing.T) {
 		},
 	}
 
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	mockSnapshot := index.NewMockSnapshot(mockCtrl)
-
-	gomock.InOrder(
-		mockSnapshot.EXPECT().Readers().Return(nil, nil),
-	)
-
+	rs := index.Readers{}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q := NewTermQuery(test.field, test.term)
-			_, err := q.Searcher(mockSnapshot)
+			_, err := q.Searcher(rs)
 			require.NoError(t, err)
 		})
 	}

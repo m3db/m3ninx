@@ -40,10 +40,6 @@ func NewTermQuery(field, term []byte) search.Query {
 	}
 }
 
-func (q *termQuery) Searcher(s index.Snapshot) (search.Searcher, error) {
-	rs, err := s.Readers()
-	if err != nil {
-		return nil, err
-	}
+func (q *termQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	return searcher.NewTermSearcher(rs, q.field, q.term), nil
 }
