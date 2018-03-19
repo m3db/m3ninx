@@ -21,77 +21,57 @@
 package executor
 
 import (
-	"errors"
-	"sync"
-	"time"
+	"testing"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
 	"github.com/m3db/m3ninx/util"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
-var (
-	errExecutorClosed = errors.New("executor is closed")
-)
-
-type newIteratorFn func(rc util.RefCount, s search.Searcher, rs index.Readers) (doc.Iterator, error)
-
-type executor struct {
-	sync.RWMutex
-	util.RefCount
-
-	newIteratorFn newIteratorFn
-	readers       index.Readers
-
-	closed bool
+type testIterator struct {
+	rc util.RefCount
 }
 
-// NewExecutor returns a new Executor for executing queries.
-func NewExecutor(rs index.Readers) search.Executor {
-	return &executor{
-		RefCount:      util.NewRefCount(),
-		newIteratorFn: newIterator,
-		readers:       rs,
-	}
-}
+func newTestIterator(rc util.RefCount) testIterator { rc.IncRef(); return testIterator{rc} }
 
-func (e *executor) Execute(q search.Query) (doc.Iterator, error) {
-	e.RLock()
-	defer e.RUnlock()
-	if e.closed {
-		return nil, errExecutorClosed
-	}
+func (it testIterator) Next() bool            { return false }
+func (it testIterator) Current() doc.Document { return doc.Document{} }
+func (it testIterator) Err() error            { return nil }
+func (it testIterator) Close() error          { it.rc.DecRef(); return nil }
 
-	s, err := q.Searcher(e.readers)
-	if err != nil {
-		return nil, err
-	}
+func TestExecutor(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
-	iter, err := e.newIteratorFn(e, s, e.readers)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		q  = search.NewMockQuery(mockCtrl)
+		r  = index.NewMockReader(mockCtrl)
+		rs = index.Readers{r}
+	)
+	gomock.InOrder(
+		q.EXPECT().Searcher(rs).Return(nil, nil),
 
-	return iter, nil
-}
+		r.EXPECT().Close().Return(nil),
+	)
 
-func (e *executor) Close() error {
-	e.Lock()
-	if e.closed {
-		e.Unlock()
-		return errExecutorClosed
-	}
-	e.closed = true
-	e.Unlock()
+	e := NewExecutor(rs).(*executor)
 
-	// Wait for all references to the executor to be released.
-	for {
-		if e.RefCount.NumRef() == 0 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
+	// Override newIteratorFn to return test iterator.
+	e.newIteratorFn = func(rc util.RefCount, _ search.Searcher, _ index.Readers) (doc.Iterator, error) {
+		return newTestIterator(rc), nil
 	}
 
-	return e.readers.Close()
+	it, err := e.Execute(q)
+	require.NoError(t, err)
+
+	// Need to close iterator to decrement its reference count of the executor.
+	err = it.Close()
+	require.NoError(t, err)
+
+	err = e.Close()
+	require.NoError(t, err)
 }
