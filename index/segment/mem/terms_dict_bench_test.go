@@ -70,11 +70,12 @@ func BenchmarkTermsDict(b *testing.B) {
 }
 
 func benchmarkInsertSimpleTermsDict(docs []doc.Document, b *testing.B) {
-	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	b.ReportAllocs()
-	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
+		b.StartTimer()
 		for i, d := range docs {
 			for _, f := range d.Fields {
 				dict.Insert(f, postings.ID(i))
@@ -84,6 +85,7 @@ func benchmarkInsertSimpleTermsDict(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkMatchTermSimpleTermsDict(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
 	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	for i, d := range docs {
 		for _, f := range d.Fields {
@@ -91,7 +93,6 @@ func benchmarkMatchTermSimpleTermsDict(docs []doc.Document, b *testing.B) {
 		}
 	}
 
-	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for _, d := range docs {
@@ -103,6 +104,7 @@ func benchmarkMatchTermSimpleTermsDict(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
+	b.ReportAllocs()
 	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	for i, d := range docs {
 		for _, f := range d.Fields {
@@ -110,7 +112,6 @@ func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
 		}
 	}
 
-	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		dict.MatchRegexp(benchTermsDictField, benchTermsDictRegexp, benchTermsDictCompiled)
