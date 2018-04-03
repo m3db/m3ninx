@@ -31,15 +31,19 @@ var (
 	errIteratorClosed = errors.New("iterator has been closed")
 )
 
+// NB: the ordering below is to minimize size of the underlying struct.
 type iterator struct {
+	// immutable fields
 	segment      ReadableSegment
 	postingsIter postings.Iterator
 
+	// mutable fields
 	current doc.Document
+	err     error
+	closed  bool
 
-	err    error
-	closed bool
-	maxID  postings.ID
+	// immutable fields
+	maxID postings.ID
 }
 
 func newIterator(s ReadableSegment, pi postings.Iterator, maxID postings.ID) doc.Iterator {
