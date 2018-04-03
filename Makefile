@@ -20,8 +20,6 @@ protoc_go_package     := github.com/golang/protobuf/protoc-gen-go
 vendor_prefix         := vendor
 genny_output_dir      := generated/generics/generics
 genny_rules_dir       := generated/generics
-genny_package         := github.com/cheekybits/genny
-genny_package_version := 9127e812e1e9e501ce899a18121d316ecb52e4ba
 
 BUILD            := $(abspath ./bin)
 GO_BUILD_LDFLAGS := $(shell $(abspath ./.ci/go-build-ldflags.sh) $(m3ninx_package))
@@ -87,16 +85,8 @@ proto-gen: install-proto-bin install-license-bin
 	@echo Generating protobuf files
 	PACKAGE=$(m3ninx_package) $(auto_gen) $(proto_output_dir) $(proto_rules_dir)
 
-.PHONY: install-genny
-install-genny:
-	@which genny >/dev/null || (go get -u $(genny_package) && \
-		cd $(GOPATH)/src/$(genny_package)                    && \
-		git checkout $(genny_package_version)                && \
-		go install $(genny_package)                             \
-	)
-
 .PHONY: genny-gen
-genny-gen:
+genny-gen: install-generics-bin # defined in `common.mk`
 	@echo Generating generics
 	PACKAGE=$(m3ninx_package) $(auto_gen) $(genny_output_dir) $(genny_rules_dir)
 
