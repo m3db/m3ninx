@@ -34,11 +34,12 @@ var (
 type iterator struct {
 	segment      ReadableSegment
 	postingsIter postings.Iterator
-	maxID        postings.ID
 
 	current doc.Document
-	err     error
-	closed  bool
+
+	err    error
+	closed bool
+	maxID  postings.ID
 }
 
 func newIterator(s ReadableSegment, pi postings.Iterator, maxID postings.ID) doc.Iterator {
