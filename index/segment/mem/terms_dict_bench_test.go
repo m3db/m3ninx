@@ -48,24 +48,12 @@ func BenchmarkTermsDict(b *testing.B) {
 			fn:   benchmarkInsertSimpleTermsDict,
 		},
 		{
-			name: "benchmark Insert with trigram terms dictionary",
-			fn:   benchmarkInsertTrigramTermsDict,
-		},
-		{
 			name: "benchmark MatchTerm with simple terms dictionary",
 			fn:   benchmarkMatchTermSimpleTermsDict,
 		},
 		{
-			name: "benchmark MatchTerm with trigram terms dictionary",
-			fn:   benchmarkMatchTermTrigramTermsDict,
-		},
-		{
 			name: "benchmark MatchRegex with simple terms dictionary",
 			fn:   benchmarkMatchRegexSimpleTermsDict,
-		},
-		{
-			name: "benchmark MatchRegex with trigram terms dictionary",
-			fn:   benchmarkMatchRegexTrigramTermsDict,
 		},
 	}
 
@@ -82,29 +70,11 @@ func BenchmarkTermsDict(b *testing.B) {
 }
 
 func benchmarkInsertSimpleTermsDict(docs []doc.Document, b *testing.B) {
+	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	b.ReportAllocs()
+	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		b.StopTimer()
-		dict := newSimpleTermsDict(NewOptions())
-		b.StartTimer()
-
-		for i, d := range docs {
-			for _, f := range d.Fields {
-				dict.Insert(f, postings.ID(i))
-			}
-		}
-	}
-}
-
-func benchmarkInsertTrigramTermsDict(docs []doc.Document, b *testing.B) {
-	b.ReportAllocs()
-
-	for n := 0; n < b.N; n++ {
-		b.StopTimer()
-		dict := newTrigramTermsDict(NewOptions())
-		b.StartTimer()
-
 		for i, d := range docs {
 			for _, f := range d.Fields {
 				dict.Insert(f, postings.ID(i))
@@ -114,42 +84,18 @@ func benchmarkInsertTrigramTermsDict(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkMatchTermSimpleTermsDict(docs []doc.Document, b *testing.B) {
-	b.ReportAllocs()
-
-	dict := newSimpleTermsDict(NewOptions())
+	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))
 		}
 	}
 
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		for _, d := range docs {
-			for _, f := range d.Fields {
-				dict.MatchTerm(f.Name, f.Value)
-			}
-		}
-	}
-}
-
-func benchmarkMatchTermTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
-
-	dict := newTrigramTermsDict(NewOptions())
-	for i, d := range docs {
-		for _, f := range d.Fields {
-			dict.Insert(f, postings.ID(i))
-		}
-	}
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for _, d := range docs {
 			for _, f := range d.Fields {
-				// The trigram terms dictionary can return false postives so we may want to
-				// consider verifying the results returned are matches to provide a more
-				// fair comparison with the simple terms dictionary.
 				dict.MatchTerm(f.Name, f.Value)
 			}
 		}
@@ -157,36 +103,16 @@ func benchmarkMatchTermTrigramTermsDict(docs []doc.Document, b *testing.B) {
 }
 
 func benchmarkMatchRegexSimpleTermsDict(docs []doc.Document, b *testing.B) {
-	b.ReportAllocs()
-
-	dict := newSimpleTermsDict(NewOptions())
+	dict := newSimpleTermsDict(NewOptions().SetInitialCapacity(10))
 	for i, d := range docs {
 		for _, f := range d.Fields {
 			dict.Insert(f, postings.ID(i))
 		}
 	}
 
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		dict.MatchRegexp(benchTermsDictField, benchTermsDictRegexp, benchTermsDictCompiled)
-	}
-}
-
-func benchmarkMatchRegexTrigramTermsDict(docs []doc.Document, b *testing.B) {
 	b.ReportAllocs()
-
-	dict := newTrigramTermsDict(NewOptions())
-	for i, d := range docs {
-		for _, f := range d.Fields {
-			dict.Insert(f, postings.ID(i))
-		}
-	}
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		// The trigram terms dictionary can return false postives so we may want to
-		// consider verifying the results returned are matches to provide a more
-		// fair comparison with the simple terms dictionary.
 		dict.MatchRegexp(benchTermsDictField, benchTermsDictRegexp, benchTermsDictCompiled)
 	}
 }
