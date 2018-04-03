@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package fieldsmap
+package fieldsgen
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ import (
 	"github.com/cespare/xxhash"
 )
 
-// New returns a new []bytes->*postingsmap.ConcurrentMap.
+// New returns a new []bytes->*postingsgen.ConcurrentMap.
 func New(initialSize int) *Map {
 	return newMap(mapOptions{
 		hash: func(k []byte) MapHash {

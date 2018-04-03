@@ -19,8 +19,8 @@ if [ ! -d "$GENERATED_PATH" ]; then
   exit 1
 fi
 
-mkdir -p $GENERATED_PATH/postingsmap
-cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/postingsmap/map.go -pkg=postingsmap gen "KeyType=[]byte ValueType=postings.MutableList"
+mkdir -p $GENERATED_PATH/postingsgen
+cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/postingsgen/generated_map.go -pkg=postingsgen gen "KeyType=[]byte ValueType=postings.MutableList"
 
-mkdir -p $GENERATED_PATH/fieldsmap
-cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/fieldsmap/map.go -pkg=fieldsmap gen "KeyType=[]byte ValueType=*postingsmap.ConcurrentMap"
+mkdir -p $GENERATED_PATH/fieldsgen
+cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/fieldsgen/generated_map.go -pkg=fieldsgen gen "KeyType=[]byte ValueType=*postingsgen.ConcurrentMap"

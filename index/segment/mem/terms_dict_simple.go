@@ -25,8 +25,8 @@ import (
 	"sync"
 
 	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index/segment/mem/fieldsmap"
-	"github.com/m3db/m3ninx/index/segment/mem/postingsmap"
+	"github.com/m3db/m3ninx/index/segment/mem/fieldsgen"
+	"github.com/m3db/m3ninx/index/segment/mem/postingsgen"
 	"github.com/m3db/m3ninx/postings"
 )
 
@@ -37,7 +37,7 @@ type simpleTermsDict struct {
 
 	fields struct {
 		sync.RWMutex
-		internalMap *fieldsmap.Map
+		internalMap *fieldsgen.Map
 	}
 }
 
@@ -45,7 +45,7 @@ func newSimpleTermsDict(opts Options) termsDict {
 	dict := &simpleTermsDict{
 		opts: opts,
 	}
-	dict.fields.internalMap = fieldsmap.New(opts.InitialCapacity())
+	dict.fields.internalMap = fieldsgen.New(opts.InitialCapacity())
 	return dict
 }
 
@@ -89,7 +89,7 @@ func (t *simpleTermsDict) MatchRegexp(
 	return union, nil
 }
 
-func (t *simpleTermsDict) getOrAddName(name []byte) *postingsmap.ConcurrentMap {
+func (t *simpleTermsDict) getOrAddName(name []byte) *postingsgen.ConcurrentMap {
 	// Cheap read lock to see if it already exists.
 	t.fields.RLock()
 	postingsMap, ok := t.fields.internalMap.Get(name)
@@ -108,11 +108,11 @@ func (t *simpleTermsDict) getOrAddName(name []byte) *postingsmap.ConcurrentMap {
 		return postingsMap
 	}
 
-	postingsMap = postingsmap.NewConcurrentMap(postingsmap.ConcurrentMapOpts{
+	postingsMap = postingsgen.NewConcurrentMap(postingsgen.ConcurrentMapOpts{
 		InitialSize:      t.opts.InitialCapacity(),
 		PostingsListPool: t.opts.PostingsListPool(),
 	})
-	t.fields.internalMap.SetUnsafe(name, postingsMap, fieldsmap.SetUnsafeOptions{
+	t.fields.internalMap.SetUnsafe(name, postingsMap, fieldsgen.SetUnsafeOptions{
 		NoCopyKey:     true,
 		NoFinalizeKey: true,
 	})

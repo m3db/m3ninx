@@ -22,9 +22,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package fieldsmap
+package fieldsgen
 
-import "github.com/m3db/m3ninx/index/segment/mem/postingsmap"
+import "github.com/m3db/m3ninx/index/segment/mem/postingsgen"
 
 // MapHash is the hash for a given map entry, this is public to support
 // iterating over the map using a native Go for loop.
@@ -93,7 +93,7 @@ type MapEntry struct {
 	// key is used to check equality on lookups to resolve collisions
 	key mapKey
 	// value type stored
-	value *postingsmap.ConcurrentMap
+	value *postingsgen.ConcurrentMap
 }
 
 type mapKey struct {
@@ -107,7 +107,7 @@ func (e MapEntry) Key() []byte {
 }
 
 // Value returns the map entry value.
-func (e MapEntry) Value() *postingsmap.ConcurrentMap {
+func (e MapEntry) Value() *postingsgen.ConcurrentMap {
 	return e.value
 }
 
@@ -140,7 +140,7 @@ func (m *Map) removeMapKey(hash MapHash, key mapKey) {
 }
 
 // Get returns a value in the map for an identifier if found.
-func (m *Map) Get(k []byte) (*postingsmap.ConcurrentMap, bool) {
+func (m *Map) Get(k []byte) (*postingsgen.ConcurrentMap, bool) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -149,12 +149,12 @@ func (m *Map) Get(k []byte) (*postingsmap.ConcurrentMap, bool) {
 		// Linear probe to "next" to this entry (really a rehash)
 		hash++
 	}
-	var empty *postingsmap.ConcurrentMap
+	var empty *postingsgen.ConcurrentMap
 	return empty, false
 }
 
 // Set will set the value for an identifier.
-func (m *Map) Set(k []byte, v *postingsmap.ConcurrentMap) {
+func (m *Map) Set(k []byte, v *postingsgen.ConcurrentMap) {
 	m.set(k, v, mapKeyOptions{
 		copyKey:     true,
 		finalizeKey: m.finalize != nil,
@@ -170,7 +170,7 @@ type SetUnsafeOptions struct {
 
 // SetUnsafe will set the value for an identifier with unsafe options for how
 // the map treats the key.
-func (m *Map) SetUnsafe(k []byte, v *postingsmap.ConcurrentMap, opts SetUnsafeOptions) {
+func (m *Map) SetUnsafe(k []byte, v *postingsgen.ConcurrentMap, opts SetUnsafeOptions) {
 	m.set(k, v, mapKeyOptions{
 		copyKey:     !opts.NoCopyKey,
 		finalizeKey: !opts.NoFinalizeKey,
@@ -182,7 +182,7 @@ type mapKeyOptions struct {
 	finalizeKey bool
 }
 
-func (m *Map) set(k []byte, v *postingsmap.ConcurrentMap, opts mapKeyOptions) {
+func (m *Map) set(k []byte, v *postingsgen.ConcurrentMap, opts mapKeyOptions) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
