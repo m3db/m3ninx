@@ -19,8 +19,24 @@ if [ ! -d "$GENERATED_PATH" ]; then
   exit 1
 fi
 
+# NB: We use (genny)[1] to combat the lack of generics in Go. It allows us
+# to declare templat-ized versions of code, and specialize using code
+# generation.  We have a generic HashMap<K,V> implementation in `m3x`,
+# with two template variables (KeyType and ValueType), along with required
+# functors (HashFn, EqualsFn, ...). Below, we generate a few specialized
+# versions required in m3ninx today.
+#
+# If we need to generate other specialized map implementations, or other
+# specialized datastructures, we should add targets similar to the ones below.
+#
+# [1]: https://github.com/cheekybits/genny
+
 mkdir -p $GENERATED_PATH/postingsgen
-cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/postingsgen/generated_map.go -pkg=postingsgen gen "KeyType=[]byte ValueType=postings.MutableList"
+cat $GENERIC_MAP_IMPL                                                    \
+  | genny -out=${GENERATED_PATH}/postingsgen/generated_map.go            \
+    -pkg=postingsgen gen "KeyType=[]byte ValueType=postings.MutableList"
 
 mkdir -p $GENERATED_PATH/fieldsgen
-cat $GENERIC_MAP_IMPL | genny -out=${GENERATED_PATH}/fieldsgen/generated_map.go -pkg=fieldsgen gen "KeyType=[]byte ValueType=*postingsgen.ConcurrentMap"
+cat $GENERIC_MAP_IMPL                                                        \
+  | genny -out=${GENERATED_PATH}/fieldsgen/generated_map.go                  \
+    -pkg=fieldsgen gen "KeyType=[]byte ValueType=*postingsgen.ConcurrentMap"
