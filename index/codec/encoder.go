@@ -20,9 +20,15 @@
 
 package codec
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"errors"
+	"io"
+)
 
 var byteOrder = binary.BigEndian
+
+var errUvarintOverflow = errors.New("uvarint overflows 64 bits")
 
 type encoder struct {
 	buf []byte
@@ -59,4 +65,55 @@ func (e *encoder) putVarint(x uint64) {
 func (e *encoder) putBytes(b []byte) {
 	e.putUvarint(uint64(len(b)))
 	e.buf = append(e.buf, b...)
+}
+
+type decoder struct {
+	buf []byte
+}
+
+func (d *decoder) reset(buf []byte) { d.buf = buf }
+
+func (d *decoder) uint32() (uint32, error) {
+	if len(d.buf) < 4 {
+		return 0, io.ErrShortBuffer
+	}
+	x := byteOrder.Uint32(d.buf)
+	d.buf = d.buf[4:]
+	return x, nil
+}
+
+func (d *decoder) uint64() (uint64, error) {
+	if len(d.buf) < 8 {
+		return 0, io.ErrShortBuffer
+	}
+	x := byteOrder.Uint64(d.buf)
+	d.buf = d.buf[8:]
+	return x, nil
+}
+
+func (d *decoder) uvarint() (uint64, error) {
+	x, n := binary.Uvarint(d.buf)
+	if n == 0 {
+		return 0, io.ErrShortBuffer
+	}
+	if n < 0 {
+		return 0, errUvarintOverflow
+	}
+	d.buf = d.buf[n:]
+	return x, nil
+}
+
+func (d *decoder) bytes() ([]byte, error) {
+	x, err := d.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	// TODO: check for overflow here?
+	n := int(x)
+	if len(d.buf) < n {
+		return nil, io.ErrShortBuffer
+	}
+	b := d.buf[:n]
+	d.buf = d.buf[n:]
+	return b, nil
 }
