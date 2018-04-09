@@ -20,60 +20,45 @@
 
 package codec
 
-import "github.com/m3db/m3ninx/doc"
+import (
+	"bytes"
+	"io"
+	"testing"
 
-const (
-	// FilenameFormat is the format of filenames used by the index.
-	FilenameFormat = "%d.%s"
+	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index/util"
+
+	"github.com/stretchr/testify/require"
 )
 
-// FileType is an enum representing the different types of files created by an index.
-type FileType uint32
-
-const (
-	// DocumentsFile contains the documents in an index.
-	DocumentsFile FileType = iota
-)
-
-// Extension returns the extension for a file.
-func (t FileType) Extension() string {
-	switch t {
-	case DocumentsFile:
-		return "doc"
-	default:
-		return ""
+func TestDocumentsRoundtrip(t *testing.T) {
+	tests := []struct {
+		docs []doc.Document
+	}{
+		{
+			docs: util.MustReadDocs("../util/testdata/node_exporter.json", 2000),
+		},
 	}
-}
 
-func (t FileType) String() string {
-	switch t {
-	case DocumentsFile:
-		return "documents"
-	default:
-		return "unknown"
+	for _, test := range tests {
+		buf := new(bytes.Buffer)
+
+		w := newDocWriter(buf)
+		require.NoError(t, w.Init())
+		for i := 0; i < len(test.docs); i++ {
+			require.NoError(t, w.Write(test.docs[i]))
+		}
+		require.NoError(t, w.Close())
+
+		r := newDocReader(buf.Bytes())
+		require.NoError(t, r.Init())
+		for i := 0; i < len(test.docs); i++ {
+			actual, err := r.Read()
+			require.NoError(t, err)
+			require.Equal(t, test.docs[i], actual)
+		}
+		_, err := r.Read()
+		require.Equal(t, io.EOF, err)
+		require.NoError(t, r.Close())
 	}
-}
-
-// DocWriter is used to write a documents file.
-type DocWriter interface {
-	// Init initializes the DocWriter.
-	Init() error
-
-	// Write writes a document.
-	Write(d doc.Document) error
-
-	// Close closes the DocWriter.
-	Close() error
-}
-
-// DocReader is used to read a documents file.
-type DocReader interface {
-	// Init initializes the DocReader.
-	Init() error
-
-	// Read reads a document.
-	Read() (doc.Document, error)
-
-	// Close closes the DocReader.
-	Close() error
 }

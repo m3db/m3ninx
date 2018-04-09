@@ -16,7 +16,7 @@
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARw.
+// THE SOFTWARE.
 
 package codec
 
@@ -67,18 +67,15 @@ type docWriter struct {
 
 func newDocWriter(w io.Writer) *docWriter {
 	return &docWriter{
-		version: docsFileFormatVersion,
-		writer:  w,
-		enc:     newEncoder(initialEncoderSize),
+		version:  docsFileFormatVersion,
+		writer:   w,
+		enc:      newEncoder(initialEncoderSize),
+		checksum: new(checksum),
 	}
 }
 
 func (w *docWriter) Init() error {
 	w.enc.putUint32(docsMagicNumber)
-	if err := w.write(); err != nil {
-		return err
-	}
-
 	w.enc.putUint32(w.version)
 	if err := w.write(); err != nil {
 		return err
@@ -97,7 +94,6 @@ func (w *docWriter) Write(d doc.Document) error {
 	if len(d.Fields) == 0 {
 		return errEmptyDocument
 	}
-	defer w.enc.reset()
 
 	w.enc.putUvarint(uint64(len(d.Fields)))
 
@@ -122,10 +118,15 @@ func (w *docWriter) Close() error {
 	w.checksum.reset()
 
 	w.enc.putUint64(w.docs)
+	if err := w.write(); err != nil {
+		return err
+	}
+
 	w.enc.putUint32(w.checksum.get())
 	if err := w.write(); err != nil {
 		return err
 	}
+	w.checksum.reset()
 
 	return nil
 }
@@ -140,6 +141,7 @@ func (w *docWriter) write() error {
 		return io.ErrShortWrite
 	}
 	w.checksum.update(b)
+	w.enc.reset()
 	return nil
 }
 
@@ -156,8 +158,9 @@ type docReader struct {
 
 func newDocReader(data []byte) *docReader {
 	return &docReader{
-		data: data,
-		dec:  new(decoder),
+		data:     data,
+		dec:      new(decoder),
+		checksum: new(checksum),
 	}
 }
 
@@ -180,7 +183,8 @@ func (r *docReader) Init() error {
 }
 
 func (r *docReader) decodeHeader() error {
-	r.dec.reset(r.data[docsHeaderSize:])
+	data := r.data[:docsHeaderSize]
+	r.dec.reset(data)
 
 	// Verify magic number.
 	n, err := r.dec.uint32()
@@ -201,8 +205,8 @@ func (r *docReader) decodeHeader() error {
 	}
 	r.version = v
 
-	r.checksum.update(r.data[:8])
-	if err := r.verifyChecksum(r.dec); err != nil {
+	r.checksum.update(data[:8])
+	if err := r.verifyChecksum(); err != nil {
 		return err
 	}
 
@@ -210,7 +214,8 @@ func (r *docReader) decodeHeader() error {
 }
 
 func (r *docReader) decodeTrailer() error {
-	r.dec.reset(r.data[len(r.data)-docsTrailerSize:])
+	data := r.data[len(r.data)-docsTrailerSize:]
+	r.dec.reset(data)
 
 	// Get number of documents.
 	n, err := r.dec.uint64()
@@ -219,8 +224,8 @@ func (r *docReader) decodeTrailer() error {
 	}
 	r.total = n
 
-	r.checksum.update(r.data[:8])
-	if err := r.verifyChecksum(r.dec); err != nil {
+	r.checksum.update(data[:8])
+	if err := r.verifyChecksum(); err != nil {
 		return err
 	}
 
@@ -235,7 +240,7 @@ func (r *docReader) verifyPayload() error {
 
 	checksum := r.data[end : end+4]
 	r.dec.reset(checksum)
-	if err := r.verifyChecksum(r.dec); err != nil {
+	if err := r.verifyChecksum(); err != nil {
 		return err
 	}
 
@@ -244,8 +249,8 @@ func (r *docReader) verifyPayload() error {
 	return nil
 }
 
-func (r *docReader) verifyChecksum(dec *decoder) error {
-	c, err := dec.uint32()
+func (r *docReader) verifyChecksum() error {
+	c, err := r.dec.uint32()
 	if err != nil {
 		return err
 	}
@@ -268,7 +273,7 @@ func (r *docReader) Read() (doc.Document, error) {
 	n := int(x)
 
 	d := doc.Document{
-		Fields: make([]doc.Field, 0, n),
+		Fields: make([]doc.Field, n),
 	}
 
 	for i := 0; i < n; i++ {
