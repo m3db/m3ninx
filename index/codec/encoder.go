@@ -57,11 +57,6 @@ func (e *encoder) putUvarint(x uint64) {
 	e.buf = append(e.buf, e.tmp[:n]...)
 }
 
-func (e *encoder) putVarint(x uint64) {
-	n := binary.PutUvarint(e.tmp[:], x)
-	e.buf = append(e.buf, e.tmp[:n]...)
-}
-
 func (e *encoder) putBytes(b []byte) {
 	e.putUvarint(uint64(len(b)))
 	e.buf = append(e.buf, b...)

@@ -65,6 +65,8 @@ type docWriter struct {
 	checksum *checksum
 }
 
+// TODO: remove the nolint
+// nolint: deadcode
 func newDocWriter(w io.Writer) *docWriter {
 	return &docWriter{
 		version:  docsFileFormatVersion,
@@ -156,6 +158,8 @@ type docReader struct {
 	checksum *checksum
 }
 
+// TODO: remove the nolint
+// nolint: deadcode
 func newDocReader(data []byte) *docReader {
 	return &docReader{
 		data:     data,
@@ -206,11 +210,7 @@ func (r *docReader) decodeHeader() error {
 	r.version = v
 
 	r.checksum.update(data[:8])
-	if err := r.verifyChecksum(); err != nil {
-		return err
-	}
-
-	return nil
+	return r.verifyChecksum()
 }
 
 func (r *docReader) decodeTrailer() error {
@@ -225,11 +225,7 @@ func (r *docReader) decodeTrailer() error {
 	r.total = n
 
 	r.checksum.update(data[:8])
-	if err := r.verifyChecksum(); err != nil {
-		return err
-	}
-
-	return nil
+	return r.verifyChecksum()
 }
 
 func (r *docReader) verifyPayload() error {
