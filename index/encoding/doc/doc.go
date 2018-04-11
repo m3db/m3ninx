@@ -18,30 +18,30 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package codec
+package doc
 
 import (
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"io"
 
 	"github.com/m3db/m3ninx/doc"
+	"github.com/m3db/m3ninx/index/encoding"
 )
 
 // Documents file format metadata.
 const (
-	docsFileFormatVersion = 1
+	magicNumber = 0x6D33D0C5
 
-	docsMagicNumber = 0x6D33D0C5
+	fileFormatVersion = 1
 
-	docsHeaderSize = 0 +
+	headerSize = 0 +
 		4 + // magic number
 		4 + // version
 		4 + // checksum of header fields
 		0
 
-	docsTrailerSize = 0 +
+	trailerSize = 0 +
 		8 + // number of documents
 		4 + // checksum of trailer fields
 		0
@@ -55,53 +55,52 @@ var (
 	errChecksumMismatch   = errors.New("encountered invalid checksum")
 )
 
-type docWriter struct {
+type writer struct {
 	version uint32
 
 	writer io.Writer
-	enc    *encoder
+	enc    *encoding.Encoder
 
 	docs     uint64
-	checksum *checksum
+	checksum *encoding.Checksum
 }
 
-// TODO: remove the nolint
-// nolint: deadcode
-func newDocWriter(w io.Writer) *docWriter {
-	return &docWriter{
-		version:  docsFileFormatVersion,
+// NewWriter returns a new Writer for serializing documents to an underlying io.Writer.
+func NewWriter(w io.Writer) Writer {
+	return &writer{
+		version:  fileFormatVersion,
 		writer:   w,
-		enc:      newEncoder(initialEncoderSize),
-		checksum: new(checksum),
+		enc:      encoding.NewEncoder(initialEncoderSize),
+		checksum: encoding.NewChecksum(),
 	}
 }
 
-func (w *docWriter) Init() error {
-	w.enc.putUint32(docsMagicNumber)
-	w.enc.putUint32(w.version)
+func (w *writer) Open() error {
+	w.enc.PutUint32(magicNumber)
+	w.enc.PutUint32(w.version)
 	if err := w.write(); err != nil {
 		return err
 	}
 
-	w.enc.putUint32(w.checksum.get())
+	w.enc.PutUint32(w.checksum.Get())
 	if err := w.write(); err != nil {
 		return err
 	}
-	w.checksum.reset()
+	w.checksum.Reset()
 
 	return nil
 }
 
-func (w *docWriter) Write(d doc.Document) error {
+func (w *writer) Write(d doc.Document) error {
 	if len(d.Fields) == 0 {
 		return errEmptyDocument
 	}
 
-	w.enc.putUvarint(uint64(len(d.Fields)))
+	w.enc.PutUvarint(uint64(len(d.Fields)))
 
 	for _, f := range d.Fields {
-		w.enc.putBytes(f.Name)
-		w.enc.putBytes(f.Value)
+		w.enc.PutBytes(f.Name)
+		w.enc.PutBytes(f.Value)
 	}
 
 	if err := w.write(); err != nil {
@@ -112,29 +111,29 @@ func (w *docWriter) Write(d doc.Document) error {
 	return nil
 }
 
-func (w *docWriter) Close() error {
-	w.enc.putUint32(w.checksum.get())
+func (w *writer) Close() error {
+	w.enc.PutUint32(w.checksum.Get())
 	if err := w.write(); err != nil {
 		return err
 	}
-	w.checksum.reset()
+	w.checksum.Reset()
 
-	w.enc.putUint64(w.docs)
+	w.enc.PutUint64(w.docs)
 	if err := w.write(); err != nil {
 		return err
 	}
 
-	w.enc.putUint32(w.checksum.get())
+	w.enc.PutUint32(w.checksum.Get())
 	if err := w.write(); err != nil {
 		return err
 	}
-	w.checksum.reset()
+	w.checksum.Reset()
 
 	return nil
 }
 
-func (w *docWriter) write() error {
-	b := w.enc.bytes()
+func (w *writer) write() error {
+	b := w.enc.Bytes()
 	n, err := w.writer.Write(b)
 	if err != nil {
 		return err
@@ -142,34 +141,33 @@ func (w *docWriter) write() error {
 	if n < len(b) {
 		return io.ErrShortWrite
 	}
-	w.checksum.update(b)
-	w.enc.reset()
+	w.checksum.Update(b)
+	w.enc.Reset()
 	return nil
 }
 
-type docReader struct {
+type reader struct {
 	version uint32
 
 	data []byte
-	dec  *decoder
+	dec  *encoding.Decoder
 
 	curr     uint64
 	total    uint64
-	checksum *checksum
+	checksum *encoding.Checksum
 }
 
-// TODO: remove the nolint
-// nolint: deadcode
-func newDocReader(data []byte) *docReader {
-	return &docReader{
+// NewReader returns a new Reader for deserializing documents from a byte slice.
+func NewReader(data []byte) Reader {
+	return &reader{
 		data:     data,
-		dec:      new(decoder),
-		checksum: new(checksum),
+		dec:      encoding.NewDecoder(nil),
+		checksum: encoding.NewChecksum(),
 	}
 }
 
-func (r *docReader) Init() error {
-	if len(r.data) < docsHeaderSize+docsTrailerSize {
+func (r *reader) Open() error {
+	if len(r.data) < headerSize+trailerSize {
 		return io.ErrShortBuffer
 	}
 
@@ -186,83 +184,83 @@ func (r *docReader) Init() error {
 	return nil
 }
 
-func (r *docReader) decodeHeader() error {
-	data := r.data[:docsHeaderSize]
-	r.dec.reset(data)
+func (r *reader) decodeHeader() error {
+	data := r.data[:headerSize]
+	r.dec.Reset(data)
 
 	// Verify magic number.
-	n, err := r.dec.uint32()
+	n, err := r.dec.Uint32()
 	if err != nil {
 		return err
 	}
-	if n != docsMagicNumber {
+	if n != magicNumber {
 		return errInvalidMagicNumber
 	}
 
 	// Verify file format version.
-	v, err := r.dec.uint32()
+	v, err := r.dec.Uint32()
 	if err != nil {
 		return err
 	}
-	if v != docsFileFormatVersion {
-		return fmt.Errorf("version of file format: %v does not match expected version: %v", v, docsFileFormatVersion)
+	if v != fileFormatVersion {
+		return fmt.Errorf("version of file format: %v does not match expected version: %v", v, fileFormatVersion)
 	}
 	r.version = v
 
-	r.checksum.update(data[:8])
+	r.checksum.Update(data[:8])
 	return r.verifyChecksum()
 }
 
-func (r *docReader) decodeTrailer() error {
-	data := r.data[len(r.data)-docsTrailerSize:]
-	r.dec.reset(data)
+func (r *reader) decodeTrailer() error {
+	data := r.data[len(r.data)-trailerSize:]
+	r.dec.Reset(data)
 
 	// Get number of documents.
-	n, err := r.dec.uint64()
+	n, err := r.dec.Uint64()
 	if err != nil {
 		return err
 	}
 	r.total = n
 
-	r.checksum.update(data[:8])
+	r.checksum.Update(data[:8])
 	return r.verifyChecksum()
 }
 
-func (r *docReader) verifyPayload() error {
-	start := docsHeaderSize
-	end := len(r.data) - docsTrailerSize - 4
+func (r *reader) verifyPayload() error {
+	start := headerSize
+	end := len(r.data) - trailerSize - 4
 	payload := r.data[start:end]
-	r.checksum.update(payload)
+	r.checksum.Update(payload)
 
 	checksum := r.data[end : end+4]
-	r.dec.reset(checksum)
+	r.dec.Reset(checksum)
 	if err := r.verifyChecksum(); err != nil {
 		return err
 	}
 
 	// Update decoder for use in subsequent calls to Read.
-	r.dec.reset(payload)
+	r.dec.Reset(payload)
 	return nil
 }
 
-func (r *docReader) verifyChecksum() error {
-	c, err := r.dec.uint32()
+func (r *reader) verifyChecksum() error {
+	c, err := r.dec.Uint32()
 	if err != nil {
 		return err
 	}
-	if c != r.checksum.get() {
+	if c != r.checksum.Get() {
 		return errChecksumMismatch
 	}
-	r.checksum.reset()
+	r.checksum.Reset()
 	return nil
 }
 
-func (r *docReader) Read() (doc.Document, error) {
+func (r *reader) Read() (doc.Document, error) {
 	if r.curr == r.total {
 		return doc.Document{}, io.EOF
 	}
 
-	x, err := r.dec.uvarint()
+	x, err := r.dec.Uvarint()
 	if err != nil {
 		return doc.Document{}, err
 	}
@@ -273,11 +271,11 @@ func (r *docReader) Read() (doc.Document, error) {
 	}
 
 	for i := 0; i < n; i++ {
-		name, err := r.dec.bytes()
+		name, err := r.dec.Bytes()
 		if err != nil {
 			return doc.Document{}, err
 		}
-		val, err := r.dec.bytes()
+		val, err := r.dec.Bytes()
 		if err != nil {
 			return doc.Document{}, err
 		}
@@ -291,15 +289,6 @@ func (r *docReader) Read() (doc.Document, error) {
 	return d, nil
 }
 
-func (r *docReader) Close() error {
+func (r *reader) Close() error {
 	return nil
-}
-
-type checksum uint32
-
-func (c *checksum) get() uint32 { return uint32(*c) }
-func (c *checksum) reset()      { *c = 0 }
-
-func (c *checksum) update(b []byte) {
-	*c = checksum(crc32.Update(c.get(), crc32.IEEETable, b))
 }

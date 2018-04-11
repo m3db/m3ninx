@@ -18,47 +18,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package codec
+package encoding
 
 import (
-	"bytes"
-	"io"
 	"testing"
-
-	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index/util"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestDocumentsRoundtrip(t *testing.T) {
-	tests := []struct {
-		docs []doc.Document
-	}{
-		{
-			docs: util.MustReadDocs("../util/testdata/node_exporter.json", 2000),
-		},
-	}
+func TestChecksum(t *testing.T) {
+	c := NewChecksum()
+	require.Equal(t, uint32(0), c.Get())
 
-	for _, test := range tests {
-		buf := new(bytes.Buffer)
+	c.Update([]byte("foo"))
+	require.Equal(t, uint32(0x8c736521), c.Get())
 
-		w := newDocWriter(buf)
-		require.NoError(t, w.Init())
-		for i := 0; i < len(test.docs); i++ {
-			require.NoError(t, w.Write(test.docs[i]))
-		}
-		require.NoError(t, w.Close())
+	c.Update([]byte("bar"))
+	require.Equal(t, uint32(0x9ef61f95), c.Get())
 
-		r := newDocReader(buf.Bytes())
-		require.NoError(t, r.Init())
-		for i := 0; i < len(test.docs); i++ {
-			actual, err := r.Read()
-			require.NoError(t, err)
-			require.Equal(t, test.docs[i], actual)
-		}
-		_, err := r.Read()
-		require.Equal(t, io.EOF, err)
-		require.NoError(t, r.Close())
-	}
+	c.Reset()
+	require.Equal(t, uint32(0), c.Get())
 }

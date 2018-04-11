@@ -18,62 +18,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package codec
+package encoding
 
-import "github.com/m3db/m3ninx/doc"
+import "hash/crc32"
 
-const (
-	// FilenameFormat is the format of filenames used by the index.
-	FilenameFormat = "%d.%s"
-)
+// Checksum represents a checksum of stream of bytes.
+type Checksum uint32
 
-// FileType is an enum representing the different types of files created by an index.
-type FileType uint32
-
-const (
-	// DocumentsFile contains the documents in an index.
-	DocumentsFile FileType = iota
-)
-
-// Extension returns the extension for a file.
-func (t FileType) Extension() string {
-	switch t {
-	case DocumentsFile:
-		return "doc"
-	default:
-		return ""
-	}
+// NewChecksum returns a new checksum.
+func NewChecksum() *Checksum {
+	return new(Checksum)
 }
 
-func (t FileType) String() string {
-	switch t {
-	case DocumentsFile:
-		return "documents"
-	default:
-		return "unknown"
-	}
-}
+// Get returns the current value of the checksum.
+func (c *Checksum) Get() uint32 { return uint32(*c) }
 
-// DocWriter is used to write a documents file.
-type DocWriter interface {
-	// Init initializes the DocWriter.
-	Init() error
+// Reset resets the value of the checksum.
+func (c *Checksum) Reset() { *c = 0 }
 
-	// Write writes a document.
-	Write(d doc.Document) error
-
-	// Close closes the DocWriter.
-	Close() error
-}
-
-// DocReader is used to read a documents file.
-type DocReader interface {
-	// Init initializes the DocReader.
-	Init() error
-
-	// Read reads a document.
-	Read() (doc.Document, error)
-
-	// Close closes the DocReader.
-	Close() error
+// Update updates the checksum.
+func (c *Checksum) Update(b []byte) {
+	curr := c.Get()
+	*c = Checksum(crc32.Update(curr, crc32.IEEETable, b))
 }

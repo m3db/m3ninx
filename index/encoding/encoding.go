@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package codec
+package encoding
 
 import (
 	"encoding/binary"
@@ -26,49 +26,69 @@ import (
 	"io"
 )
 
+const maxInt = int(^uint(0) >> 1)
+
 var byteOrder = binary.BigEndian
 
 var errUvarintOverflow = errors.New("uvarint overflows 64 bits")
+var errIntOverflow = errors.New("decoded integer overflows an int")
 
-type encoder struct {
+// Encoder is a low-level encoder that can be used for encoding basic types.
+type Encoder struct {
 	buf []byte
 	tmp [binary.MaxVarintLen64]byte
 }
 
-func newEncoder(size int) *encoder {
-	return &encoder{buf: make([]byte, 0, size)}
+// NewEncoder returns a new encoder.
+func NewEncoder(size int) *Encoder {
+	return &Encoder{buf: make([]byte, 0, size)}
 }
 
-func (e *encoder) bytes() []byte { return e.buf }
-func (e *encoder) reset()        { e.buf = e.buf[:0] }
+// Bytes returns the encoded bytes.
+func (e *Encoder) Bytes() []byte { return e.buf }
 
-func (e *encoder) putUint32(x uint32) {
+// Reset resets the encoder.
+func (e *Encoder) Reset() { e.buf = e.buf[:0] }
+
+// PutUint32 encodes a uint32.
+func (e *Encoder) PutUint32(x uint32) {
 	byteOrder.PutUint32(e.tmp[:], x)
 	e.buf = append(e.buf, e.tmp[:4]...)
 }
 
-func (e *encoder) putUint64(x uint64) {
+// PutUint64 encodes a uint64.
+func (e *Encoder) PutUint64(x uint64) {
 	byteOrder.PutUint64(e.tmp[:], x)
 	e.buf = append(e.buf, e.tmp[:8]...)
 }
 
-func (e *encoder) putUvarint(x uint64) {
+// PutUvarint encodes a variable-sized unsigned integer.
+func (e *Encoder) PutUvarint(x uint64) {
 	n := binary.PutUvarint(e.tmp[:], x)
 	e.buf = append(e.buf, e.tmp[:n]...)
 }
 
-func (e *encoder) putBytes(b []byte) {
-	e.putUvarint(uint64(len(b)))
+// PutBytes encodes a byte slice.
+func (e *Encoder) PutBytes(b []byte) {
+	e.PutUvarint(uint64(len(b)))
 	e.buf = append(e.buf, b...)
 }
 
-type decoder struct {
+// Decoder is a low-level decoder for decoding basic types.
+type Decoder struct {
 	buf []byte
 }
 
-func (d *decoder) reset(buf []byte) { d.buf = buf }
+// NewDecoder returns a new Decoder.
+func NewDecoder(buf []byte) *Decoder {
+	return &Decoder{buf: buf}
+}
 
-func (d *decoder) uint32() (uint32, error) {
+// Reset resets the decoder.
+func (d *Decoder) Reset(buf []byte) { d.buf = buf }
+
+// Uint32 reads a uint32 from the decoder.
+func (d *Decoder) Uint32() (uint32, error) {
 	if len(d.buf) < 4 {
 		return 0, io.ErrShortBuffer
 	}
@@ -77,7 +97,8 @@ func (d *decoder) uint32() (uint32, error) {
 	return x, nil
 }
 
-func (d *decoder) uint64() (uint64, error) {
+// Uint64 reads a uint64 from the decoder.
+func (d *Decoder) Uint64() (uint64, error) {
 	if len(d.buf) < 8 {
 		return 0, io.ErrShortBuffer
 	}
@@ -86,7 +107,8 @@ func (d *decoder) uint64() (uint64, error) {
 	return x, nil
 }
 
-func (d *decoder) uvarint() (uint64, error) {
+// Uvarint reads a variable-sized unsigned integer.
+func (d *Decoder) Uvarint() (uint64, error) {
 	x, n := binary.Uvarint(d.buf)
 	if n == 0 {
 		return 0, io.ErrShortBuffer
@@ -98,12 +120,18 @@ func (d *decoder) uvarint() (uint64, error) {
 	return x, nil
 }
 
-func (d *decoder) bytes() ([]byte, error) {
-	x, err := d.uvarint()
+// Bytes reads a byte slice from the decoder.
+func (d *Decoder) Bytes() ([]byte, error) {
+	x, err := d.Uvarint()
 	if err != nil {
 		return nil, err
 	}
-	// TODO: check for overflow here?
+
+	// Verify the length of the slice won't overflow an int.
+	if x > uint64(maxInt) {
+		return nil, errIntOverflow
+	}
+
 	n := int(x)
 	if len(d.buf) < n {
 		return nil, io.ErrShortBuffer
