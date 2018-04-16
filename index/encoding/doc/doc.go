@@ -77,10 +77,7 @@ func NewWriter(w io.Writer) Writer {
 func (w *writer) Open() error {
 	w.enc.PutUint32(magicNumber)
 	w.enc.PutUint32(w.version)
-	if err := w.write(); err != nil {
-		return err
-	}
-	return nil
+	return w.write()
 }
 
 func (w *writer) Write(d doc.Document) error {
@@ -110,11 +107,7 @@ func (w *writer) Close() error {
 	}
 
 	w.enc.PutUint32(w.checksum.Get())
-	if err := w.write(); err != nil {
-		return err
-	}
-
-	return nil
+	return w.write()
 }
 
 func (w *writer) write() error {
