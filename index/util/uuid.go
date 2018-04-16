@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,24 +18,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package doc
+package util
 
-// Iterator provides an iterator over a collection of documents. It is NOT safe for multiple
-// goroutines to invoke methods on an Iterator simultaneously.
-type Iterator interface {
-	// Next returns a bool indicating if the iterator has any more documents
-	// to return.
-	Next() bool
+import (
+	"encoding/base64"
 
-	// Current returns the current document. It is only safe to call Current immediately
-	// after a call to Next confirms there are more elements remaining. The Document
-	// returned from Current is only valid until the following call to Next(). Callers
-	// should copy the Document if they need it live longer.
-	Current() Document
+	"github.com/satori/go.uuid"
+)
 
-	// Err returns any errors encountered during iteration.
-	Err() error
+var (
+	encodedLen = base64.StdEncoding.EncodedLen(uuid.Size)
+)
 
-	// Close releases any internal resources used by the iterator.
-	Close() error
+// NewUUID returns a new UUID.
+func NewUUID() ([]byte, error) {
+	// TODO: V4 UUIDs are randomly generated. It would be more efficient to instead
+	// use time-based UUIDs so the prefixes of the UUIDs are similar. V1 UUIDs use
+	// the current timestamp and the server's MAC address but the latter isn't
+	// guaranteed to be unique since we may have multiple processes running on the
+	// same host. Elasticsearch uses Flake IDs which ensure uniqueness by requiring
+	// an initial coordination step and we may want to consider doing the same.
+	uuid := uuid.NewV4().Bytes()
+
+	buf := make([]byte, encodedLen)
+	base64.StdEncoding.Encode(buf, uuid)
+	return buf, nil
 }

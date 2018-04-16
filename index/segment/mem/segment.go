@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	re "regexp"
@@ -30,12 +31,15 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	sgmt "github.com/m3db/m3ninx/index/segment"
+	"github.com/m3db/m3ninx/index/util"
 	"github.com/m3db/m3ninx/postings"
 )
 
 var (
 	errSegmentSealed     = errors.New("segment has been sealed")
 	errUnknownPostingsID = errors.New("unknown postings ID specified")
+	errMultipleIDs       = errors.New("document cannot contain multiple IDs")
+	errZeroLengthID      = errors.New("document ID cannot be of length zero")
 )
 
 type segment struct {
@@ -93,24 +97,58 @@ func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 
 func (s *segment) Insert(d doc.Document) error {
 	s.state.RLock()
+	defer s.state.RUnlock()
 	if s.state.closed {
-		s.state.RUnlock()
 		return sgmt.ErrClosed
 	}
 
 	if s.state.sealed {
-		s.state.RUnlock()
 		return errSegmentSealed
 	}
 
-	// Validate that the document contains only valid UTF-8.
+	// Check if the document contains a document ID and ensure it's fields are valid UTF-8.
+	var docID []byte
 	for _, f := range d.Fields {
+		// TODO: Should we enforce uniqueness of field names?
 		if !utf8.Valid(f.Name) {
 			return fmt.Errorf("document contains invalid field name: %v", f.Name)
 		}
+
+		if bytes.Equal(f.Name, doc.IDFieldName) {
+			if docID != nil {
+				return errMultipleIDs
+			}
+
+			if len(docID) == 0 {
+				return errZeroLengthID
+			}
+
+			docID = f.Value
+		}
+
 		if !utf8.Valid(f.Value) {
 			return fmt.Errorf("document contains invalid field value: %v", f.Value)
 		}
+	}
+
+	if docID != nil {
+		pl, err := s.matchTerm(doc.IDFieldName, docID)
+		if err != nil {
+			return fmt.Errorf("could not determine if index already contains document ID '%s'", docID)
+		}
+		if !pl.IsEmpty() {
+			// Index already contains this document.
+			return nil
+		}
+	} else {
+		uuid, err := util.NewUUID()
+		if err != nil {
+			return err
+		}
+		d.Fields = append(d.Fields, doc.Field{
+			Name:  doc.IDFieldName,
+			Value: uuid,
+		})
 	}
 
 	// TODO: Consider supporting concurrent writes by relaxing the requirement that
@@ -124,7 +162,6 @@ func (s *segment) Insert(d doc.Document) error {
 
 	s.ids.Unlock()
 
-	s.state.RUnlock()
 	return err
 }
 

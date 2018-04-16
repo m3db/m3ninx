@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"bytes"
 	re "regexp"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestSegmentInsert(t *testing.T) {
 	require.NoError(t, err)
 
 	require.True(t, iter.Next())
-	require.Equal(t, doc, iter.Current())
+	require.True(t, compareDocs(doc, iter.Current()))
 	require.False(t, iter.Next())
 	require.NoError(t, iter.Err())
 }
@@ -126,7 +127,10 @@ func TestSegmentReaderMatchExact(t *testing.T) {
 	require.NoError(t, iter.Err())
 
 	expectedDocs := []doc.Document{docs[0], docs[2]}
-	require.Equal(t, expectedDocs, actualDocs)
+	require.Equal(t, len(expectedDocs), len(actualDocs))
+	for i := range actualDocs {
+		require.True(t, compareDocs(expectedDocs[i], actualDocs[i]))
+	}
 }
 
 func TestSegmentReaderMatchRegex(t *testing.T) {
@@ -196,5 +200,51 @@ func TestSegmentReaderMatchRegex(t *testing.T) {
 	require.NoError(t, iter.Err())
 
 	expectedDocs := []doc.Document{docs[1], docs[2]}
-	require.Equal(t, expectedDocs, actualDocs)
+	require.Equal(t, len(expectedDocs), len(actualDocs))
+	for i := range actualDocs {
+		require.True(t, compareDocs(expectedDocs[i], actualDocs[i]))
+	}
+}
+
+// compareDocs returns whether two documents are equal. If only one of the documents
+// contains an ID the ID is excluded from the comparison since it was auto-generated.
+func compareDocs(l, r doc.Document) bool {
+	lIdx, lOK := hasID(l)
+	rIdx, rOK := hasID(r)
+	if !exclusiveOr(lOK, rOK) {
+		return l.Equal(r)
+	}
+	if lOK {
+		l = removeID(l, lIdx)
+	}
+	if rOK {
+		r = removeID(r, rIdx)
+	}
+	return l.Equal(r)
+}
+
+func hasID(d doc.Document) (int, bool) {
+	for i, f := range d.Fields {
+		if bytes.Equal(f.Name, doc.IDFieldName) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func removeID(d doc.Document, idx int) doc.Document {
+	cp := make([]doc.Field, 0, len(d.Fields))
+	for i, f := range d.Fields {
+		if i == idx {
+			continue
+		}
+		cp = append(cp, f)
+	}
+	return doc.Document{
+		Fields: cp,
+	}
+}
+
+func exclusiveOr(a, b bool) bool {
+	return (a || b) && !(a && b)
 }
