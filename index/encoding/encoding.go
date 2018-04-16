@@ -28,7 +28,7 @@ import (
 
 const maxInt = int(^uint(0) >> 1)
 
-var byteOrder = binary.BigEndian
+var byteOrder = binary.LittleEndian
 
 var errUvarintOverflow = errors.New("uvarint overflows 64 bits")
 var errIntOverflow = errors.New("decoded integer overflows an int")

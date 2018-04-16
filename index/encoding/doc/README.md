@@ -47,7 +47,7 @@ the documents file format and the version of the format being used.
 The magic number is `0x6D33D0C5` and is used to uniquely identify a file as a documents
 file. The file format version is the version of the documents file format that is being
 used. Currently, the only valid version is `1`. Both the magic number and the version
-are encoded as a big-endian `uint32`.
+are encoded as a little-endian `uint32`.
 
 ## 2. Payload
 
@@ -142,4 +142,4 @@ of documents).
 ```
 
 The number of documents is encoded as a `unit64` and the checksum is a `uint32` both of
-which are in big-endian format.
+which are in little-endian format.
