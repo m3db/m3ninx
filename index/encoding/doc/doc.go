@@ -38,12 +38,11 @@ const (
 	headerSize = 0 +
 		4 + // magic number
 		4 + // version
-		4 + // checksum of header fields
 		0
 
 	trailerSize = 0 +
 		8 + // number of documents
-		4 + // checksum of trailer fields
+		4 + // checksum of payload
 		0
 )
 
@@ -81,13 +80,6 @@ func (w *writer) Open() error {
 	if err := w.write(); err != nil {
 		return err
 	}
-
-	w.enc.PutUint32(w.checksum.Get())
-	if err := w.write(); err != nil {
-		return err
-	}
-	w.checksum.Reset()
-
 	return nil
 }
 
@@ -112,12 +104,6 @@ func (w *writer) Write(d doc.Document) error {
 }
 
 func (w *writer) Close() error {
-	w.enc.PutUint32(w.checksum.Get())
-	if err := w.write(); err != nil {
-		return err
-	}
-	w.checksum.Reset()
-
 	w.enc.PutUint64(w.docs)
 	if err := w.write(); err != nil {
 		return err
@@ -127,7 +113,6 @@ func (w *writer) Close() error {
 	if err := w.write(); err != nil {
 		return err
 	}
-	w.checksum.Reset()
 
 	return nil
 }
@@ -161,7 +146,6 @@ type reader struct {
 func NewReader(data []byte) Reader {
 	return &reader{
 		data:     data,
-		dec:      encoding.NewDecoder(nil),
 		checksum: encoding.NewChecksum(),
 	}
 }
@@ -171,25 +155,31 @@ func (r *reader) Open() error {
 		return io.ErrShortBuffer
 	}
 
+	if err := r.verifyChecksum(); err != nil {
+		return err
+	}
 	if err := r.decodeHeader(); err != nil {
 		return err
 	}
 	if err := r.decodeTrailer(); err != nil {
 		return err
 	}
-	if err := r.verifyPayload(); err != nil {
-		return err
-	}
 
+	start := headerSize
+	end := len(r.data) - trailerSize
+	payload := r.data[start:end]
+	r.dec = encoding.NewDecoder(payload)
 	return nil
 }
 
 func (r *reader) decodeHeader() error {
-	data := r.data[:headerSize]
-	r.dec.Reset(data)
+	var (
+		header = r.data[:headerSize]
+		dec    = encoding.NewDecoder(header)
+	)
 
 	// Verify magic number.
-	n, err := r.dec.Uint32()
+	n, err := dec.Uint32()
 	if err != nil {
 		return err
 	}
@@ -198,7 +188,7 @@ func (r *reader) decodeHeader() error {
 	}
 
 	// Verify file format version.
-	v, err := r.dec.Uint32()
+	v, err := dec.Uint32()
 	if err != nil {
 		return err
 	}
@@ -206,52 +196,42 @@ func (r *reader) decodeHeader() error {
 		return fmt.Errorf("version of file format: %v does not match expected version: %v", v, fileFormatVersion)
 	}
 	r.version = v
-
-	r.checksum.Update(data[:8])
-	return r.verifyChecksum()
+	return nil
 }
 
 func (r *reader) decodeTrailer() error {
-	data := r.data[len(r.data)-trailerSize:]
-	r.dec.Reset(data)
+	var (
+		trailer = r.data[len(r.data)-trailerSize:]
+		dec     = encoding.NewDecoder(trailer)
+	)
 
 	// Get number of documents.
-	n, err := r.dec.Uint64()
+	n, err := dec.Uint64()
 	if err != nil {
 		return err
 	}
 	r.total = n
-
-	r.checksum.Update(data[:8])
-	return r.verifyChecksum()
-}
-
-func (r *reader) verifyPayload() error {
-	start := headerSize
-	end := len(r.data) - trailerSize - 4
-	payload := r.data[start:end]
-	r.checksum.Update(payload)
-
-	checksum := r.data[end : end+4]
-	r.dec.Reset(checksum)
-	if err := r.verifyChecksum(); err != nil {
-		return err
-	}
-
-	// Update decoder for use in subsequent calls to Read.
-	r.dec.Reset(payload)
 	return nil
 }
 
 func (r *reader) verifyChecksum() error {
-	c, err := r.dec.Uint32()
+	var (
+		data     = r.data[:len(r.data)-4]
+		checksum = r.data[len(r.data)-4:]
+		dec      = encoding.NewDecoder(checksum)
+	)
+
+	expected, err := dec.Uint32()
 	if err != nil {
 		return err
 	}
-	if c != r.checksum.Get() {
+
+	r.checksum.Update(data)
+
+	if expected != r.checksum.Get() {
 		return errChecksumMismatch
 	}
-	r.checksum.Reset()
+
 	return nil
 }
 
