@@ -36,6 +36,34 @@ func TestWriteReadDocuments(t *testing.T) {
 		docs []doc.Document
 	}{
 		{
+			docs: []doc.Document{
+				doc.Document{
+					Fields: []doc.Field{
+						doc.Field{
+							Name:  []byte("fruit"),
+							Value: []byte("apple"),
+						},
+						doc.Field{
+							Name:  []byte("color"),
+							Value: []byte("red"),
+						},
+					},
+				},
+				doc.Document{
+					Fields: []doc.Field{
+						doc.Field{
+							Name:  []byte("fruit"),
+							Value: []byte("banana"),
+						},
+						doc.Field{
+							Name:  []byte("color"),
+							Value: []byte("yellow"),
+						},
+					},
+				},
+			},
+		},
+		{
 			docs: util.MustReadDocs("../../util/testdata/node_exporter.json", 2000),
 		},
 	}

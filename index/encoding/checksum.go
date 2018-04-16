@@ -22,7 +22,7 @@ package encoding
 
 import "hash/crc32"
 
-// Checksum represents a checksum of stream of bytes.
+// Checksum is a checksum of a stream of bytes.
 type Checksum uint32
 
 // NewChecksum returns a new checksum.

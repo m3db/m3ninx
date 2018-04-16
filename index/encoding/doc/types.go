@@ -22,7 +22,7 @@ package doc
 
 import "github.com/m3db/m3ninx/doc"
 
-// Writer is used to write a documents file.
+// Writer is used to serialize and write documents.
 type Writer interface {
 	// Open opens the Writer.
 	Open() error
@@ -34,7 +34,7 @@ type Writer interface {
 	Close() error
 }
 
-// Reader is used to read a documents file.
+// Reader is used to read and deserialized documents.
 type Reader interface {
 	// Open opens the Reader.
 	Open() error

@@ -29,7 +29,7 @@ import (
 	"github.com/m3db/m3ninx/doc"
 )
 
-// ReadDocs reads up to n documents from Ja SON formatted file at the provided path.
+// ReadDocs reads up to n documents from a JSON formatted file at the provided path.
 // It is useful for getting a set of documents to run tests with.
 func ReadDocs(path string, n int) ([]doc.Document, error) {
 	f, err := os.Open(path)
