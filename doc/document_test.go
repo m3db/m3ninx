@@ -94,6 +94,56 @@ func TestSortingFields(t *testing.T) {
 	}
 }
 
+func TestDocumentGetField(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       Document
+		fieldName   []byte
+		expectedOk  bool
+		expectedVal []byte
+	}{
+		{
+			name: "get existing field",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+				},
+			},
+			fieldName:   []byte("apple"),
+			expectedOk:  true,
+			expectedVal: []byte("red"),
+		},
+		{
+			name: "get nonexisting field",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+				},
+			},
+			fieldName:  []byte("banana"),
+			expectedOk: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			val, ok := test.input.Get(test.fieldName)
+			if test.expectedOk {
+				require.True(t, ok)
+				require.Equal(t, test.expectedVal, val)
+				return
+			}
+			require.False(t, ok)
+		})
+	}
+}
+
 func TestDocumentEquality(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -195,6 +245,87 @@ func TestDocumentEquality(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, test.expected, test.l.Equal(test.r))
+		})
+	}
+}
+
+func TestDocumentValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       Document
+		expectedErr bool
+		expectedID  []byte
+	}{
+		{
+			name:        "empty document",
+			input:       Document{},
+			expectedErr: true,
+		},
+		{
+			name: "invalid UTF-8 in field name",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("\xff"),
+						Value: []byte("bar"),
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "invalid UTF-8 in field value",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("\xff"),
+						Value: []byte("bar"),
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "valid document with ID",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+				},
+			},
+			expectedErr: false,
+			expectedID:  nil,
+		},
+		{
+			name: "valid document with ID",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+					Field{
+						Name:  IDReservedFieldName,
+						Value: []byte("123"),
+					},
+				},
+			},
+			expectedErr: false,
+			expectedID:  []byte("123"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			id, err := test.input.Validate()
+			if test.expectedErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.expectedID, id)
 		})
 	}
 }

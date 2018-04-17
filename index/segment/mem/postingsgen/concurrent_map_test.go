@@ -42,21 +42,23 @@ func TestConcurrentMap(t *testing.T) {
 	require.NoError(t, pm.Add([]byte("foo"), 3))
 	require.NoError(t, pm.Add([]byte("baz"), 4))
 
-	pl := pm.Get([]byte("foo"))
+	pl, ok := pm.Get([]byte("foo"))
+	require.True(t, ok)
 	require.Equal(t, 2, pl.Len())
 	require.True(t, pl.Contains(1))
 	require.True(t, pl.Contains(3))
 
-	// No matches.
-	pl = pm.Get([]byte("fizz"))
-	require.Equal(t, 0, pl.Len())
+	_, ok = pm.Get([]byte("fizz"))
+	require.False(t, ok)
 
 	re := regexp.MustCompile("ba.*")
-	pls := pm.GetRegex(re)
-	require.Equal(t, 2, len(pls))
+	pl, ok = pm.GetRegex(re)
+	require.True(t, ok)
+	require.Equal(t, 2, pl.Len())
+	require.True(t, pl.Contains(2))
+	require.True(t, pl.Contains(4))
 
-	clone := pls[0].Clone()
-	clone.Union(pls[1])
-	require.True(t, clone.Contains(2))
-	require.True(t, clone.Contains(4))
+	re = regexp.MustCompile("abc.*")
+	_, ok = pm.GetRegex(re)
+	require.False(t, ok)
 }

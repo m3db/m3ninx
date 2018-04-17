@@ -21,12 +21,10 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	re "regexp"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
@@ -38,13 +36,12 @@ import (
 var (
 	errSegmentSealed     = errors.New("segment has been sealed")
 	errUnknownPostingsID = errors.New("unknown postings ID specified")
-	errMultipleIDs       = errors.New("document cannot contain multiple IDs")
-	errZeroLengthID      = errors.New("document ID cannot be of length zero")
 )
 
 type segment struct {
-	opts   Options
-	offset int
+	opts      Options
+	offset    int
+	newUUIDFn util.NewUUIDFn
 
 	// Internal state of the segment. The allowed transitions are:
 	//   - Open -> Sealed -> Closed
@@ -85,6 +82,7 @@ func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 	s := &segment{
 		opts:      opts,
 		offset:    int(offset) + 1, // The first ID assigned by the segment is offset + 1.
+		newUUIDFn: opts.NewUUIDFn(),
 		termsDict: newTermsDict(opts),
 	}
 
@@ -106,47 +104,27 @@ func (s *segment) Insert(d doc.Document) error {
 		return errSegmentSealed
 	}
 
-	// Check if the document contains a document ID and ensure it's fields are valid UTF-8.
-	var docID []byte
-	for _, f := range d.Fields {
-		// TODO: Should we enforce uniqueness of field names?
-		if !utf8.Valid(f.Name) {
-			return fmt.Errorf("document contains invalid field name: %v", f.Name)
-		}
-
-		if bytes.Equal(f.Name, doc.IDFieldName) {
-			if docID != nil {
-				return errMultipleIDs
-			}
-
-			if len(docID) == 0 {
-				return errZeroLengthID
-			}
-
-			docID = f.Value
-		}
-
-		if !utf8.Valid(f.Value) {
-			return fmt.Errorf("document contains invalid field value: %v", f.Value)
-		}
+	docID, err := d.Validate()
+	if err != nil {
+		return err
 	}
 
 	if docID != nil {
-		pl, err := s.matchTerm(doc.IDFieldName, docID)
+		ok, err := s.termsDict.ContainsTerm(doc.IDReservedFieldName, docID)
 		if err != nil {
-			return fmt.Errorf("could not determine if index already contains document ID '%s'", docID)
+			return fmt.Errorf("could not lookup document ID '%s'", docID)
 		}
-		if !pl.IsEmpty() {
+		if ok {
 			// Index already contains this document.
 			return nil
 		}
 	} else {
-		uuid, err := util.NewUUID()
+		uuid, err := s.newUUIDFn()
 		if err != nil {
 			return err
 		}
 		d.Fields = append(d.Fields, doc.Field{
-			Name:  doc.IDFieldName,
+			Name:  doc.IDReservedFieldName,
 			Value: uuid,
 		})
 	}
@@ -157,7 +135,7 @@ func (s *segment) Insert(d doc.Document) error {
 
 	newID := s.ids.writer.Inc()
 	s.insertDoc(newID, d)
-	err := s.insertTerms(newID, d)
+	err = s.insertTerms(newID, d)
 	s.ids.reader.Inc()
 
 	s.ids.Unlock()

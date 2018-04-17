@@ -22,11 +22,20 @@ package doc
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"sort"
+	"unicode/utf8"
 )
 
-// IDFieldName is the field name reserved for IDs.
-var IDFieldName = []byte("_id")
+var (
+	errMultipleIDs   = errors.New("document cannot contain multiple IDs")
+	errZeroLengthID  = errors.New("document ID cannot be of length zero")
+	errEmptyDocument = errors.New("document cannot be empty")
+)
+
+// IDReservedFieldName is the field name reserved for IDs.
+var IDReservedFieldName = []byte("_id")
 
 // Field represents a field in a document. It is composed of a name and a value.
 type Field struct {
@@ -84,6 +93,16 @@ type Document struct {
 	Fields []Field
 }
 
+// Get returns the value of the specified field name in the document if it exists.
+func (d Document) Get(fieldName []byte) ([]byte, bool) {
+	for _, f := range d.Fields {
+		if bytes.Equal(fieldName, f.Name) {
+			return f.Value, true
+		}
+	}
+	return nil, false
+}
+
 // Equal returns whether this document is equal to another.
 func (d Document) Equal(other Document) bool {
 	if len(d.Fields) != len(other.Fields) {
@@ -112,4 +131,37 @@ func (d Document) Equal(other Document) bool {
 	}
 
 	return true
+}
+
+// Validate validates the given document and returns its ID if it has one.
+func (d Document) Validate() ([]byte, error) {
+	if len(d.Fields) == 0 {
+		return nil, errEmptyDocument
+	}
+
+	var id []byte
+	for _, f := range d.Fields {
+		// TODO: Should we enforce uniqueness of field names?
+		if !utf8.Valid(f.Name) {
+			return nil, fmt.Errorf("document contains invalid field name: %v", f.Name)
+		}
+
+		if bytes.Equal(f.Name, IDReservedFieldName) {
+			if id != nil {
+				return nil, errMultipleIDs
+			}
+
+			if len(f.Value) == 0 {
+				return nil, errZeroLengthID
+			}
+
+			id = f.Value
+		}
+
+		if !utf8.Valid(f.Value) {
+			return nil, fmt.Errorf("document contains invalid field value: %v", f.Value)
+		}
+	}
+
+	return id, nil
 }

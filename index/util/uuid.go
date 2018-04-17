@@ -30,6 +30,9 @@ var (
 	encodedLen = base64.StdEncoding.EncodedLen(uuid.Size)
 )
 
+// NewUUIDFn is a function for creating new UUIDs.
+type NewUUIDFn func() ([]byte, error)
+
 // NewUUID returns a new UUID.
 func NewUUID() ([]byte, error) {
 	// TODO: V4 UUIDs are randomly generated. It would be more efficient to instead

@@ -31,35 +31,68 @@ import (
 )
 
 func TestSegmentInsert(t *testing.T) {
-	name, value := []byte("apple"), []byte("red")
-	doc := doc.Document{
-		Fields: []doc.Field{
-			doc.Field{
-				Name:  name,
-				Value: value,
+	tests := []struct {
+		name  string
+		input doc.Document
+	}{
+		{
+			name: "document without an ID",
+			input: doc.Document{
+				Fields: []doc.Field{
+					doc.Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+				},
+			},
+		},
+		{
+			name: "document with an ID",
+			input: doc.Document{
+				Fields: []doc.Field{
+					doc.Field{
+						Name:  []byte("apple"),
+						Value: []byte("red"),
+					},
+					doc.Field{
+						Name:  doc.IDReservedFieldName,
+						Value: []byte("123"),
+					},
+				},
 			},
 		},
 	}
 
-	segment, err := NewSegment(0, NewOptions())
-	require.NoError(t, err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			segment, err := NewSegment(0, NewOptions())
+			require.NoError(t, err)
 
-	err = segment.Insert(doc)
-	require.NoError(t, err)
+			err = segment.Insert(test.input)
+			require.NoError(t, err)
 
-	reader, err := segment.Reader()
-	require.NoError(t, err)
+			reader, err := segment.Reader()
+			require.NoError(t, err)
 
-	pl, err := reader.MatchTerm(name, value)
-	require.NoError(t, err)
+			name, value := test.input.Fields[0].Name, test.input.Fields[0].Value
+			pl, err := reader.MatchTerm(name, value)
+			require.NoError(t, err)
 
-	iter, err := reader.Docs(pl)
-	require.NoError(t, err)
+			iter, err := reader.Docs(pl)
+			require.NoError(t, err)
 
-	require.True(t, iter.Next())
-	require.True(t, compareDocs(doc, iter.Current()))
-	require.False(t, iter.Next())
-	require.NoError(t, iter.Err())
+			require.True(t, iter.Next())
+			actual := iter.Current()
+			require.True(t, compareDocs(test.input, actual))
+
+			// The document must have an ID.
+			_, ok := actual.Get(doc.IDReservedFieldName)
+			require.True(t, ok)
+
+			require.False(t, iter.Next())
+			require.NoError(t, iter.Err())
+		})
+	}
 }
 
 func TestSegmentReaderMatchExact(t *testing.T) {
@@ -85,6 +118,10 @@ func TestSegmentReaderMatchExact(t *testing.T) {
 				doc.Field{
 					Name:  []byte("color"),
 					Value: []byte("yellow"),
+				},
+				doc.Field{
+					Name:  doc.IDReservedFieldName,
+					Value: []byte("83"),
 				},
 			},
 		},
@@ -169,6 +206,10 @@ func TestSegmentReaderMatchRegex(t *testing.T) {
 					Name:  []byte("color"),
 					Value: []byte("yellow"),
 				},
+				doc.Field{
+					Name:  doc.IDReservedFieldName,
+					Value: []byte("42"),
+				},
 			},
 		},
 	}
@@ -225,7 +266,7 @@ func compareDocs(l, r doc.Document) bool {
 
 func hasID(d doc.Document) (int, bool) {
 	for i, f := range d.Fields {
-		if bytes.Equal(f.Name, doc.IDFieldName) {
+		if bytes.Equal(f.Name, doc.IDReservedFieldName) {
 			return i, true
 		}
 	}
