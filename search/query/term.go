@@ -40,6 +40,7 @@ func NewTermQuery(field, term []byte) search.Query {
 	}
 }
 
+// Searcher returns a searcher over the provided readers.
 func (q *TermQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	return searcher.NewTermSearcher(rs, q.Field, q.Term), nil
 }

@@ -50,6 +50,7 @@ func NewConjuctionQuery(queries []search.Query) search.Query {
 	}
 }
 
+// Searcher returns a searcher over the provided readers.
 func (q *ConjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	switch len(q.Queries) {
 	case 0:

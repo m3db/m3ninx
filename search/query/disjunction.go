@@ -50,6 +50,7 @@ func NewDisjuctionQuery(queries []search.Query) search.Query {
 	}
 }
 
+// Searcher returns a searcher over the provided readers.
 func (q *DisjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	switch len(q.Queries) {
 	case 0:

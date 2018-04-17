@@ -49,6 +49,7 @@ func NewRegexpQuery(field, regexp []byte) (search.Query, error) {
 	}, nil
 }
 
+// Searcher returns a searcher over the provided readers.
 func (q *RegexpQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	return searcher.NewRegexpSearcher(rs, q.Field, q.Regexp, q.compiled), nil
 }
