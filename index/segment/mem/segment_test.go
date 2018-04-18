@@ -91,8 +91,67 @@ func TestSegmentInsert(t *testing.T) {
 
 			require.False(t, iter.Next())
 			require.NoError(t, iter.Err())
+			require.NoError(t, iter.Close())
 		})
 	}
+}
+
+func TestSegmentInsertTwice(t *testing.T) {
+	var (
+		id    = []byte("123")
+		first = doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("apple"),
+					Value: []byte("red"),
+				},
+				doc.Field{
+					Name:  doc.IDReservedFieldName,
+					Value: id,
+				},
+			},
+		}
+		second = doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("apple"),
+					Value: []byte("red"),
+				},
+				doc.Field{
+					Name:  []byte("variety"),
+					Value: []byte("fuji"),
+				},
+				doc.Field{
+					Name:  doc.IDReservedFieldName,
+					Value: id,
+				},
+			},
+		}
+	)
+
+	segment, err := NewSegment(0, NewOptions())
+	require.NoError(t, err)
+
+	err = segment.Insert(first)
+	require.NoError(t, err)
+
+	reader, err := segment.Reader()
+	require.NoError(t, err)
+
+	pl, err := reader.MatchTerm(doc.IDReservedFieldName, id)
+	require.NoError(t, err)
+
+	iter, err := reader.Docs(pl)
+	require.NoError(t, err)
+
+	require.True(t, iter.Next())
+	actual := iter.Current()
+
+	// Only the first document should be indexed.
+	require.True(t, compareDocs(first, actual))
+	require.False(t, compareDocs(second, actual))
+
+	require.NoError(t, iter.Close())
 }
 
 func TestSegmentReaderMatchExact(t *testing.T) {
@@ -162,6 +221,7 @@ func TestSegmentReaderMatchExact(t *testing.T) {
 	}
 
 	require.NoError(t, iter.Err())
+	require.NoError(t, iter.Close())
 
 	expectedDocs := []doc.Document{docs[0], docs[2]}
 	require.Equal(t, len(expectedDocs), len(actualDocs))
@@ -239,6 +299,7 @@ func TestSegmentReaderMatchRegex(t *testing.T) {
 	}
 
 	require.NoError(t, iter.Err())
+	require.NoError(t, iter.Close())
 
 	expectedDocs := []doc.Document{docs[1], docs[2]}
 	require.Equal(t, len(expectedDocs), len(actualDocs))
