@@ -52,10 +52,10 @@ type Options interface {
 	// InitialCapacity returns the initial capacity.
 	InitialCapacity() int
 
-	// SetNewUUIDFn sets the function to generate new UUIDs.
+	// SetNewUUIDFn sets the function used to generate new UUIDs.
 	SetNewUUIDFn(value util.NewUUIDFn) Options
 
-	// NewUUIDFn returns the function to generate new UUIDs.
+	// NewUUIDFn returns the function used to generate new UUIDs.
 	NewUUIDFn() util.NewUUIDFn
 }
 

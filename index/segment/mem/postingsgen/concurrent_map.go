@@ -96,7 +96,7 @@ func (m *ConcurrentMap) Get(key []byte) (postings.List, bool) {
 	return nil, false
 }
 
-// GetRegex returns the union of the postings lists whose keys match match the
+// GetRegex returns the union of the postings lists whose keys match the
 // provided regexp.
 func (m *ConcurrentMap) GetRegex(re *regexp.Regexp) (postings.List, bool) {
 	var pl postings.MutableList
