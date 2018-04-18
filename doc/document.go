@@ -35,7 +35,7 @@ var (
 )
 
 // IDReservedFieldName is the field name reserved for IDs.
-var IDReservedFieldName = []byte("_id")
+var IDReservedFieldName = []byte("_m3ninx_id")
 
 // Field represents a field in a document. It is composed of a name and a value.
 type Field struct {

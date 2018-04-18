@@ -22,13 +22,14 @@ package util
 
 import (
 	"encoding/base64"
+	"errors"
 
 	"github.com/satori/go.uuid"
 )
 
-var (
-	encodedLen = base64.StdEncoding.EncodedLen(uuid.Size)
-)
+var errUUIDForbidden = errors.New("generating UUIDs is forbidden")
+
+var encodedLen = base64.StdEncoding.EncodedLen(uuid.Size)
 
 // NewUUIDFn is a function for creating new UUIDs.
 type NewUUIDFn func() ([]byte, error)
@@ -46,4 +47,10 @@ func NewUUID() ([]byte, error) {
 	buf := make([]byte, encodedLen)
 	base64.StdEncoding.Encode(buf, uuid)
 	return buf, nil
+}
+
+// NewUUIDForbidden is NewUUIDFn which always returns an error in the case that
+// UUIDs are forbidden.
+func NewUUIDForbidden() ([]byte, error) {
+	return nil, errUUIDForbidden
 }

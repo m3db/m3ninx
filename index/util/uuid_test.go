@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUUID(t *testing.T) {
+func TestNewUUID(t *testing.T) {
 	var (
 		numIters = 1000
 		uuids    = make(map[string]struct{}, numIters)
@@ -40,4 +40,9 @@ func TestUUID(t *testing.T) {
 
 		uuids[string(uuid)] = struct{}{}
 	}
+}
+
+func TestNewUUIDForbidden(t *testing.T) {
+	_, err := NewUUIDForbidden()
+	require.Error(t, err)
 }
