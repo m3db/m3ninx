@@ -386,7 +386,7 @@ func testDocument(t *testing.T, d doc.Document, r index.Reader) {
 // an ID but the expected doc does not then the ID is excluded from the comparison
 // since it was auto-generated.
 func compareDocs(expected, actual doc.Document) bool {
-	if actual.ID != nil && expected.ID == nil {
+	if actual.HasID() && !expected.HasID() {
 		actual.ID = nil
 	}
 	return expected.Equal(actual)

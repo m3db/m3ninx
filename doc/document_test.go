@@ -353,3 +353,39 @@ func TestDocumentValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestDocumentHasID(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Document
+		expected bool
+	}{
+		{
+			name: "nil ID",
+			input: Document{
+				ID: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "zero-length ID",
+			input: Document{
+				ID: make([]byte, 0, 16),
+			},
+			expected: false,
+		},
+		{
+			name: "valid ID",
+			input: Document{
+				ID: []byte("831992"),
+			},
+			expected: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.expected, test.input.HasID())
+		})
+	}
+}

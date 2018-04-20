@@ -37,6 +37,7 @@ var (
 	errUnknownPostingsID = errors.New("unknown postings ID specified")
 )
 
+// nolint: maligned
 type segment struct {
 	offset    int
 	newUUIDFn util.NewUUIDFn
@@ -140,12 +141,12 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 			return err
 		}
 
-		if d.ID != nil {
+		if d.HasID() {
 			if s.termsDict.ContainsTerm(doc.IDReservedFieldName, d.ID) {
 				// The segment already contains this document so we can remove it from those
 				// we need to index.
 				ds[i], ds[len(ds)] = ds[len(ds)], ds[i]
-				ds = ds[:len(ds)]
+				ds = ds[:len(ds)-1]
 				continue
 			}
 

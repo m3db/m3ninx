@@ -30,7 +30,6 @@ import (
 
 var (
 	errReservedFieldName = fmt.Errorf("'%s' is a reserved field name", IDReservedFieldName)
-	errZeroLengthID      = errors.New("document ID cannot be of length zero")
 	errEmptyDocument     = errors.New("document cannot be empty")
 )
 
@@ -159,4 +158,9 @@ func (d Document) Validate() error {
 	}
 
 	return nil
+}
+
+// HasID returns a bool indicating whether the document has an ID or not.
+func (d Document) HasID() bool {
+	return len(d.ID) > 0
 }
