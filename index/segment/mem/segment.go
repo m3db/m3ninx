@@ -159,6 +159,7 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 				return err
 			}
 			d.ID = id
+
 			// Update the document since we added an ID.
 			ds[i] = d
 		}

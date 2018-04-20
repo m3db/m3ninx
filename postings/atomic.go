@@ -44,7 +44,7 @@ func (id AtomicID) Inc() ID {
 	return ID(id.internal.Inc())
 }
 
-// Add atomically adds n the ID and returns the new ID.
+// Add atomically adds n to the ID and returns the new ID.
 func (id AtomicID) Add(n uint32) ID {
 	return ID(id.internal.Add(n))
 }
