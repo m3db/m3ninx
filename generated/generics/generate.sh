@@ -33,15 +33,15 @@ fi
 
 mkdir -p $GENERATED_PATH/postingsgen
 cat $GENERIC_MAP_IMPL                                                  \
-| genny -out=${GENERATED_PATH}/postingsgen/generated_map.go            \
+| genny -out=${GENERATED_PATH}/postingsgen/map_gen.go            \
 -pkg=postingsgen gen "KeyType=[]byte ValueType=postings.MutableList"
 
 mkdir -p $GENERATED_PATH/fieldsgen
 cat $GENERIC_MAP_IMPL                                                      \
-| genny -out=${GENERATED_PATH}/fieldsgen/generated_map.go                  \
+| genny -out=${GENERATED_PATH}/fieldsgen/map_gen.go                  \
 -pkg=fieldsgen gen "KeyType=[]byte ValueType=*postingsgen.ConcurrentMap"
 
 mkdir -p $GENERATED_PATH/idsgen
 cat $GENERIC_MAP_IMPL                                   \
-| genny -out=${GENERATED_PATH}/idsgen/generated_map.go  \
+| genny -out=${GENERATED_PATH}/idsgen/map_gen.go  \
 -pkg=idsgen gen "KeyType=[]byte ValueType=struct{}"

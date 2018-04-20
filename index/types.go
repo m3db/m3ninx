@@ -35,9 +35,9 @@ type Index interface {
 	// is guaranteed to be searchable once the Insert method returns.
 	Insert(d doc.Document) ([]byte, error)
 
-	// Batch inserts a batch of metrics into the index. The documents are guaranteed to be
-	// searchable all at once when the Batch method returns.
-	Batch(d []doc.Document) error
+	// InsertBatch inserts a batch of metrics into the index. The documents are guaranteed
+	// to be searchable all at once when the Batch method returns.
+	InsertBatch(d []doc.Document) error
 
 	// Readers returns a set of readers representing a point-in-time snapshot of the index.
 	Readers() (Readers, error)

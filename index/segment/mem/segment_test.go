@@ -188,7 +188,7 @@ func TestSegmentBatch(t *testing.T) {
 			segment, err := NewSegment(0, NewOptions())
 			require.NoError(t, err)
 
-			err = segment.Batch(test.input)
+			err = segment.InsertBatch(test.input)
 			require.NoError(t, err)
 
 			r, err := segment.Reader()

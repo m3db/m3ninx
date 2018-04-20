@@ -59,6 +59,7 @@ type segment struct {
 
 	writer struct {
 		sync.Mutex
+		idSet  *idsgen.Map
 		nextID postings.ID
 	}
 	readerID postings.AtomicID
@@ -76,6 +77,7 @@ func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 
 	s.docs.data = make([]doc.Document, opts.InitialCapacity())
 
+	s.writer.idSet = idsgen.New(256)
 	s.writer.nextID = offset
 	return s, nil
 }
@@ -87,16 +89,16 @@ func (s *segment) Insert(d doc.Document) ([]byte, error) {
 		return nil, sgmt.ErrClosed
 	}
 
-	ds := []doc.Document{d}
-	if err := s.prepareDocs(ds); err != nil {
-		return nil, err
-	}
-
-	// Update the document in case we generated a UUID for it.
-	d = ds[0]
-
 	{
 		s.writer.Lock()
+
+		ds := []doc.Document{d}
+		if err := s.prepareDocsWithLocks(ds); err != nil {
+			return nil, err
+		}
+
+		// Update the document in case we generated a UUID for it.
+		d = ds[0]
 
 		s.insertDocWithLocks(d)
 		s.readerID.Inc()
@@ -107,19 +109,19 @@ func (s *segment) Insert(d doc.Document) ([]byte, error) {
 	return d.ID, nil
 }
 
-func (s *segment) Batch(ds []doc.Document) error {
+func (s *segment) InsertBatch(ds []doc.Document) error {
 	s.state.RLock()
 	defer s.state.RUnlock()
 	if s.state.closed {
 		return sgmt.ErrClosed
 	}
 
-	if err := s.prepareDocs(ds); err != nil {
-		return err
-	}
-
 	{
 		s.writer.Lock()
+
+		if err := s.prepareDocsWithLocks(ds); err != nil {
+			return err
+		}
 
 		for _, d := range ds {
 			s.insertDocWithLocks(d)
@@ -132,8 +134,10 @@ func (s *segment) Batch(ds []doc.Document) error {
 	return nil
 }
 
-func (s *segment) prepareDocs(ds []doc.Document) error {
-	ids := idsgen.New(len(ds))
+// prepareDocsWithLocks ensures the given documents can be inserted into the index. It
+// must be called with the state and writer locks.
+func (s *segment) prepareDocsWithLocks(ds []doc.Document) error {
+	s.writer.idSet.Reset()
 	for i := 0; i < len(ds); {
 		d := ds[i]
 		err := d.Validate()
@@ -150,7 +154,7 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 				continue
 			}
 
-			if _, ok := ids.Get(d.ID); ok {
+			if _, ok := s.writer.idSet.Get(d.ID); ok {
 				return errDuplicateID
 			}
 		} else {
@@ -164,7 +168,7 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 			ds[i] = d
 		}
 
-		ids.SetUnsafe(d.ID, struct{}{}, idsgen.SetUnsafeOptions{
+		s.writer.idSet.SetUnsafe(d.ID, struct{}{}, idsgen.SetUnsafeOptions{
 			NoCopyKey:     true,
 			NoFinalizeKey: true,
 		})
@@ -178,14 +182,14 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 // state and writer locks.
 func (s *segment) insertDocWithLocks(d doc.Document) {
 	nextID := s.writer.nextID
-	s.indexDocWithLock(nextID, d)
-	s.storeDocWithLock(nextID, d)
+	s.indexDocWithStateLock(nextID, d)
+	s.storeDocWithStateLock(nextID, d)
 	s.writer.nextID++
 }
 
-// indexDocWithLock indexes the fields of a document in the segment's terms dictionary. It
-// must be called with the segment's state lock.
-func (s *segment) indexDocWithLock(id postings.ID, d doc.Document) error {
+// indexDocWithStateLock indexes the fields of a document in the segment's terms
+// dictionary. It must be called with the segment's state lock.
+func (s *segment) indexDocWithStateLock(id postings.ID, d doc.Document) error {
 	for _, f := range d.Fields {
 		s.termsDict.Insert(f, id)
 	}
@@ -196,9 +200,9 @@ func (s *segment) indexDocWithLock(id postings.ID, d doc.Document) error {
 	return nil
 }
 
-// storeDocWithLock stores a documents into the segment's mapping of postings IDs to
-// documents. It must be called with the segment's state lock.
-func (s *segment) storeDocWithLock(id postings.ID, d doc.Document) {
+// storeDocWithStateLock stores a documents into the segment's mapping of postings
+// IDs to documents. It must be called with the segment's state lock.
+func (s *segment) storeDocWithStateLock(id postings.ID, d doc.Document) {
 	idx := int(id) - s.offset
 
 	// Can return early if we have sufficient capacity.

@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	// ErrClosed is the error returned when attempting to perform operations on a segment
-	// that has already been closed.
+	// ErrClosed is the error returned when attempting to perform operations on a
+	// segment that has already been closed.
 	ErrClosed = errors.New("segment has been closed")
 )
 
@@ -46,11 +46,11 @@ type Segment interface {
 type MutableSegment interface {
 	Segment
 
-	// Insert inserts the given document into the segment and returns its ID. The document is
-	// guaranteed to be searchable once the Insert method returns.
+	// Insert inserts the given document into the segment and returns its ID. The
+	// document is guaranteed to be searchable once the Insert method returns.
 	Insert(d doc.Document) ([]byte, error)
 
-	// Batch inserts a batch of documents into the segment. The documents are guaranteed to
-	// be searchable all at once when the Batch method returns.
-	Batch(d []doc.Document) error
+	// InsertBatch inserts a batch of documents into the segment. The documents are
+	// guaranteed to be searchable all at once when the Batch method returns.
+	InsertBatch(ds []doc.Document) error
 }
