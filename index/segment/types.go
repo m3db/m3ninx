@@ -46,11 +46,11 @@ type Segment interface {
 type MutableSegment interface {
 	Segment
 
-	// Insert inserts the given document into the segment. The document is guaranteed to be
-	// searchable once the Insert method returns.
-	Insert(d doc.Document) error
+	// Insert inserts the given document into the segment and returns its ID. The document is
+	// guaranteed to be searchable once the Insert method returns.
+	Insert(d doc.Document) ([]byte, error)
 
-	// Seal marks the segment as immutable. After Seal is called no more documents can be
-	// inserted into the segment.
-	Seal() error
+	// Batch inserts a batch of documents into the segment. The documents are guaranteed to
+	// be searchable all at once when the Batch method returns.
+	Batch(d []doc.Document) error
 }

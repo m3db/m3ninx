@@ -37,10 +37,10 @@ func TestConcurrentMap(t *testing.T) {
 	}
 	pm := NewConcurrentMap(opts)
 
-	require.NoError(t, pm.Add([]byte("foo"), 1))
-	require.NoError(t, pm.Add([]byte("bar"), 2))
-	require.NoError(t, pm.Add([]byte("foo"), 3))
-	require.NoError(t, pm.Add([]byte("baz"), 4))
+	pm.Add([]byte("foo"), 1)
+	pm.Add([]byte("bar"), 2)
+	pm.Add([]byte("foo"), 3)
+	pm.Add([]byte("baz"), 4)
 
 	pl, ok := pm.Get([]byte("foo"))
 	require.True(t, ok)

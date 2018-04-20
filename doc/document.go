@@ -29,9 +29,9 @@ import (
 )
 
 var (
-	errMultipleIDs   = errors.New("document cannot contain multiple IDs")
-	errZeroLengthID  = errors.New("document ID cannot be of length zero")
-	errEmptyDocument = errors.New("document cannot be empty")
+	errReservedFieldName = fmt.Errorf("'%s' is a reserved field name", IDReservedFieldName)
+	errZeroLengthID      = errors.New("document ID cannot be of length zero")
+	errEmptyDocument     = errors.New("document cannot be empty")
 )
 
 // IDReservedFieldName is the field name reserved for IDs.
@@ -89,7 +89,7 @@ func (f Fields) shallowCopy() Fields {
 
 // Document represents a document to be indexed.
 type Document struct {
-	// Fields contains the list of fields by which to index the document.
+	ID     []byte
 	Fields []Field
 }
 
@@ -105,6 +105,10 @@ func (d Document) Get(fieldName []byte) ([]byte, bool) {
 
 // Equal returns whether this document is equal to another.
 func (d Document) Equal(other Document) bool {
+	if !bytes.Equal(d.ID, other.ID) {
+		return false
+	}
+
 	if len(d.Fields) != len(other.Fields) {
 		return false
 	}
@@ -134,34 +138,25 @@ func (d Document) Equal(other Document) bool {
 }
 
 // Validate validates the given document and returns its ID if it has one.
-func (d Document) Validate() ([]byte, error) {
+func (d Document) Validate() error {
 	if len(d.Fields) == 0 {
-		return nil, errEmptyDocument
+		return errEmptyDocument
 	}
 
-	var id []byte
 	for _, f := range d.Fields {
 		// TODO: Should we enforce uniqueness of field names?
 		if !utf8.Valid(f.Name) {
-			return nil, fmt.Errorf("document contains invalid field name: %v", f.Name)
+			return fmt.Errorf("document contains invalid field name: %v", f.Name)
 		}
 
 		if bytes.Equal(f.Name, IDReservedFieldName) {
-			if id != nil {
-				return nil, errMultipleIDs
-			}
-
-			if len(f.Value) == 0 {
-				return nil, errZeroLengthID
-			}
-
-			id = f.Value
+			return errReservedFieldName
 		}
 
 		if !utf8.Valid(f.Value) {
-			return nil, fmt.Errorf("document contains invalid field value: %v", f.Value)
+			return fmt.Errorf("document contains invalid field value: %v", f.Value)
 		}
 	}
 
-	return id, nil
+	return nil
 }
