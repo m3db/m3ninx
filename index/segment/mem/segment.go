@@ -28,6 +28,7 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	sgmt "github.com/m3db/m3ninx/index/segment"
+	"github.com/m3db/m3ninx/index/segment/mem/idsgen"
 	"github.com/m3db/m3ninx/index/util"
 	"github.com/m3db/m3ninx/postings"
 )
@@ -132,8 +133,7 @@ func (s *segment) Batch(ds []doc.Document) error {
 }
 
 func (s *segment) prepareDocs(ds []doc.Document) error {
-	// TODO: Use a generic map.
-	ids := make(map[string]struct{}, len(ds))
+	ids := idsgen.New(len(ds))
 	for i := 0; i < len(ds); {
 		d := ds[i]
 		err := d.Validate()
@@ -150,7 +150,7 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 				continue
 			}
 
-			if _, ok := ids[string(d.ID)]; ok {
+			if _, ok := ids.Get(d.ID); ok {
 				return errDuplicateID
 			}
 		} else {
@@ -163,7 +163,10 @@ func (s *segment) prepareDocs(ds []doc.Document) error {
 			ds[i] = d
 		}
 
-		ids[string(d.ID)] = struct{}{}
+		ids.SetUnsafe(d.ID, struct{}{}, idsgen.SetUnsafeOptions{
+			NoCopyKey:     true,
+			NoFinalizeKey: true,
+		})
 		i++
 	}
 

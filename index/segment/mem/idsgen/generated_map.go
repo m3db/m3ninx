@@ -2,9 +2,7 @@
 // Any changes will be lost if this file is regenerated.
 // see https://github.com/mauricelam/genny
 
-package postingsgen
-
-import "github.com/m3db/m3ninx/postings"
+package idsgen
 
 // Copyright (c) 2018 Uber Technologies, Inc.
 //
@@ -93,7 +91,7 @@ type MapEntry struct {
 	// key is used to check equality on lookups to resolve collisions
 	key mapKey
 	// value type stored
-	value postings.MutableList
+	value struct{}
 }
 
 type mapKey struct {
@@ -107,7 +105,7 @@ func (e MapEntry) Key() []byte {
 }
 
 // Value returns the map entry value.
-func (e MapEntry) Value() postings.MutableList {
+func (e MapEntry) Value() struct{} {
 	return e.value
 }
 
@@ -140,7 +138,7 @@ func (m *Map) removeMapKey(hash MapHash, key mapKey) {
 }
 
 // Get returns a value in the map for an identifier if found.
-func (m *Map) Get(k []byte) (postings.MutableList, bool) {
+func (m *Map) Get(k []byte) (struct{}, bool) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -149,12 +147,12 @@ func (m *Map) Get(k []byte) (postings.MutableList, bool) {
 		// Linear probe to "next" to this entry (really a rehash)
 		hash++
 	}
-	var empty postings.MutableList
+	var empty struct{}
 	return empty, false
 }
 
 // Set will set the value for an identifier.
-func (m *Map) Set(k []byte, v postings.MutableList) {
+func (m *Map) Set(k []byte, v struct{}) {
 	m.set(k, v, mapKeyOptions{
 		copyKey:     true,
 		finalizeKey: m.finalize != nil,
@@ -170,7 +168,7 @@ type SetUnsafeOptions struct {
 
 // SetUnsafe will set the value for an identifier with unsafe options for how
 // the map treats the key.
-func (m *Map) SetUnsafe(k []byte, v postings.MutableList, opts SetUnsafeOptions) {
+func (m *Map) SetUnsafe(k []byte, v struct{}, opts SetUnsafeOptions) {
 	m.set(k, v, mapKeyOptions{
 		copyKey:     !opts.NoCopyKey,
 		finalizeKey: !opts.NoFinalizeKey,
@@ -182,7 +180,7 @@ type mapKeyOptions struct {
 	finalizeKey bool
 }
 
-func (m *Map) set(k []byte, v postings.MutableList, opts mapKeyOptions) {
+func (m *Map) set(k []byte, v struct{}, opts mapKeyOptions) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {

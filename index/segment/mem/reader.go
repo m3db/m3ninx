@@ -59,7 +59,7 @@ func (r *reader) MatchTerm(field, term []byte) (postings.List, error) {
 
 	// A reader can return IDs in the posting list which are greater than its limit.
 	// The reader only guarantees that when fetching the documents associated with a
-	// postings list through a call to Docs IDs greater than or equal to the limit
+	// postings list through a call to Docs, IDs greater than or equal to the limit
 	// will be filtered out.
 	pl, err := r.segment.matchTerm(field, term)
 	r.RUnlock()
