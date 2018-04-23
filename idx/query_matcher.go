@@ -37,9 +37,8 @@ type QueryMatcher interface {
 }
 
 // NewQueryMatcher returns a new QueryMatcher
-func NewQueryMatcher(t *testing.T, q Query) QueryMatcher {
+func NewQueryMatcher(q Query) QueryMatcher {
 	return &queryMatcher{
-		t:     t,
 		query: q,
 	}
 }
@@ -91,7 +90,6 @@ func (m *queryMatcher) matches(expected, observed search.Query) bool {
 		}
 		if !bytes.Equal(q.Field, term.Field) ||
 			!bytes.Equal(q.Term, term.Term) {
-			m.t.Errorf("Query differs got(%+v) want(%+v)", q, term)
 			return false
 		}
 	case *query.RegexpQuery:
@@ -105,13 +103,11 @@ func (m *queryMatcher) matches(expected, observed search.Query) bool {
 		}
 		if !bytes.Equal(q.Field, req.Field) ||
 			!bytes.Equal(q.Regexp, req.Regexp) {
-			m.t.Errorf("Query differs got(%+v) want(%+v)", q, req)
 			return false
 		}
 	case *query.ConjuctionQuery:
 		conj, ok := observed.(*query.ConjuctionQuery)
 		if !ok || len(q.Queries) != len(conj.Queries) {
-			m.t.Errorf("Query differs got(%+v) want(%+v)", q, conj)
 			return false
 		}
 		for idx := range q.Queries {
@@ -123,7 +119,6 @@ func (m *queryMatcher) matches(expected, observed search.Query) bool {
 	case *query.DisjuctionQuery:
 		disj, ok := observed.(*query.DisjuctionQuery)
 		if !ok || len(q.Queries) != len(disj.Queries) {
-			m.t.Errorf("Query differs got(%+v) want(%+v)", q, disj)
 			return false
 		}
 		for idx := range q.Queries {

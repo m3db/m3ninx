@@ -29,21 +29,84 @@ import (
 )
 
 func TestQueryMatcherTermQuery(t *testing.T) {
-	tq := idx.NewTermQuery([]byte("abc"), []byte("def"))
-	require.True(t, idx.NewQueryMatcher(t, tq).Matches(tq))
+	for _, tc := range []struct {
+		left     idx.Query
+		right    idx.Query
+		expected bool
+	}{
+		{
+			left:     idx.NewTermQuery([]byte("abc"), []byte("def")),
+			right:    idx.NewTermQuery([]byte("abc"), []byte("def")),
+			expected: true,
+		},
+		{
+			left:     idx.NewTermQuery([]byte("abc"), []byte("def")),
+			right:    idx.NewTermQuery([]byte("abc1"), []byte("def")),
+			expected: false,
+		},
+		{
+			left:     idx.NewTermQuery([]byte("abc"), []byte("def")),
+			right:    idx.NewTermQuery([]byte("abc"), []byte("def1")),
+			expected: false,
+		},
+	} {
+		require.Equal(t, tc.expected, idx.NewQueryMatcher(tc.left).Matches(tc.right))
+		require.Equal(t, tc.expected, idx.NewQueryMatcher(tc.right).Matches(tc.left))
+	}
+}
+
+func TestQueryMatcherTermMismatch(t *testing.T) {
+	q0 := idx.NewTermQuery([]byte("abc"), []byte("def"))
+	q1 := idx.NewTermQuery([]byte("abc"), []byte("defg"))
+	require.False(t, idx.NewQueryMatcher(q0).Matches(q1))
 }
 
 func TestQueryMatcherRegexpQuery(t *testing.T) {
-	q, err := idx.NewRegexpQuery([]byte("abc"), []byte("def"))
-	require.NoError(t, err)
-	require.True(t, idx.NewQueryMatcher(t, q).Matches(q))
+	mustCreateRegexp := func(a, b []byte) idx.Query {
+		q, err := idx.NewRegexpQuery(a, b)
+		require.NoError(t, err)
+		return q
+	}
+
+	for _, tc := range []struct {
+		left     idx.Query
+		right    idx.Query
+		expected bool
+	}{
+		{
+			left:     mustCreateRegexp([]byte("abc"), []byte("def")),
+			right:    mustCreateRegexp([]byte("abc"), []byte("def")),
+			expected: true,
+		},
+		{
+			left:     mustCreateRegexp([]byte("abc"), []byte("def")),
+			right:    mustCreateRegexp([]byte("abc1"), []byte("def")),
+			expected: false,
+		},
+		{
+			left:     mustCreateRegexp([]byte("abc"), []byte("def")),
+			right:    mustCreateRegexp([]byte("abc"), []byte("def1")),
+			expected: false,
+		},
+	} {
+		require.Equal(t, tc.expected, idx.NewQueryMatcher(tc.left).Matches(tc.right))
+		require.Equal(t, tc.expected, idx.NewQueryMatcher(tc.right).Matches(tc.left))
+	}
 }
 
 func TestQueryMatcherTermRegexpMismatch(t *testing.T) {
 	q0 := idx.NewTermQuery([]byte("abc"), []byte("def"))
 	q1, err := idx.NewRegexpQuery([]byte("abc"), []byte("def"))
 	require.NoError(t, err)
-	require.False(t, idx.NewQueryMatcher(t, q0).Matches(q1))
+	require.False(t, idx.NewQueryMatcher(q0).Matches(q1))
+}
+
+func TestQueryMatcherRegexpMismatch(t *testing.T) {
+	q0, err := idx.NewRegexpQuery([]byte("abc"), []byte("defg"))
+	require.NoError(t, err)
+	q1, err := idx.NewRegexpQuery([]byte("abc"), []byte("def"))
+	require.NoError(t, err)
+	require.False(t, idx.NewQueryMatcher(q0).Matches(q1))
 }
 
 func TestQueryMatcherConjunctionQuery(t *testing.T) {
@@ -53,17 +116,17 @@ func TestQueryMatcherConjunctionQuery(t *testing.T) {
 	require.NoError(t, err)
 	q, err := idx.NewConjunctionQuery(tq0, tq1, rq)
 	require.NoError(t, err)
-	require.True(t, idx.NewQueryMatcher(t, q).Matches(q))
+	require.True(t, idx.NewQueryMatcher(q).Matches(q))
 }
+
 func TestQueryMatcherTermConjMismatch(t *testing.T) {
 	q0 := idx.NewTermQuery([]byte("abc"), []byte("def"))
-
 	tq1 := idx.NewTermQuery([]byte("abc1"), []byte("def"))
 	rq, err := idx.NewRegexpQuery([]byte("abc2"), []byte("def"))
 	require.NoError(t, err)
 	q1, err := idx.NewConjunctionQuery(q0, tq1, rq)
 	require.NoError(t, err)
-	require.False(t, idx.NewQueryMatcher(t, q0).Matches(q1))
+	require.False(t, idx.NewQueryMatcher(q0).Matches(q1))
 }
 
 func TestQueryMatcherDisjunctionQuery(t *testing.T) {
@@ -73,5 +136,5 @@ func TestQueryMatcherDisjunctionQuery(t *testing.T) {
 	require.NoError(t, err)
 	q, err := idx.NewDisjunctionQuery(tq0, tq1, rq)
 	require.NoError(t, err)
-	require.True(t, idx.NewQueryMatcher(t, q).Matches(q))
+	require.True(t, idx.NewQueryMatcher(q).Matches(q))
 }
