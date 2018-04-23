@@ -23,7 +23,6 @@ package idx
 import (
 	"bytes"
 	"fmt"
-	"testing"
 
 	"github.com/m3db/m3ninx/search"
 	"github.com/m3db/m3ninx/search/query"
@@ -44,7 +43,6 @@ func NewQueryMatcher(q Query) QueryMatcher {
 }
 
 type queryMatcher struct {
-	t     *testing.T
 	query Query
 }
 
