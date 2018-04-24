@@ -92,13 +92,13 @@ func (s *segment) Insert(d doc.Document) ([]byte, error) {
 	{
 		s.writer.Lock()
 
-		ds := []doc.Document{d}
-		if err := s.prepareDocsWithLocks(ds); err != nil {
+		b := index.NewBatch([]doc.Document{d})
+		if err := s.prepareDocsWithLocks(b); err != nil {
 			return nil, err
 		}
 
 		// Update the document in case we generated a UUID for it.
-		d = ds[0]
+		d = b.Docs[0]
 
 		s.insertDocWithLocks(d)
 		s.readerID.Inc()
@@ -109,73 +109,94 @@ func (s *segment) Insert(d doc.Document) ([]byte, error) {
 	return d.ID, nil
 }
 
-func (s *segment) InsertBatch(ds []doc.Document) error {
+func (s *segment) InsertBatch(b index.Batch) error {
 	s.state.RLock()
 	defer s.state.RUnlock()
 	if s.state.closed {
 		return sgmt.ErrClosed
 	}
 
+	var err error
 	{
 		s.writer.Lock()
 
-		if err := s.prepareDocsWithLocks(ds); err != nil {
+		err = s.prepareDocsWithLocks(b)
+		if err != nil && !index.IsBatchPartialError(err) {
 			return err
 		}
 
-		for _, d := range ds {
+		for _, d := range b.Docs {
 			s.insertDocWithLocks(d)
 		}
-		s.readerID.Add(uint32(len(ds)))
+		s.readerID.Add(uint32(len(b.Docs)))
 
 		s.writer.Unlock()
 	}
 
-	return nil
+	return err
 }
 
 // prepareDocsWithLocks ensures the given documents can be inserted into the index. It
 // must be called with the state and writer locks.
-func (s *segment) prepareDocsWithLocks(ds []doc.Document) error {
+func (s *segment) prepareDocsWithLocks(b index.Batch) error {
 	s.writer.idSet.Reset()
-	for i := 0; i < len(ds); {
-		d := ds[i]
-		err := d.Validate()
-		if err != nil {
-			return err
+
+	batchErr := index.NewBatchPartialError()
+	for i := 0; i < len(b.Docs); i++ {
+		d := b.Docs[i]
+		if err := d.Validate(); err != nil {
+			if !b.AllowPartialUpdates {
+				return err
+			}
+			batchErr.Add(err, i)
+			continue
 		}
 
 		if d.HasID() {
 			if s.termsDict.ContainsTerm(doc.IDReservedFieldName, d.ID) {
 				// The segment already contains this document so we can remove it from those
 				// we need to index.
-				ds[i], ds[len(ds)] = ds[len(ds)], ds[i]
-				ds = ds[:len(ds)-1]
+				b.Docs[i], b.Docs[len(b.Docs)] = b.Docs[len(b.Docs)], b.Docs[i]
+				b.Docs = b.Docs[:len(b.Docs)-1]
+
+				// Decrement the loop variable since we just removed this document.
+				i--
 				continue
 			}
 
 			if _, ok := s.writer.idSet.Get(d.ID); ok {
-				return errDuplicateID
+				if !b.AllowPartialUpdates {
+					return errDuplicateID
+				}
+				batchErr.Add(errDuplicateID, i)
+				continue
 			}
 		} else {
 			id, err := s.newUUIDFn()
 			if err != nil {
-				return err
+				if !b.AllowPartialUpdates {
+					return err
+				}
+				batchErr.Add(err, i)
+				continue
 			}
+
 			d.ID = id
 
-			// Update the document since we added an ID.
-			ds[i] = d
+			// Update the document in the batch since we added an ID to it.
+			b.Docs[i] = d
 		}
 
 		s.writer.idSet.SetUnsafe(d.ID, struct{}{}, idsgen.SetUnsafeOptions{
 			NoCopyKey:     true,
 			NoFinalizeKey: true,
 		})
-		i++
 	}
 
-	return nil
+	if batchErr.IsEmpty() {
+		return nil
+	}
+	return batchErr
 }
 
 // insertDocWithLocks inserts a document into the index. It must be called with the

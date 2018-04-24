@@ -146,40 +146,42 @@ func TestSegmentInsertDuplicateID(t *testing.T) {
 	require.NoError(t, segment.Close())
 }
 
-func TestSegmentBatch(t *testing.T) {
+func TestSegmentInsertBatch(t *testing.T) {
 	tests := []struct {
 		name  string
-		input []doc.Document
+		input index.Batch
 	}{
 		{
 			name: "valid batch",
-			input: []doc.Document{
-				doc.Document{
-					Fields: []doc.Field{
-						doc.Field{
-							Name:  []byte("fruit"),
-							Value: []byte("apple"),
+			input: index.NewBatch(
+				[]doc.Document{
+					doc.Document{
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("apple"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("red"),
+							},
 						},
-						doc.Field{
-							Name:  []byte("color"),
-							Value: []byte("red"),
+					},
+					doc.Document{
+						ID: []byte("831992"),
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("banana"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("yellow"),
+							},
 						},
 					},
 				},
-				doc.Document{
-					ID: []byte("831992"),
-					Fields: []doc.Field{
-						doc.Field{
-							Name:  []byte("fruit"),
-							Value: []byte("banana"),
-						},
-						doc.Field{
-							Name:  []byte("color"),
-							Value: []byte("yellow"),
-						},
-					},
-				},
-			},
+			),
 		},
 	}
 
@@ -194,7 +196,165 @@ func TestSegmentBatch(t *testing.T) {
 			r, err := segment.Reader()
 			require.NoError(t, err)
 
-			for _, doc := range test.input {
+			for _, doc := range test.input.Docs {
+				testDocument(t, doc, r)
+			}
+
+			require.NoError(t, r.Close())
+			require.NoError(t, segment.Close())
+		})
+	}
+}
+
+func TestSegmentInsertBatchError(t *testing.T) {
+	tests := []struct {
+		name  string
+		input index.Batch
+	}{
+		{
+			name: "invalid document",
+			input: index.NewBatch(
+				[]doc.Document{
+					doc.Document{
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("apple"),
+							},
+							doc.Field{
+								Name:  []byte("color\xff"),
+								Value: []byte("red"),
+							},
+						},
+					},
+					doc.Document{
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("banana"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("yellow"),
+							},
+						},
+					},
+				},
+			),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			segment, err := NewSegment(0, NewOptions())
+			require.NoError(t, err)
+
+			err = segment.InsertBatch(test.input)
+			require.Error(t, err)
+			require.False(t, index.IsBatchPartialError(err))
+		})
+	}
+}
+
+func TestSegmentInsertBatchPartialError(t *testing.T) {
+	tests := []struct {
+		name  string
+		input index.Batch
+	}{
+		{
+			name: "invalid document",
+			input: index.NewBatch(
+				[]doc.Document{
+					doc.Document{
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("apple"),
+							},
+							doc.Field{
+								Name:  []byte("color\xff"),
+								Value: []byte("red"),
+							},
+						},
+					},
+					doc.Document{
+
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("banana"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("yellow"),
+							},
+						},
+					},
+				},
+				index.AllowPartialUpdates(),
+			),
+		},
+		{
+			name: "duplicate ID",
+			input: index.NewBatch(
+				[]doc.Document{
+					doc.Document{
+						ID: []byte("831992"),
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("apple"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("red"),
+							},
+						},
+					},
+					doc.Document{
+						ID: []byte("831992"),
+						Fields: []doc.Field{
+							doc.Field{
+								Name:  []byte("fruit"),
+								Value: []byte("banana"),
+							},
+							doc.Field{
+								Name:  []byte("color"),
+								Value: []byte("yellow"),
+							},
+						},
+					},
+				},
+				index.AllowPartialUpdates(),
+			),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			segment, err := NewSegment(0, NewOptions())
+			require.NoError(t, err)
+
+			err = segment.InsertBatch(test.input)
+			require.Error(t, err)
+			require.True(t, index.IsBatchPartialError(err))
+
+			batchErr := err.(*index.BatchPartialError)
+			idxs := batchErr.Indices()
+			failedDocs := make(map[int]struct{}, len(idxs))
+			for _, idx := range idxs {
+				failedDocs[idx] = struct{}{}
+			}
+
+			r, err := segment.Reader()
+			require.NoError(t, err)
+
+			for i, doc := range test.input.Docs {
+				_, ok := failedDocs[i]
+				if ok {
+					// Don't test documents which were not indexed.
+					continue
+				}
 				testDocument(t, doc, r)
 			}
 
