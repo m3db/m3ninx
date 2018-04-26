@@ -33,10 +33,10 @@ import (
 	"github.com/m3db/m3ninx/postings"
 )
 
-var (
-	errDuplicateID       = errors.New("a batch cannot contain duplicate IDs")
-	errUnknownPostingsID = errors.New("unknown postings ID specified")
-)
+// ErrDuplicateID is the error returned when a batch contains duplicate IDs.
+var ErrDuplicateID = errors.New("a batch cannot contain duplicate IDs")
+
+var errUnknownPostingsID = errors.New("unknown postings ID specified")
 
 // nolint: maligned
 type segment struct {
@@ -166,9 +166,9 @@ func (s *segment) prepareDocsWithLocks(b index.Batch) error {
 
 			if _, ok := s.writer.idSet.Get(d.ID); ok {
 				if !b.AllowPartialUpdates {
-					return errDuplicateID
+					return ErrDuplicateID
 				}
-				batchErr.Add(errDuplicateID, i)
+				batchErr.Add(ErrDuplicateID, i)
 				continue
 			}
 		} else {

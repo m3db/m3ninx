@@ -47,7 +47,9 @@ type Writer interface {
 	Insert(d doc.Document) ([]byte, error)
 
 	// InsertBatch inserts a batch of metrics into the index. The documents are guaranteed
-	// to be searchable all at once when the Batch method returns.
+	// to be searchable all at once when the Batch method returns. If the batch supports
+	// partial updates and any errors are encountered on individual documents then a
+	// BatchPartialError is returned.
 	InsertBatch(b Batch) error
 }
 
