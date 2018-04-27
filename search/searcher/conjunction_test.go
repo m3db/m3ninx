@@ -41,24 +41,25 @@ func TestConjunctionSearcher(t *testing.T) {
 	firstPL1.Insert(postings.ID(50))
 	firstPL2 := roaring.NewPostingsList()
 	firstPL2.Insert(postings.ID(64))
+	firstPL2.Insert(postings.ID(72))
 	firstSearcher := search.NewMockSearcher(mockCtrl)
 
 	// Second searcher.
 	secondPL1 := roaring.NewPostingsList()
-	secondPL1.Insert(postings.ID(53))
+	secondPL1.Insert(postings.ID(42))
 	secondPL1.Insert(postings.ID(50))
 	secondPL2 := roaring.NewPostingsList()
-	secondPL2.Insert(postings.ID(64))
-	secondPL2.Insert(postings.ID(72))
+	secondPL2.Insert(postings.ID(61))
+	secondPL2.Insert(postings.ID(79))
 	secondSearcher := search.NewMockSearcher(mockCtrl)
 
 	// Third searcher.
 	thirdPL1 := roaring.NewPostingsList()
-	thirdPL1.Insert(postings.ID(42))
-	thirdPL1.Insert(postings.ID(53))
+	thirdPL1.Insert(postings.ID(48))
+	thirdPL1.Insert(postings.ID(50))
 	thirdPL2 := roaring.NewPostingsList()
 	thirdPL2.Insert(postings.ID(64))
-	thirdPL2.Insert(postings.ID(89))
+	thirdPL2.Insert(postings.ID(83))
 	thirdSearcher := search.NewMockSearcher(mockCtrl)
 
 	numReaders := 2
@@ -84,9 +85,12 @@ func TestConjunctionSearcher(t *testing.T) {
 		thirdSearcher.EXPECT().Current().Return(thirdPL2),
 	)
 
-	searchers := []search.Searcher{firstSearcher, secondSearcher, thirdSearcher}
+	var (
+		searchers = []search.Searcher{firstSearcher, secondSearcher}
+		negations = []search.Searcher{thirdSearcher}
+	)
 
-	s, err := NewConjunctionSearcher(numReaders, searchers)
+	s, err := NewConjunctionSearcher(numReaders, searchers, negations)
 	require.NoError(t, err)
 
 	// Ensure the searcher is searching over two readers.
@@ -97,7 +101,7 @@ func TestConjunctionSearcher(t *testing.T) {
 
 	expected := firstPL1.Clone()
 	expected.Intersect(secondPL1)
-	expected.Intersect(thirdPL1)
+	expected.Difference(thirdPL1)
 	require.True(t, s.Current().Equal(expected))
 
 	// Test the postings list from the second Reader.
@@ -105,7 +109,7 @@ func TestConjunctionSearcher(t *testing.T) {
 
 	expected = firstPL2.Clone()
 	expected.Intersect(secondPL2)
-	expected.Intersect(thirdPL2)
+	expected.Difference(thirdPL2)
 	require.True(t, s.Current().Equal(expected))
 
 	require.False(t, s.Next())
