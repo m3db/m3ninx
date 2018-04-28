@@ -44,3 +44,11 @@ func TestRangeIteratorEmpty(t *testing.T) {
 	require.NoError(t, iter.Close())
 	require.Error(t, iter.Close())
 }
+
+func TestRangeIteratorEmptyIdentical(t *testing.T) {
+	iter := NewRangeIterator(2, 2)
+	require.False(t, iter.Next())
+	require.NoError(t, iter.Err())
+	require.NoError(t, iter.Close())
+	require.Error(t, iter.Close())
+}
