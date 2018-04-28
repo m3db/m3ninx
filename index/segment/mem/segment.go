@@ -147,59 +147,55 @@ func (s *segment) InsertBatch(b index.Batch) error {
 // must be called with the state and writer locks.
 func (s *segment) prepareDocsWithLocks(b index.Batch) error {
 	s.writer.idSet.Reset()
-	var emptyDoc doc.Document
+	var (
+		batchErr = index.NewBatchPartialError()
+		emptyDoc doc.Document
+	)
 
-	batchErr := index.NewBatchPartialError()
 	for i := 0; i < len(b.Docs); i++ {
 		d := b.Docs[i]
-		// ensure the doc has valid fields and so on.
 		if err := d.Validate(); err != nil {
 			if !b.AllowPartialUpdates {
 				return err
 			}
 			batchErr.Add(err, i)
-			// set to empty doc to indicate we don't need to index it.
 			b.Docs[i] = emptyDoc
 			continue
 		}
 
-		// ensure the doc has an ID.
-		if !d.HasID() {
+		if d.HasID() {
+			if s.termsDict.ContainsTerm(doc.IDReservedFieldName, d.ID) {
+				// The segment already contains this document so we can remove it from those
+				// we need to index.
+				b.Docs[i] = emptyDoc
+				continue
+			}
+
+			if _, ok := s.writer.idSet.Get(d.ID); ok {
+				if !b.AllowPartialUpdates {
+					return ErrDuplicateID
+				}
+				batchErr.Add(ErrDuplicateID, i)
+				b.Docs[i] = emptyDoc
+				continue
+			}
+		} else {
 			id, err := s.newUUIDFn()
 			if err != nil {
 				if !b.AllowPartialUpdates {
 					return err
 				}
 				batchErr.Add(err, i)
-				// set to empty doc to indicate we don't need to index it.
 				b.Docs[i] = emptyDoc
 				continue
 			}
-			// Update the document in the batch since we added an ID to it.
+
 			d.ID = id
+
+			// Update the document in the batch since we added an ID to it.
 			b.Docs[i] = d
 		}
 
-		// The segment already contains this document so we can remove it from those
-		// we need to index.
-		if s.termsDict.ContainsTerm(doc.IDReservedFieldName, d.ID) {
-			// set to empty doc to indicate we don't need to index it.
-			b.Docs[i] = doc.Document{}
-			continue
-		}
-
-		// check if we have already seen the id in the batch.
-		if _, ok := s.writer.idSet.Get(d.ID); ok {
-			if !b.AllowPartialUpdates {
-				return ErrDuplicateID
-			}
-			batchErr.Add(ErrDuplicateID, i)
-			// set to empty doc to indicate we don't need to index it.
-			b.Docs[i] = doc.Document{}
-			continue
-		}
-
-		// track ids we have already seen so we can measure duplicates in a batch.
 		s.writer.idSet.SetUnsafe(d.ID, struct{}{}, idsgen.SetUnsafeOptions{
 			NoCopyKey:     true,
 			NoFinalizeKey: true,
