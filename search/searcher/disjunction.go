@@ -26,8 +26,8 @@ import (
 )
 
 type disjunctionSearcher struct {
-	searchers search.Searchers
-	len       int
+	searchers  search.Searchers
+	numReaders int
 
 	idx  int
 	curr postings.List
@@ -42,14 +42,14 @@ func NewDisjunctionSearcher(numReaders int, searchers search.Searchers) (search.
 	}
 
 	return &disjunctionSearcher{
-		searchers: searchers,
-		len:       numReaders,
-		idx:       -1,
+		searchers:  searchers,
+		numReaders: numReaders,
+		idx:        -1,
 	}, nil
 }
 
 func (s *disjunctionSearcher) Next() bool {
-	if s.err != nil || s.idx == s.len-1 {
+	if s.err != nil || s.idx == s.numReaders-1 {
 		return false
 	}
 
@@ -87,5 +87,5 @@ func (s *disjunctionSearcher) Err() error {
 }
 
 func (s *disjunctionSearcher) NumReaders() int {
-	return s.len
+	return s.numReaders
 }
