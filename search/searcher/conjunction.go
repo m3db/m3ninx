@@ -36,14 +36,14 @@ type conjunctionSearcher struct {
 
 // NewConjunctionSearcher returns a new Searcher which matches documents which match each
 // of the given Searchers. It is not safe for concurrent access.
-func NewConjunctionSearcher(ss search.Searchers) (search.Searcher, error) {
-	if err := validateSearchers(ss); err != nil {
+func NewConjunctionSearcher(numReaders int, searchers search.Searchers) (search.Searcher, error) {
+	if err := validateSearchers(numReaders, searchers); err != nil {
 		return nil, err
 	}
 
 	return &conjunctionSearcher{
-		searchers: ss,
-		len:       len(ss),
+		searchers: searchers,
+		len:       numReaders,
 		idx:       -1,
 	}, nil
 }
