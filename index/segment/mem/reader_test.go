@@ -53,7 +53,7 @@ func TestReaderMatchExact(t *testing.T) {
 
 	actual, err := reader.MatchTerm(name, value)
 	require.NoError(t, err)
-	require.True(t, postingsList.Equal(actual))
+	require.True(t, postings.Equals(postingsList, actual))
 
 	require.NoError(t, reader.Close())
 }
@@ -80,7 +80,7 @@ func TestReaderMatchRegex(t *testing.T) {
 
 	actual, err := reader.MatchRegexp(name, regexp, compiled)
 	require.NoError(t, err)
-	require.True(t, postingsList.Equal(actual))
+	require.True(t, postings.Equals(postingsList, actual))
 
 	require.NoError(t, reader.Close())
 }

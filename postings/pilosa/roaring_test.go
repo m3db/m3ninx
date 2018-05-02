@@ -18,9 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package roaring
+package pilosa
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/m3db/m3ninx/postings"
@@ -207,7 +208,7 @@ func TestRoaringPostingsListIterInsertAfter(t *testing.T) {
 	}
 
 	for id, ok := range found {
-		require.True(t, ok, id)
+		require.True(t, ok, fmt.Sprintf("%v", id))
 	}
 	require.Equal(t, 2, numElems)
 }

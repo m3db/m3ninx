@@ -96,7 +96,7 @@ func TestDisjunctionSearcher(t *testing.T) {
 	expected := firstPL1.Clone()
 	expected.Union(secondPL1)
 	expected.Union(thirdPL1)
-	require.True(t, s.Current().Equal(expected))
+	require.True(t, postings.Equals(s.Current(), expected))
 
 	// Test the postings list from the second Reader.
 	require.True(t, s.Next())
@@ -104,7 +104,7 @@ func TestDisjunctionSearcher(t *testing.T) {
 	expected = firstPL2.Clone()
 	expected.Union(secondPL2)
 	expected.Union(thirdPL2)
-	require.True(t, s.Current().Equal(expected))
+	require.True(t, postings.Equals(s.Current(), expected))
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Uber Technologies, Inc.
+// Copyright (c) 2017 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,47 +18,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package postingsgen
+package pilosa
 
 import (
-	"regexp"
 	"testing"
 
-	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/postings/pilosa"
-
-	"github.com/stretchr/testify/require"
+	"github.com/RoaringBitmap/roaring"
 )
 
-func TestConcurrentMap(t *testing.T) {
-	opts := ConcurrentMapOpts{
-		InitialSize:      1024,
-		PostingsListPool: postings.NewPool(nil, pilosa.NewPostingsList),
+func BenchmarkClone(b *testing.B) {
+	b.ReportAllocs()
+
+	initPL := roaring.New()
+	for i := 0; i < b.N; i++ {
+		initPL.Add(uint32(i))
 	}
-	pm := NewConcurrentMap(opts)
 
-	pm.Add([]byte("foo"), 1)
-	pm.Add([]byte("bar"), 2)
-	pm.Add([]byte("foo"), 3)
-	pm.Add([]byte("baz"), 4)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		copy := initPL.Clone()
+		if copy.GetCardinality() != initPL.GetCardinality() {
+			b.Error("unequal duplicate size")
+		}
+	}
+}
 
-	pl, ok := pm.Get([]byte("foo"))
-	require.True(t, ok)
-	require.Equal(t, 2, pl.Len())
-	require.True(t, pl.Contains(1))
-	require.True(t, pl.Contains(3))
+func BenchmarkCachedObject(b *testing.B) {
+	b.ReportAllocs()
 
-	_, ok = pm.Get([]byte("fizz"))
-	require.False(t, ok)
+	initPL := roaring.New()
+	for i := 0; i < b.N; i++ {
+		initPL.Add(uint32(i))
+	}
+	copy := roaring.New()
 
-	re := regexp.MustCompile("ba.*")
-	pl, ok = pm.GetRegex(re)
-	require.True(t, ok)
-	require.Equal(t, 2, pl.Len())
-	require.True(t, pl.Contains(2))
-	require.True(t, pl.Contains(4))
-
-	re = regexp.MustCompile("abc.*")
-	_, ok = pm.GetRegex(re)
-	require.False(t, ok)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		copy.Clear()
+		copy.Or(initPL)
+		if copy.GetCardinality() != initPL.GetCardinality() {
+			b.Error("unequal duplicate size")
+		}
+	}
 }

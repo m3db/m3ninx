@@ -52,9 +52,6 @@ type List interface {
 	// calculating the size of the postings list.
 	IsEmpty() bool
 
-	// Min returns the minimum ID in the postings list or an error if it is empty.
-	Min() (ID, error)
-
 	// Max returns the maximum ID in the postings list or an error if it is empty.
 	Max() (ID, error)
 
@@ -66,9 +63,6 @@ type List interface {
 
 	// Clone returns a copy of the postings list.
 	Clone() MutableList
-
-	// Equal returns whether this postings list contains the same posting IDs as other.
-	Equal(other List) bool
 }
 
 // MutableList is a postings list implementation which also supports mutable operations.

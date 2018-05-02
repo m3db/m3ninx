@@ -98,7 +98,7 @@ func TestConjunctionSearcher(t *testing.T) {
 	expected := firstPL1.Clone()
 	expected.Intersect(secondPL1)
 	expected.Intersect(thirdPL1)
-	require.True(t, s.Current().Equal(expected))
+	require.True(t, postings.Equals(s.Current(), expected))
 
 	// Test the postings list from the second Reader.
 	require.True(t, s.Next())
@@ -106,7 +106,7 @@ func TestConjunctionSearcher(t *testing.T) {
 	expected = firstPL2.Clone()
 	expected.Intersect(secondPL2)
 	expected.Intersect(thirdPL2)
-	require.True(t, s.Current().Equal(expected))
+	require.True(t, postings.Equals(s.Current(), expected))
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())

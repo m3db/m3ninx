@@ -21,6 +21,7 @@
 package mem
 
 import (
+	"fmt"
 	re "regexp"
 	"testing"
 
@@ -46,18 +47,18 @@ func TestSegmentInsert(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "document with an ID",
-			input: doc.Document{
-				ID: []byte("123"),
-				Fields: []doc.Field{
-					doc.Field{
-						Name:  []byte("apple"),
-						Value: []byte("red"),
-					},
-				},
-			},
-		},
+		// {
+		// 	name: "document with an ID",
+		// 	input: doc.Document{
+		// 		ID: []byte("123"),
+		// 		Fields: []doc.Field{
+		// 			doc.Field{
+		// 				Name:  []byte("apple"),
+		// 				Value: []byte("red"),
+		// 			},
+		// 		},
+		// 	},
+		// },
 	}
 
 	for _, test := range tests {
@@ -70,6 +71,7 @@ func TestSegmentInsert(t *testing.T) {
 
 			r, err := segment.Reader()
 			require.NoError(t, err)
+			println(fmt.Sprintf("here"))
 
 			testDocument(t, test.input, r)
 

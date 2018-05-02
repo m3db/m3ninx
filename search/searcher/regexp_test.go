@@ -67,11 +67,11 @@ func TestRegexpSearcher(t *testing.T) {
 
 	// Test the postings list from the first Reader.
 	require.True(t, s.Next())
-	require.True(t, s.Current().Equal(firstPL))
+	require.True(t, postings.Equals(s.Current(), firstPL))
 
 	// Test the postings list from the second Reader.
 	require.True(t, s.Next())
-	require.True(t, s.Current().Equal(secondPL))
+	require.True(t, postings.Equals(s.Current(), secondPL))
 
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())

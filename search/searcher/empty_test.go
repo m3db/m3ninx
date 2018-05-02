@@ -23,6 +23,7 @@ package searcher
 import (
 	"testing"
 
+	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/postings/roaring"
 
 	"github.com/golang/mock/gomock"
@@ -42,7 +43,7 @@ func TestEmptySearcher(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		require.True(t, s.Next())
-		require.True(t, s.Current().Equal(emptyPL))
+		require.True(t, postings.Equals(s.Current(), emptyPL))
 	}
 
 	require.False(t, s.Next())
