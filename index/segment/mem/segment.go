@@ -88,12 +88,14 @@ func (s *segment) Size() int64 {
 
 func (s *segment) ContainsID(id []byte) (bool, error) {
 	s.state.RLock()
-	defer s.state.RUnlock()
 	if s.state.closed {
+		s.state.RUnlock()
 		return false, sgmt.ErrClosed
 	}
 
-	return s.containsIDWithStateLock(id), nil
+	contains := s.containsIDWithStateLock(id)
+	s.state.RUnlock()
+	return contains, nil
 }
 
 func (s *segment) containsIDWithStateLock(id []byte) bool {
