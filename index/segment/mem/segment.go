@@ -83,7 +83,7 @@ func NewSegment(offset postings.ID, opts Options) (sgmt.MutableSegment, error) {
 }
 
 func (s *segment) Size() int64 {
-	return int64(int(s.readerID.Load()) - s.offset)
+	return int64(s.readerID.Load()) - int64(s.offset)
 }
 
 func (s *segment) Insert(d doc.Document) ([]byte, error) {
