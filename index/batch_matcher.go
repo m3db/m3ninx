@@ -28,10 +28,12 @@ import (
 	"github.com/golang/mock/gomock"
 )
 
+// BatchMatcher matches a `Batch`.
 type BatchMatcher interface {
 	gomock.Matcher
 }
 
+// NewBatchMatcher returns a new BatchMatcher.
 func NewBatchMatcher(b Batch) BatchMatcher {
 	return batchMatcher{b}
 }
