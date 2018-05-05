@@ -86,6 +86,20 @@ func (s *segment) Size() int64 {
 	return int64(s.readerID.Load()) - int64(s.offset)
 }
 
+func (s *segment) ContainsID(id []byte) (bool, error) {
+	s.state.RLock()
+	defer s.state.RUnlock()
+	if s.state.closed {
+		return false, sgmt.ErrClosed
+	}
+
+	return s.containsIDWithStateLock(id), nil
+}
+
+func (s *segment) containsIDWithStateLock(id []byte) bool {
+	return s.termsDict.ContainsTerm(doc.IDReservedFieldName, id)
+}
+
 func (s *segment) Insert(d doc.Document) ([]byte, error) {
 	s.state.RLock()
 	defer s.state.RUnlock()
@@ -168,7 +182,7 @@ func (s *segment) prepareDocsWithLocks(b index.Batch) error {
 		}
 
 		if d.HasID() {
-			if s.termsDict.ContainsTerm(doc.IDReservedFieldName, d.ID) {
+			if s.containsIDWithStateLock(d.ID) {
 				// The segment already contains this document so we can remove it from those
 				// we need to index.
 				b.Docs[i] = emptyDoc
