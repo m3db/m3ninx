@@ -21,10 +21,9 @@
 package query
 
 import (
-	"errors"
-
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
+	"github.com/m3db/m3ninx/search/searcher"
 )
 
 // NegationQuery finds document which do not match a given query.
@@ -41,5 +40,9 @@ func NewNegationQuery(q search.Query) search.Query {
 
 // Searcher returns a searcher over the provided readers.
 func (q *NegationQuery) Searcher(rs index.Readers) (search.Searcher, error) {
-	return nil, errors.New("not implemented")
+	s, err := q.Query.Searcher(rs)
+	if err != nil {
+		return nil, err
+	}
+	return searcher.NewNegationSearcher(rs, s)
 }

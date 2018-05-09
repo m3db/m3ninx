@@ -35,7 +35,7 @@ func TestNegationQuery(t *testing.T) {
 		query search.Query
 	}{
 		{
-			name:  "simple query",
+			name:  "valid query",
 			query: NewTermQuery([]byte("fruit"), []byte("apple")),
 		},
 	}
@@ -45,7 +45,7 @@ func TestNegationQuery(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q := NewNegationQuery(test.query)
 			_, err := q.Searcher(rs)
-			require.Error(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
