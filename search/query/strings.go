@@ -21,32 +21,26 @@
 package query
 
 import (
+	"bytes"
 	"fmt"
 
-	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
-	"github.com/m3db/m3ninx/search/searcher"
 )
 
-// TermQuery finds document which match the given term exactly.
-type TermQuery struct {
-	Field []byte
-	Term  []byte
-}
-
-// NewTermQuery constructs a new TermQuery for the given field and term.
-func NewTermQuery(field, term []byte) search.Query {
-	return &TermQuery{
-		Field: field,
-		Term:  term,
+func join(qs []search.Query) string {
+	switch len(qs) {
+	case 0:
+		return ""
+	case 1:
+		return fmt.Sprintf("%s", qs[0])
 	}
-}
 
-// Searcher returns a searcher over the provided readers.
-func (q *TermQuery) Searcher(rs index.Readers) (search.Searcher, error) {
-	return searcher.NewTermSearcher(rs, q.Field, q.Term), nil
-}
+	var b bytes.Buffer
+	b.WriteString(qs[0].String())
+	for _, q := range qs[1:] {
+		b.WriteString(", ")
+		b.WriteString(q.String())
+	}
 
-func (q *TermQuery) String() string {
-	return fmt.Sprintf("term(%s, %s)", q.Field, q.Term)
+	return b.String()
 }
