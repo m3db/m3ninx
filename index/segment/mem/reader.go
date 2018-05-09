@@ -87,7 +87,7 @@ func (r *reader) MatchRegexp(field, regexp []byte, compiled *regexp.Regexp) (pos
 	return pl, err
 }
 
-func (r *reader) MatchAll() (postings.List, error) {
+func (r *reader) MatchAll() (postings.MutableList, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {

@@ -63,7 +63,7 @@ type Reader interface {
 	MatchRegexp(field, regexp []byte, compiled *regexp.Regexp) (postings.List, error)
 
 	// MatchAll returns a postings list for all documents known to the Reader.
-	MatchAll() (postings.List, error)
+	MatchAll() (postings.MutableList, error)
 
 	// Docs returns an iterator over the documents whose IDs are in the provided
 	// postings list.

@@ -34,7 +34,7 @@ type ConjuctionQuery struct {
 	Negations []search.Query
 }
 
-// NewConjuctionQuery constructs a new query which matches documents which match all
+// NewConjuctionQuery constructs a new query which matches documents that match all
 // of the given queries.
 func NewConjuctionQuery(queries []search.Query) search.Query {
 	qs := make([]search.Query, 0, len(queries))
@@ -75,10 +75,6 @@ func (q *ConjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 		return searcher.NewEmptySearcher(len(rs)), nil
 	case len(q.Queries) == 1 && len(q.Negations) == 0:
 		return q.Queries[0].Searcher(rs)
-	}
-
-	if len(q.Queries) == 0 {
-		return searcher.NewEmptySearcher(len(rs)), nil
 	}
 
 	ss := make(search.Searchers, 0, len(q.Queries))
