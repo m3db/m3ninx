@@ -76,6 +76,10 @@ func (q *DisjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 
 // Equal reports whether q is equivalent to o.
 func (q *DisjuctionQuery) Equal(o search.Query) bool {
+	if len(q.Queries) == 1 {
+		return q.Queries[0].Equal(o)
+	}
+
 	inner, ok := o.(*DisjuctionQuery)
 	if !ok {
 		return false

@@ -87,6 +87,14 @@ func TestDisjunctionQueryEqual(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "single query",
+			left: NewDisjuctionQuery([]search.Query{
+				NewTermQuery([]byte("fruit"), []byte("apple")),
+			}),
+			right:    NewTermQuery([]byte("fruit"), []byte("apple")),
+			expected: true,
+		},
+		{
 			name: "different order",
 			left: NewDisjuctionQuery([]search.Query{
 				NewTermQuery([]byte("fruit"), []byte("apple")),

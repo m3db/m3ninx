@@ -87,6 +87,14 @@ func TestConjunctionQueryEqual(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "single query",
+			left: NewConjuctionQuery([]search.Query{
+				NewTermQuery([]byte("fruit"), []byte("apple")),
+			}),
+			right:    NewTermQuery([]byte("fruit"), []byte("apple")),
+			expected: true,
+		},
+		{
 			name: "different order",
 			left: NewConjuctionQuery([]search.Query{
 				NewTermQuery([]byte("fruit"), []byte("apple")),
