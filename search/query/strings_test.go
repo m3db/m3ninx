@@ -23,10 +23,9 @@ package query
 import (
 	"testing"
 
-	"github.com/golang/mock/gomock"
-
 	"github.com/m3db/m3ninx/search"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
