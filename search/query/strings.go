@@ -22,7 +22,6 @@ package query
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/m3db/m3ninx/search"
 )
@@ -32,7 +31,7 @@ func join(qs []search.Query) string {
 	case 0:
 		return ""
 	case 1:
-		return fmt.Sprintf("%s", qs[0])
+		return qs[0].String()
 	}
 
 	var b bytes.Buffer
