@@ -30,72 +30,48 @@ import (
 
 // ConjuctionQuery finds documents which match at least one of the given queries.
 type ConjuctionQuery struct {
-	Queries   []search.Query
-	Negations []search.Query
+	Queries []search.Query
 }
 
-// NewConjuctionQuery constructs a new query which matches documents that match all
+// NewConjuctionQuery constructs a new query which matches documents which match all
 // of the given queries.
 func NewConjuctionQuery(queries []search.Query) search.Query {
 	qs := make([]search.Query, 0, len(queries))
-	ns := make([]search.Query, 0, len(queries))
 	for _, query := range queries {
-		switch q := query.(type) {
-		case *ConjuctionQuery:
-			// Merge conjunction queries into slice of top-level queries.
-			q, ok := query.(*ConjuctionQuery)
-			if ok {
-				qs = append(qs, q.Queries...)
-				continue
-			}
-		case *NegationQuery:
-			ns = append(ns, q.Query)
-		default:
-			qs = append(qs, query)
+		// Merge conjunction queries into slice of top-level queries.
+		q, ok := query.(*ConjuctionQuery)
+		if ok {
+			qs = append(qs, q.Queries...)
+			continue
 		}
-	}
 
-	if len(qs) == 0 && len(ns) > 0 {
-		// All queries cannot be in Negations since the conjunction searcher needs at least
-		// one query to limit the number of matching documents.
-		qs = append(qs, queries[0])
-		ns = ns[1:]
+		qs = append(qs, query)
 	}
-
 	return &ConjuctionQuery{
-		Queries:   qs,
-		Negations: ns,
+		Queries: qs,
 	}
 }
 
 // Searcher returns a searcher over the provided readers.
 func (q *ConjuctionQuery) Searcher(rs index.Readers) (search.Searcher, error) {
-	switch {
-	case len(q.Queries) == 0:
+	switch len(q.Queries) {
+	case 0:
 		return searcher.NewEmptySearcher(len(rs)), nil
-	case len(q.Queries) == 1 && len(q.Negations) == 0:
+
+	case 1:
 		return q.Queries[0].Searcher(rs)
 	}
 
-	ss := make(search.Searchers, 0, len(q.Queries))
+	srs := make(search.Searchers, 0, len(q.Queries))
 	for _, q := range q.Queries {
 		sr, err := q.Searcher(rs)
 		if err != nil {
 			return nil, err
 		}
-		ss = append(ss, sr)
+		srs = append(srs, sr)
 	}
 
-	ns := make(search.Searchers, 0, len(q.Negations))
-	for _, n := range q.Negations {
-		sr, err := n.Searcher(rs)
-		if err != nil {
-			return nil, err
-		}
-		ns = append(ns, sr)
-	}
-
-	return searcher.NewConjunctionSearcher(len(rs), ss, ns)
+	return searcher.NewConjunctionSearcher(len(rs), srs)
 }
 
 // Equal reports whether q is equivalent to o.
