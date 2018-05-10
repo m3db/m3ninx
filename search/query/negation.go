@@ -49,6 +49,21 @@ func (q *NegationQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 	return searcher.NewNegationSearcher(rs, s)
 }
 
+// Equal reports whether q is equivalent to o.
+func (q *NegationQuery) Equal(o search.Query) bool {
+	o, ok := singular(o)
+	if !ok {
+		return false
+	}
+
+	inner, ok := o.(*NegationQuery)
+	if !ok {
+		return false
+	}
+
+	return q.Query.Equal(inner.Query)
+}
+
 func (q *NegationQuery) String() string {
 	return fmt.Sprintf("negation(%s)", q.Query)
 }

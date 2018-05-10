@@ -49,3 +49,46 @@ func TestNegationQuery(t *testing.T) {
 		})
 	}
 }
+
+func TestNegationQueryEqual(t *testing.T) {
+	tests := []struct {
+		name        string
+		left, right search.Query
+		expected    bool
+	}{
+		{
+			name:     "same inner queries",
+			left:     NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			right:    NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			expected: true,
+		},
+		{
+			name: "singular conjunction query",
+			left: NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			right: NewConjuctionQuery([]search.Query{
+				NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			}),
+			expected: true,
+		},
+		{
+			name: "singular disjunction query",
+			left: NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			right: NewDisjuctionQuery([]search.Query{
+				NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			}),
+			expected: true,
+		},
+		{
+			name:     "different inner queries",
+			left:     NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("apple"))),
+			right:    NewNegationQuery(NewTermQuery([]byte("fruit"), []byte("banana"))),
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.expected, test.left.Equal(test.right))
+		})
+	}
+}
