@@ -21,6 +21,8 @@
 package query
 
 import (
+	"fmt"
+
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/search"
 	"github.com/m3db/m3ninx/search/searcher"
@@ -45,4 +47,8 @@ func (q *NegationQuery) Searcher(rs index.Readers) (search.Searcher, error) {
 		return nil, err
 	}
 	return searcher.NewNegationSearcher(rs, s)
+}
+
+func (q *NegationQuery) String() string {
+	return fmt.Sprintf("negation(%s)", q.Query)
 }
