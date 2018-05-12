@@ -71,7 +71,24 @@ func ReadDocs(path string, n int) ([]doc.Document, error) {
 		return nil, fmt.Errorf("requested %d metrics but found %d", n, len(docs))
 	}
 
-	return docs, nil
+	return filterEmptyFields(docs), nil
+}
+
+func filterEmptyFields(docs []doc.Document) []doc.Document {
+	nonEmpty := make([]doc.Document, 0, len(docs))
+	for _, d := range docs {
+		hasEmptyField := false
+		for _, f := range d.Fields {
+			if len(f.Name) == 0 || len(f.Value) == 0 {
+				hasEmptyField = true
+				break
+			}
+		}
+		if !hasEmptyField {
+			nonEmpty = append(nonEmpty, d)
+		}
+	}
+	return nonEmpty
 }
 
 // MustReadDocs calls ReadDocs and panics if there is an error.
