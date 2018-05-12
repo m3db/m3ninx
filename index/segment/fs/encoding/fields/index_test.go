@@ -18,24 +18,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package encoding
+package fields
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/m3db/m3ninx/postings"
 	"github.com/stretchr/testify/require"
 )
 
-func TestChecksum(t *testing.T) {
-	c := NewChecksum()
-	require.Equal(t, uint32(0), c.Get())
+func TestStoredFieldsIndex(t *testing.T) {
+	tests := []struct {
+		name    string
+		base    postings.ID
+		offsets []uint64
+	}{
+		{
+			name:    "valid offsets",
+			base:    postings.ID(0),
+			offsets: []uint64{13, 29, 42, 57, 83},
+		},
+		{
+			name:    "valid offsets with non-zero base",
+			base:    postings.ID(176),
+			offsets: []uint64{13, 29, 42, 57, 83},
+		},
+	}
 
-	c.Update([]byte("foo"))
-	require.Equal(t, uint32(0x8c736521), c.Get())
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
 
-	c.Update([]byte("bar"))
-	require.Equal(t, uint32(0x9ef61f95), c.Get())
+			w := NewIndexWriter(buf)
+			for i := range test.offsets {
+				id := test.base + postings.ID(i)
+				err := w.Write(id, test.offsets[i])
+				require.NoError(t, err)
+			}
+			require.NoError(t, w.Close())
 
-	c.Reset()
-	require.Equal(t, uint32(0), c.Get())
+			r, err := NewIndexReader(buf.Bytes())
+			require.NoError(t, err)
+			for i := range test.offsets {
+				id := test.base + postings.ID(i)
+				actual, err := r.Read(id)
+				require.NoError(t, err)
+				require.Equal(t, test.offsets[i], actual)
+			}
+		})
+	}
 }
