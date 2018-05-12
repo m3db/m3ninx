@@ -30,6 +30,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	testDocuments = []doc.Document{
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("banana"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+		doc.Document{
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("apple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("red"),
+				},
+			},
+		},
+		doc.Document{
+			ID: []byte("42"),
+			Fields: []doc.Field{
+				doc.Field{
+					Name:  []byte("fruit"),
+					Value: []byte("pineapple"),
+				},
+				doc.Field{
+					Name:  []byte("color"),
+					Value: []byte("yellow"),
+				},
+			},
+		},
+	}
+)
+
 func TestSegmentInsert(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -801,45 +843,3 @@ func compareDocs(expected, actual doc.Document) bool {
 	}
 	return expected.Equal(actual)
 }
-
-var (
-	testDocuments = []doc.Document{
-		doc.Document{
-			Fields: []doc.Field{
-				doc.Field{
-					Name:  []byte("fruit"),
-					Value: []byte("banana"),
-				},
-				doc.Field{
-					Name:  []byte("color"),
-					Value: []byte("yellow"),
-				},
-			},
-		},
-		doc.Document{
-			Fields: []doc.Field{
-				doc.Field{
-					Name:  []byte("fruit"),
-					Value: []byte("apple"),
-				},
-				doc.Field{
-					Name:  []byte("color"),
-					Value: []byte("red"),
-				},
-			},
-		},
-		doc.Document{
-			ID: []byte("42"),
-			Fields: []doc.Field{
-				doc.Field{
-					Name:  []byte("fruit"),
-					Value: []byte("pineapple"),
-				},
-				doc.Field{
-					Name:  []byte("color"),
-					Value: []byte("yellow"),
-				},
-			},
-		},
-	}
-)
