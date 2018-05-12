@@ -393,11 +393,8 @@ func (s *segment) Seal() (sgmt.Segment, error) {
 func (s *segment) Fields() ([][]byte, error) {
 	s.state.RLock()
 	defer s.state.RUnlock()
-	if s.state.closed {
-		return nil, sgmt.ErrClosed
-	}
-	if !s.state.sealed {
-		return nil, errSegmentIsUnsealed
+	if err := s.checkIsSealedWithRLock(); err != nil {
+		return nil, err
 	}
 	return s.termsDict.Fields(), nil
 }
@@ -405,11 +402,8 @@ func (s *segment) Fields() ([][]byte, error) {
 func (s *segment) Terms(name []byte) ([][]byte, error) {
 	s.state.RLock()
 	defer s.state.RUnlock()
-	if s.state.closed {
-		return nil, sgmt.ErrClosed
-	}
-	if !s.state.sealed {
-		return nil, errSegmentIsUnsealed
+	if err := s.checkIsSealedWithRLock(); err != nil {
+		return nil, err
 	}
 	return s.termsDict.Terms(name), nil
 }
@@ -417,11 +411,18 @@ func (s *segment) Terms(name []byte) ([][]byte, error) {
 func (s *segment) MatchTerm(field, term []byte) (postings.List, error) {
 	s.state.RLock()
 	defer s.state.RUnlock()
-	if s.state.closed {
-		return nil, sgmt.ErrClosed
-	}
-	if !s.state.sealed {
-		return nil, errSegmentIsUnsealed
+	if err := s.checkIsSealedWithRLock(); err != nil {
+		return nil, err
 	}
 	return s.termsDict.MatchTerm(field, term), nil
+}
+
+func (s *segment) checkIsSealedWithRLock() error {
+	if s.state.closed {
+		return sgmt.ErrClosed
+	}
+	if !s.state.sealed {
+		return errSegmentIsUnsealed
+	}
+	return nil
 }
