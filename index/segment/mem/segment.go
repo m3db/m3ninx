@@ -391,8 +391,8 @@ func (s *segment) Seal() (sgmt.Segment, error) {
 }
 
 func (s *segment) Fields() ([][]byte, error) {
-	s.state.Lock()
-	defer s.state.Unlock()
+	s.state.RLock()
+	defer s.state.RUnlock()
 	if s.state.closed {
 		return nil, sgmt.ErrClosed
 	}
@@ -403,8 +403,8 @@ func (s *segment) Fields() ([][]byte, error) {
 }
 
 func (s *segment) Terms(name []byte) ([][]byte, error) {
-	s.state.Lock()
-	defer s.state.Unlock()
+	s.state.RLock()
+	defer s.state.RUnlock()
 	if s.state.closed {
 		return nil, sgmt.ErrClosed
 	}
@@ -415,8 +415,8 @@ func (s *segment) Terms(name []byte) ([][]byte, error) {
 }
 
 func (s *segment) MatchTerm(field, term []byte) (postings.List, error) {
-	s.state.Lock()
-	defer s.state.Unlock()
+	s.state.RLock()
+	defer s.state.RUnlock()
 	if s.state.closed {
 		return nil, sgmt.ErrClosed
 	}
