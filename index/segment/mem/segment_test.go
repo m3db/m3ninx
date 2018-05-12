@@ -683,13 +683,13 @@ func TestSegmentFields(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	fields, err := segment.Fields()
+	_, err = segment.Fields()
 	require.Error(t, err)
 
 	seg, err := segment.Seal()
 	require.NoError(t, err)
 
-	fields, err = seg.Fields()
+	fields, err := seg.Fields()
 	require.NoError(t, err)
 
 	for _, f := range fields {
