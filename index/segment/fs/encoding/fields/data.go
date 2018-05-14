@@ -28,10 +28,7 @@ import (
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 )
 
-const (
-	initialDataEncoderLen     = 1024
-	dataEncoderWriteThreshold = 512
-)
+const initialDataEncoderLen = 1024
 
 // DataWriter writes the data file for stored fields.
 type DataWriter struct {
@@ -55,10 +52,8 @@ func (w *DataWriter) Write(d doc.Document) (int, error) {
 		n += w.enc.PutBytes(f.Value)
 	}
 
-	if w.enc.Len() > dataEncoderWriteThreshold {
-		if err := w.write(); err != nil {
-			return 0, err
-		}
+	if err := w.write(); err != nil {
+		return 0, err
 	}
 
 	return n, nil
@@ -77,14 +72,6 @@ func (w *DataWriter) write() error {
 	return nil
 }
 
-// Close closes the DataWriter and ensures any buffered data is written out.
-func (w *DataWriter) Close() error {
-	if w.enc.Len() == 0 {
-		return nil
-	}
-	return w.write()
-}
-
 // DataReader is a reader for the data file for stored fields.
 type DataReader struct {
 	data []byte
@@ -100,7 +87,7 @@ func NewDataReader(data []byte) *DataReader {
 }
 
 func (r *DataReader) Read(offset uint64) (doc.Document, error) {
-	if offset > uint64(len(r.data)) {
+	if offset >= uint64(len(r.data)) {
 		return doc.Document{}, fmt.Errorf("invalid offset: %v is past the end of the data file", offset)
 	}
 	r.dec.Reset(r.data[int(offset):])

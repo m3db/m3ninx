@@ -31,8 +31,7 @@ import (
 const (
 	indexHeaderSize = 8 // Base postings ID as a uint64.
 
-	initialIndexEncoderLen     = 1024
-	indexEncoderWriteThreshold = 512
+	initialIndexEncoderLen = 64
 )
 
 // IndexWriter is a writer for the index file for stored fields.
@@ -54,7 +53,7 @@ func NewIndexWriter(w io.Writer) *IndexWriter {
 
 func (w *IndexWriter) Write(id postings.ID, offset uint64) error {
 	if !w.ready {
-		w.enc.PutUint64(uint64(id))
+		w.writeHeader(id)
 		w.ready = true
 	} else {
 		if id != w.prev+1 {
@@ -65,13 +64,11 @@ func (w *IndexWriter) Write(id postings.ID, offset uint64) error {
 	w.enc.PutUint64(offset)
 	w.prev = id
 
-	if w.enc.Len() > indexEncoderWriteThreshold {
-		if err := w.write(); err != nil {
-			return err
-		}
-	}
+	return w.write()
+}
 
-	return nil
+func (w *IndexWriter) writeHeader(id postings.ID) {
+	w.enc.PutUint64(uint64(id))
 }
 
 func (w *IndexWriter) write() error {
@@ -85,14 +82,6 @@ func (w *IndexWriter) write() error {
 	}
 	w.enc.Reset()
 	return nil
-}
-
-// Close closes the IndexWriter and ensures any buffered data is written out.
-func (w *IndexWriter) Close() error {
-	if w.enc.Len() == 0 {
-		return nil
-	}
-	return w.write()
 }
 
 // IndexReader is a reader for the index file for stored fields.
@@ -134,7 +123,7 @@ func (r *IndexReader) Read(id postings.ID) (uint64, error) {
 		return 0, fmt.Errorf("invalid postings ID %v, must be between [%v, %v]", id, r.base, r.limit)
 	}
 
-	idx := (int(id-r.base) * 8) + indexHeaderSize
+	idx := r.index(id)
 	r.dec.Reset(r.data[idx:])
 	offset, err := r.dec.Uint64()
 	if err != nil {
@@ -142,4 +131,8 @@ func (r *IndexReader) Read(id postings.ID) (uint64, error) {
 	}
 
 	return offset, nil
+}
+
+func (r *IndexReader) index(id postings.ID) int {
+	return (int(id-r.base) * 8) + indexHeaderSize
 }

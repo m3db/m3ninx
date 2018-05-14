@@ -30,60 +30,62 @@ import (
 
 func TestUint32(t *testing.T) {
 	tests := []struct {
-		n uint32
+		x uint32
 	}{
 		{
-			n: 0,
+			x: 0,
 		},
 		{
-			n: 42,
+			x: 42,
 		},
 		{
-			n: math.MaxUint32,
+			x: math.MaxUint32,
 		},
 	}
 
 	for _, test := range tests {
-		name := fmt.Sprintf("Encode and Decode %d", test.n)
+		name := fmt.Sprintf("Encode and Decode %d", test.x)
 		t.Run(name, func(t *testing.T) {
 			enc := NewEncoder(1024)
-			enc.PutUint32(test.n)
+			n := enc.PutUint32(test.x)
+			require.Equal(t, 4, n)
 
 			dec := NewDecoder(enc.Bytes())
 			actual, err := dec.Uint32()
 
 			require.NoError(t, err)
-			require.Equal(t, test.n, actual)
+			require.Equal(t, test.x, actual)
 		})
 	}
 }
 
 func TestUint64(t *testing.T) {
 	tests := []struct {
-		n uint64
+		x uint64
 	}{
 		{
-			n: 0,
+			x: 0,
 		},
 		{
-			n: 42,
+			x: 42,
 		},
 		{
-			n: math.MaxUint64,
+			x: math.MaxUint64,
 		},
 	}
 
 	for _, test := range tests {
-		name := fmt.Sprintf("Encode and Decode %d", test.n)
+		name := fmt.Sprintf("Encode and Decode %d", test.x)
 		t.Run(name, func(t *testing.T) {
 			enc := NewEncoder(1024)
-			enc.PutUint64(test.n)
+			n := enc.PutUint64(test.x)
+			require.Equal(t, 8, n)
 
 			dec := NewDecoder(enc.Bytes())
 			actual, err := dec.Uint64()
 
 			require.NoError(t, err)
-			require.Equal(t, test.n, actual)
+			require.Equal(t, test.x, actual)
 		})
 	}
 }

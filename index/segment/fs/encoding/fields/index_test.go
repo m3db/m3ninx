@@ -56,7 +56,6 @@ func TestStoredFieldsIndex(t *testing.T) {
 				err := w.Write(id, test.offsets[i])
 				require.NoError(t, err)
 			}
-			require.NoError(t, w.Close())
 
 			r, err := NewIndexReader(buf.Bytes())
 			require.NoError(t, err)

@@ -53,16 +53,18 @@ func (e *Encoder) Len() int { return len(e.buf) }
 // Reset resets the encoder.
 func (e *Encoder) Reset() { e.buf = e.buf[:0] }
 
-// PutUint32 encodes a uint32.
-func (e *Encoder) PutUint32(x uint32) {
+// PutUint32 encodes a uint32 and returns the number of bytes written which is always 4.
+func (e *Encoder) PutUint32(x uint32) int {
 	byteOrder.PutUint32(e.tmp[:], x)
 	e.buf = append(e.buf, e.tmp[:4]...)
+	return 4
 }
 
-// PutUint64 encodes a uint64.
-func (e *Encoder) PutUint64(x uint64) {
+// PutUint64 encodes a uint64 and returns the number of bytes written which is always 8.
+func (e *Encoder) PutUint64(x uint64) int {
 	byteOrder.PutUint64(e.tmp[:], x)
 	e.buf = append(e.buf, e.tmp[:8]...)
+	return 8
 }
 
 // PutUvarint encodes a variable-sized unsigned integer and returns the number of

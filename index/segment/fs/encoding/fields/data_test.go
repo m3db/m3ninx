@@ -95,7 +95,6 @@ func TestStoredFieldsData(t *testing.T) {
 				offsets = append(offsets, idx)
 				idx += n
 			}
-			require.NoError(t, w.Close())
 
 			r := NewDataReader(buf.Bytes())
 			for i := range test.docs {
