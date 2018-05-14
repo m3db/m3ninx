@@ -114,7 +114,7 @@ func (r *reader) ContainsID(docID []byte) (bool, error) {
 		return false, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFST(doc.IDReservedFieldName)
+	termsFST, err := r.retrieveTermsFSTWithRLock(doc.IDReservedFieldName)
 	if err != nil {
 		return false, err
 	}
@@ -171,7 +171,7 @@ func (r *reader) Terms(field []byte) ([][]byte, error) {
 		return nil, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFST(field)
+	termsFST, err := r.retrieveTermsFSTWithRLock(field)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (r *reader) MatchTerm(field []byte, term []byte) (postings.List, error) {
 		return nil, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFST(field)
+	termsFST, err := r.retrieveTermsFSTWithRLock(field)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (r *reader) MatchTerm(field []byte, term []byte) (postings.List, error) {
 		return r.opts.PostingsListPool.Get(), nil
 	}
 
-	pl, err := r.retrievePostingsList(postingsOffset)
+	pl, err := r.retrievePostingsListWithRLock(postingsOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -228,12 +228,18 @@ func (r *reader) MatchTerm(field []byte, term []byte) (postings.List, error) {
 }
 
 func (r *reader) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
+	r.RLock()
+	defer r.RUnlock()
+	if r.closed {
+		return nil, errReaderClosed
+	}
+
 	re, err := vregex.New(string(regexp))
 	if err != nil {
 		return nil, err
 	}
 
-	termsFST, err := r.retrieveTermsFST(field)
+	termsFST, err := r.retrieveTermsFSTWithRLock(field)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +265,7 @@ func (r *reader) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regex
 		}
 
 		_, postingsOffset := iter.Current()
-		nextPl, err := r.retrievePostingsList(postingsOffset)
+		nextPl, err := r.retrievePostingsListWithRLock(postingsOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -293,8 +299,8 @@ func (r *reader) AllDocs() (doc.Iterator, error) {
 	return nil, errNotImplemented
 }
 
-func (r *reader) retrievePostingsList(postingsOffset uint64) (postings.List, error) {
-	postingsBytes, err := r.retrieveBytes(r.opts.PostingsData, postingsOffset)
+func (r *reader) retrievePostingsListWithRLock(postingsOffset uint64) (postings.List, error) {
+	postingsBytes, err := r.retrieveBytesWithRLock(r.opts.PostingsData, postingsOffset)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve postings data: %v", err)
 	}
@@ -328,7 +334,7 @@ func (r *reader) allKeys(fst *vellum.FST) ([][]byte, error) {
 	return keys, nil
 }
 
-func (r *reader) retrieveTermsFST(field []byte) (*vellum.FST, error) {
+func (r *reader) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
 	termsFSTOffset, exists, err := r.fieldsFST.Get(field)
 	if err != nil {
 		return nil, err
@@ -338,7 +344,7 @@ func (r *reader) retrieveTermsFST(field []byte) (*vellum.FST, error) {
 		return nil, fmt.Errorf("no terms known for field: %v", string(field))
 	}
 
-	termsFSTBytes, err := r.retrieveBytes(r.opts.FSTTermsData, termsFSTOffset)
+	termsFSTBytes, err := r.retrieveBytesWithRLock(r.opts.FSTTermsData, termsFSTOffset)
 	if err != nil {
 		return nil, fmt.Errorf("error while decoding terms fst: %v", err)
 	}
@@ -346,11 +352,11 @@ func (r *reader) retrieveTermsFST(field []byte) (*vellum.FST, error) {
 	return vellum.Load(termsFSTBytes)
 }
 
-// retrieveBytes assumes the base []byte slice is a collection of (payload, size, magicNumber) triples,
+// retrieveBytesWithRLock assumes the base []byte slice is a collection of (payload, size, magicNumber) triples,
 // where size/magicNumber are strictly uint64 (i.e. 8 bytes). It assumes the 8 bytes preceding the offset
 // are the magicNumber, the 8 bytes before that are the size, and the `size` bytes before that are the
 // payload. It retrieves the payload while doing bounds checks to ensure no segfaults.
-func (r *reader) retrieveBytes(base []byte, offset uint64) ([]byte, error) {
+func (r *reader) retrieveBytesWithRLock(base []byte, offset uint64) ([]byte, error) {
 	const sizeofUint64 = 8
 	var (
 		magicNumberEnd   = int64(offset) // to prevent underflows
