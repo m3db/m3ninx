@@ -22,12 +22,9 @@ package fst
 
 import (
 	"io"
-	"regexp"
 
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/index/segment"
-	"github.com/m3db/m3ninx/postings"
 )
 
 const (
@@ -39,31 +36,11 @@ const (
 // Reader represents a FST segment.
 type Reader interface {
 	segment.Segment
-
-	// MatchRegexp returns a postings list over all documents which match the given
-	// regular expression.
-	MatchRegexp(field, regexp []byte, compiled *regexp.Regexp) (postings.List, error)
-
-	// MatchAll returns a postings list for all documents known to the Reader.
-	MatchAll() (postings.MutableList, error)
-
-	// Docs returns an iterator over the documents whose IDs are in the provided
-	// postings list.
-	Docs(pl postings.List) (doc.Iterator, error)
-
-	// AllDocs returns an iterator over the documents known to the Reader.
-	AllDocs() (doc.Iterator, error)
+	index.Readable
 }
-
-// enforce Reader implements index.Reader's methods. Can't do this in-line as
-// index.Reader and segment.Segment share methods.
-var _ index.Reader = Reader(nil)
 
 // Writer writes out a FST segment from the provided elements.
 type Writer interface {
-	// Clear clears the internal state of the Writer to allow re-use.
-	Clear()
-
 	// Reset sets the Writer to persist the provide segment.
 	// NB(prateek): the provided segment must be a Sealed Mutable segment.
 	Reset(s segment.MutableSegment) error

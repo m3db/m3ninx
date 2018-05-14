@@ -28,7 +28,8 @@ import (
 	"sort"
 
 	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/generated/proto/fstwriter"
+	"github.com/m3db/m3ninx/generated/proto/fswriter"
+	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/postings/pilosa"
@@ -44,7 +45,8 @@ var (
 )
 
 type writer struct {
-	seg segment.Segment
+	seg       segment.Segment
+	segReader index.Reader
 
 	intEncoder      *encoding.Encoder
 	postingsEncoder *pilosa.Encoder
@@ -69,8 +71,9 @@ func NewWriter() Writer {
 	}
 }
 
-func (w *writer) Clear() {
+func (w *writer) clear() {
 	w.seg = nil
+	w.segReader = nil
 
 	w.intEncoder.Reset()
 	w.postingsEncoder.Reset()
@@ -85,7 +88,11 @@ func (w *writer) Clear() {
 }
 
 func (w *writer) Reset(s segment.MutableSegment) error {
-	w.Clear()
+	w.clear()
+
+	if s == nil {
+		return nil
+	}
 
 	numDocs := s.Size()
 	metadata := defaultV1Metadata()
@@ -95,8 +102,14 @@ func (w *writer) Reset(s segment.MutableSegment) error {
 		return err
 	}
 
+	reader, err := s.Reader()
+	if err != nil {
+		return err
+	}
+
 	w.metadata = metadataBytes
 	w.seg = s
+	w.segReader = reader
 	return nil
 }
 
@@ -143,7 +156,7 @@ func (w *writer) WritePostingsOffsets(iow io.Writer) error {
 		// for each term corresponding to the current field
 		for _, t := range terms {
 			// retrieve the postings list for this (field, term) combination
-			pl, err := w.seg.MatchTerm(f, t)
+			pl, err := w.segReader.MatchTerm(f, t)
 			if err != nil {
 				return err
 			}
@@ -354,8 +367,8 @@ func sortSliceOfByteSlices(b [][]byte) {
 	})
 }
 
-func defaultV1Metadata() fstwriter.Metadata {
-	return fstwriter.Metadata{
-		PostingsFormat: fstwriter.PostingsFormat_PILOSAV1_POSTINGS_FORMAT,
+func defaultV1Metadata() fswriter.Metadata {
+	return fswriter.Metadata{
+		PostingsFormat: fswriter.PostingsFormat_PILOSAV1_POSTINGS_FORMAT,
 	}
 }

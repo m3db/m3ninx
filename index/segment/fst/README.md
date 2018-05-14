@@ -1,4 +1,4 @@
-FST Segment
+FS Segment
 ===========
 
 ```

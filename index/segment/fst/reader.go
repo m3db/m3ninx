@@ -28,7 +28,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/generated/proto/fstwriter"
+	"github.com/m3db/m3ninx/generated/proto/fswriter"
 	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/postings"
@@ -67,12 +67,12 @@ func NewReader(opts NewReaderOptions) (Reader, error) {
 		return nil, errUnsupportedMajorVersion
 	}
 
-	metadata := fstwriter.Metadata{}
+	metadata := fswriter.Metadata{}
 	if err := metadata.Unmarshal(opts.Metadata); err != nil {
 		return nil, err
 	}
 
-	if metadata.PostingsFormat != fstwriter.PostingsFormat_PILOSAV1_POSTINGS_FORMAT {
+	if metadata.PostingsFormat != fswriter.PostingsFormat_PILOSAV1_POSTINGS_FORMAT {
 		return nil, fmt.Errorf("unsupported postings format: %v", metadata.PostingsFormat.String())
 	}
 

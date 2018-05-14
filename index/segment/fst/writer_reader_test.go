@@ -151,9 +151,6 @@ func TestPostingsListLifecycleSimple(t *testing.T) {
 	_, err = fstSeg.Terms(nil)
 	require.Error(t, err)
 
-	_, err = fstSeg.MatchTerm(nil, nil)
-	require.Error(t, err)
-
 	_, err = fstSeg.Reader()
 	require.Error(t, err)
 }
@@ -198,6 +195,10 @@ func testPostingsListContainsID(t *testing.T, docs []doc.Document) {
 
 func testPostingsListEqualForMatchTerm(t *testing.T, docs []doc.Document) {
 	memSeg, fstSeg := newTestSegments(t, docs)
+	memReader, err := memSeg.Reader()
+	require.NoError(t, err)
+	fstReader, err := fstSeg.Reader()
+	require.NoError(t, err)
 
 	memFields, err := memSeg.Fields()
 	require.NoError(t, err)
@@ -207,9 +208,9 @@ func testPostingsListEqualForMatchTerm(t *testing.T, docs []doc.Document) {
 		require.NoError(t, err)
 
 		for _, term := range memTerms {
-			memPl, err := memSeg.MatchTerm(f, term)
+			memPl, err := memReader.MatchTerm(f, term)
 			require.NoError(t, err)
-			fstPl, err := fstSeg.MatchTerm(f, term)
+			fstPl, err := fstReader.MatchTerm(f, term)
 			require.NoError(t, err)
 			require.True(t, memPl.Equal(fstPl),
 				fmt.Sprintf("%s:%s - [%v] != [%v]", string(f), string(term), pprintIter(memPl), pprintIter(fstPl)))

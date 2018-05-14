@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 syntax = "proto3";
-package fstwriter;
+package fswriter;
 
 enum SegmentType {
   FST_SEGMENT_TYPE = 0;
