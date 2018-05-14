@@ -49,26 +49,29 @@ var (
 	maxByteKey = []byte(string(utf8.MaxRune))
 )
 
-// NewSegmentOpts represent the collection of parameters to construct a Segment.
-type NewSegmentOpts struct {
+// SegmentData represent the collection of required parameters to construct a Segment.
+type SegmentData struct {
 	MajorVersion  int
 	MinorVersion  int
 	Metadata      []byte
 	PostingsData  []byte
 	FSTTermsData  []byte
 	FSTFieldsData []byte
+}
 
+// NewSegmentOpts represent the collection of knobs used by the Segment.
+type NewSegmentOpts struct {
 	PostingsListPool postings.Pool
 }
 
 // NewSegment returns a new Segment backed by the provided options.
-func NewSegment(opts NewSegmentOpts) (Segment, error) {
-	if opts.MajorVersion != majorVersion {
+func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
+	if data.MajorVersion != majorVersion {
 		return nil, errUnsupportedMajorVersion
 	}
 
 	metadata := fswriter.Metadata{}
-	if err := metadata.Unmarshal(opts.Metadata); err != nil {
+	if err := metadata.Unmarshal(data.Metadata); err != nil {
 		return nil, err
 	}
 
@@ -76,13 +79,14 @@ func NewSegment(opts NewSegmentOpts) (Segment, error) {
 		return nil, fmt.Errorf("unsupported postings format: %v", metadata.PostingsFormat.String())
 	}
 
-	fieldsFST, err := vellum.Load(opts.FSTFieldsData)
+	fieldsFST, err := vellum.Load(data.FSTFieldsData)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load fields fst: %v", err)
 	}
 	return &segment{
 		fieldsFST: fieldsFST,
 
+		data:    data,
 		opts:    opts,
 		numDocs: metadata.NumDocs,
 	}, nil
@@ -94,7 +98,9 @@ type segment struct {
 
 	fieldsFST *vellum.FST
 
-	opts    NewSegmentOpts
+	data SegmentData
+	opts NewSegmentOpts
+
 	numDocs int64
 }
 
@@ -300,7 +306,7 @@ func (r *segment) AllDocs() (doc.Iterator, error) {
 }
 
 func (r *segment) retrievePostingsListWithRLock(postingsOffset uint64) (postings.List, error) {
-	postingsBytes, err := r.retrieveBytesWithRLock(r.opts.PostingsData, postingsOffset)
+	postingsBytes, err := r.retrieveBytesWithRLock(r.data.PostingsData, postingsOffset)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve postings data: %v", err)
 	}
@@ -344,7 +350,7 @@ func (r *segment) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
 		return nil, fmt.Errorf("no terms known for field: %v", string(field))
 	}
 
-	termsFSTBytes, err := r.retrieveBytesWithRLock(r.opts.FSTTermsData, termsFSTOffset)
+	termsFSTBytes, err := r.retrieveBytesWithRLock(r.data.FSTTermsData, termsFSTOffset)
 	if err != nil {
 		return nil, fmt.Errorf("error while decoding terms fst: %v", err)
 	}

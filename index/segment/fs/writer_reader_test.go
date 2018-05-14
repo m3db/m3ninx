@@ -314,16 +314,18 @@ func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 	require.NoError(t, w.WriteFSTTerms(&fstTermsBuffer))
 	require.NoError(t, w.WriteFSTFields(&fstFieldsBuffer))
 
-	readerOpts := NewSegmentOpts{
-		MajorVersion:     w.MajorVersion(),
-		MinorVersion:     w.MinorVersion(),
-		Metadata:         w.Metadata(),
-		PostingsData:     postingsBuffer.Bytes(),
-		FSTTermsData:     fstTermsBuffer.Bytes(),
-		FSTFieldsData:    fstFieldsBuffer.Bytes(),
+	data := SegmentData{
+		MajorVersion:  w.MajorVersion(),
+		MinorVersion:  w.MinorVersion(),
+		Metadata:      w.Metadata(),
+		PostingsData:  postingsBuffer.Bytes(),
+		FSTTermsData:  fstTermsBuffer.Bytes(),
+		FSTFieldsData: fstFieldsBuffer.Bytes(),
+	}
+	opts := NewSegmentOpts{
 		PostingsListPool: postings.NewPool(nil, roaring.NewPostingsList),
 	}
-	reader, err := NewSegment(readerOpts)
+	reader, err := NewSegment(data, opts)
 	require.NoError(t, err)
 
 	return reader
