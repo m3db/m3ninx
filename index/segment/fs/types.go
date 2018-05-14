@@ -24,7 +24,7 @@ import (
 	"io"
 
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/index/segment"
+	sgmt "github.com/m3db/m3ninx/index/segment"
 )
 
 const (
@@ -33,9 +33,9 @@ const (
 	minorVersion = 0
 )
 
-// Reader represents a FST segment.
-type Reader interface {
-	segment.Segment
+// Segment represents a FST segment.
+type Segment interface {
+	sgmt.Segment
 	index.Readable
 }
 
@@ -43,7 +43,7 @@ type Reader interface {
 type Writer interface {
 	// Reset sets the Writer to persist the provide segment.
 	// NB(prateek): the provided segment must be a Sealed Mutable segment.
-	Reset(s segment.MutableSegment) error
+	Reset(s sgmt.MutableSegment) error
 
 	// MajorVersion is the major version for the writer.
 	MajorVersion() int

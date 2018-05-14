@@ -41,7 +41,7 @@ import (
 )
 
 var (
-	errReaderClosed            = errors.New("reader is closed")
+	errReaderClosed            = errors.New("segment is closed")
 	errUnsupportedMajorVersion = errors.New("unsupported major version")
 	errNotImplemented          = errors.New("operation not implemented")
 
@@ -49,8 +49,8 @@ var (
 	maxByteKey = []byte(string(utf8.MaxRune))
 )
 
-// NewReaderOptions represent the collection of parameters to construct a reader.
-type NewReaderOptions struct {
+// NewSegmentOpts represent the collection of parameters to construct a Segment.
+type NewSegmentOpts struct {
 	MajorVersion  int
 	MinorVersion  int
 	Metadata      []byte
@@ -61,8 +61,8 @@ type NewReaderOptions struct {
 	PostingsListPool postings.Pool
 }
 
-// NewReader returns a new reader backed by the provided options.
-func NewReader(opts NewReaderOptions) (Reader, error) {
+// NewSegment returns a new Segment backed by the provided options.
+func NewSegment(opts NewSegmentOpts) (Segment, error) {
 	if opts.MajorVersion != majorVersion {
 		return nil, errUnsupportedMajorVersion
 	}
@@ -80,7 +80,7 @@ func NewReader(opts NewReaderOptions) (Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to load fields fst: %v", err)
 	}
-	return &reader{
+	return &segment{
 		fieldsFST: fieldsFST,
 
 		opts:    opts,
@@ -88,17 +88,17 @@ func NewReader(opts NewReaderOptions) (Reader, error) {
 	}, nil
 }
 
-type reader struct {
+type segment struct {
 	sync.RWMutex
 	closed bool
 
 	fieldsFST *vellum.FST
 
-	opts    NewReaderOptions
+	opts    NewSegmentOpts
 	numDocs int64
 }
 
-func (r *reader) Size() int64 {
+func (r *segment) Size() int64 {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -107,7 +107,7 @@ func (r *reader) Size() int64 {
 	return r.numDocs
 }
 
-func (r *reader) ContainsID(docID []byte) (bool, error) {
+func (r *segment) ContainsID(docID []byte) (bool, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -129,18 +129,18 @@ func (r *reader) ContainsID(docID []byte) (bool, error) {
 	return exists, fstCloser.Close()
 }
 
-func (r *reader) Reader() (index.Reader, error) {
+func (r *segment) Reader() (index.Reader, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
 		return nil, errReaderClosed
 	}
 	return &segmentReader{
-		reader: r,
+		segment: r,
 	}, nil
 }
 
-func (r *reader) Close() error {
+func (r *segment) Close() error {
 	r.Lock()
 	defer r.Unlock()
 	if r.closed {
@@ -154,7 +154,7 @@ func (r *reader) Close() error {
 // to be iterators to allow us to pool the bytes being returned to the user. Otherwise
 // we're forced to copy these massive slices every time. Tracking this under
 // https://github.com/m3db/m3ninx/issues/66
-func (r *reader) Fields() ([][]byte, error) {
+func (r *segment) Fields() ([][]byte, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -164,7 +164,7 @@ func (r *reader) Fields() ([][]byte, error) {
 	return r.allKeys(r.fieldsFST)
 }
 
-func (r *reader) Terms(field []byte) ([][]byte, error) {
+func (r *segment) Terms(field []byte) ([][]byte, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -191,7 +191,7 @@ func (r *reader) Terms(field []byte) ([][]byte, error) {
 	return terms, nil
 }
 
-func (r *reader) MatchTerm(field []byte, term []byte) (postings.List, error) {
+func (r *segment) MatchTerm(field []byte, term []byte) (postings.List, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -227,7 +227,7 @@ func (r *reader) MatchTerm(field []byte, term []byte) (postings.List, error) {
 	return pl, nil
 }
 
-func (r *reader) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
+func (r *segment) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -287,19 +287,19 @@ func (r *reader) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regex
 	return pl, nil
 }
 
-func (r *reader) MatchAll() (postings.MutableList, error) {
+func (r *segment) MatchAll() (postings.MutableList, error) {
 	return nil, errNotImplemented
 }
 
-func (r *reader) Docs(pl postings.List) (doc.Iterator, error) {
+func (r *segment) Docs(pl postings.List) (doc.Iterator, error) {
 	return nil, errNotImplemented
 }
 
-func (r *reader) AllDocs() (doc.Iterator, error) {
+func (r *segment) AllDocs() (doc.Iterator, error) {
 	return nil, errNotImplemented
 }
 
-func (r *reader) retrievePostingsListWithRLock(postingsOffset uint64) (postings.List, error) {
+func (r *segment) retrievePostingsListWithRLock(postingsOffset uint64) (postings.List, error) {
 	postingsBytes, err := r.retrieveBytesWithRLock(r.opts.PostingsData, postingsOffset)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve postings data: %v", err)
@@ -308,7 +308,7 @@ func (r *reader) retrievePostingsListWithRLock(postingsOffset uint64) (postings.
 	return pilosa.Unmarshal(postingsBytes, roaring.NewPostingsList)
 }
 
-func (r *reader) allKeys(fst *vellum.FST) ([][]byte, error) {
+func (r *segment) allKeys(fst *vellum.FST) ([][]byte, error) {
 	num := fst.Len()
 	keys := make([][]byte, 0, num)
 
@@ -334,7 +334,7 @@ func (r *reader) allKeys(fst *vellum.FST) ([][]byte, error) {
 	return keys, nil
 }
 
-func (r *reader) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
+func (r *segment) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
 	termsFSTOffset, exists, err := r.fieldsFST.Get(field)
 	if err != nil {
 		return nil, err
@@ -356,7 +356,7 @@ func (r *reader) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
 // where size/magicNumber are strictly uint64 (i.e. 8 bytes). It assumes the 8 bytes preceding the offset
 // are the magicNumber, the 8 bytes before that are the size, and the `size` bytes before that are the
 // payload. It retrieves the payload while doing bounds checks to ensure no segfaults.
-func (r *reader) retrieveBytesWithRLock(base []byte, offset uint64) ([]byte, error) {
+func (r *segment) retrieveBytesWithRLock(base []byte, offset uint64) ([]byte, error) {
 	const sizeofUint64 = 8
 	var (
 		magicNumberEnd   = int64(offset) // to prevent underflows
@@ -405,7 +405,7 @@ type segmentReader struct {
 	sync.RWMutex
 	closed bool
 
-	reader *reader
+	segment *segment
 }
 
 var _ index.Reader = &segmentReader{}
@@ -416,7 +416,7 @@ func (sr *segmentReader) MatchTerm(field []byte, term []byte) (postings.List, er
 	if sr.closed {
 		return nil, errReaderClosed
 	}
-	return sr.reader.MatchTerm(field, term)
+	return sr.segment.MatchTerm(field, term)
 }
 
 func (sr *segmentReader) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
@@ -425,7 +425,7 @@ func (sr *segmentReader) MatchRegexp(field []byte, regexp []byte, compiled *rege
 	if sr.closed {
 		return nil, errReaderClosed
 	}
-	return sr.reader.MatchRegexp(field, regexp, compiled)
+	return sr.segment.MatchRegexp(field, regexp, compiled)
 }
 
 func (sr *segmentReader) MatchAll() (postings.MutableList, error) {
@@ -434,7 +434,7 @@ func (sr *segmentReader) MatchAll() (postings.MutableList, error) {
 	if sr.closed {
 		return nil, errReaderClosed
 	}
-	return sr.reader.MatchAll()
+	return sr.segment.MatchAll()
 }
 
 func (sr *segmentReader) Docs(pl postings.List) (doc.Iterator, error) {
@@ -443,7 +443,7 @@ func (sr *segmentReader) Docs(pl postings.List) (doc.Iterator, error) {
 	if sr.closed {
 		return nil, errReaderClosed
 	}
-	return sr.reader.Docs(pl)
+	return sr.segment.Docs(pl)
 }
 
 func (sr *segmentReader) AllDocs() (doc.Iterator, error) {
@@ -452,7 +452,7 @@ func (sr *segmentReader) AllDocs() (doc.Iterator, error) {
 	if sr.closed {
 		return nil, errReaderClosed
 	}
-	return sr.reader.AllDocs()
+	return sr.segment.AllDocs()
 }
 
 func (sr *segmentReader) Close() error {
@@ -466,11 +466,11 @@ func (sr *segmentReader) Close() error {
 }
 
 // copyBytes returns a copy of the provided bytes. We need to do this as the bytes
-// backing the reader are mmap-ed, and maintain their lifecycle exclusive from those
+// backing the segment are mmap-ed, and maintain their lifecycle exclusive from those
 // owned by users.
 // FOLLOWUP(prateek): return iterator types at all exit points of Reader, and
 // then we can pool the bytes below.
-func (r *reader) copyBytes(b []byte) []byte {
+func (r *segment) copyBytes(b []byte) []byte {
 	copied := make([]byte, len(b))
 	copy(copied, b)
 	return copied

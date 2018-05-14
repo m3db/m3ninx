@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/m3db/m3ninx/doc"
-	"github.com/m3db/m3ninx/index/segment"
+	sgmt "github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/index/segment/mem"
 	"github.com/m3db/m3ninx/index/util"
 	"github.com/m3db/m3ninx/postings"
@@ -281,7 +281,7 @@ func pprint(a [][]byte) string {
 	return buf.String()
 }
 
-func newTestSegments(t *testing.T, docs []doc.Document) (memSeg segment.MutableSegment, fstSeg segment.Segment) {
+func newTestSegments(t *testing.T, docs []doc.Document) (memSeg sgmt.MutableSegment, fstSeg sgmt.Segment) {
 	s := newTestMemSegment(t)
 	for _, d := range docs {
 		_, err := s.Insert(d)
@@ -290,14 +290,14 @@ func newTestSegments(t *testing.T, docs []doc.Document) (memSeg segment.MutableS
 	return s, newFSTSegment(t, s)
 }
 
-func newTestMemSegment(t *testing.T) segment.MutableSegment {
+func newTestMemSegment(t *testing.T) sgmt.MutableSegment {
 	opts := mem.NewOptions()
 	s, err := mem.NewSegment(postings.ID(0), opts)
 	require.NoError(t, err)
 	return s
 }
 
-func newFSTSegment(t *testing.T, s segment.MutableSegment) segment.Segment {
+func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 	_, err := s.Seal()
 	require.NoError(t, err)
 
@@ -314,7 +314,7 @@ func newFSTSegment(t *testing.T, s segment.MutableSegment) segment.Segment {
 	require.NoError(t, w.WriteFSTTerms(&fstTermsBuffer))
 	require.NoError(t, w.WriteFSTFields(&fstFieldsBuffer))
 
-	readerOpts := NewReaderOptions{
+	readerOpts := NewSegmentOpts{
 		MajorVersion:     w.MajorVersion(),
 		MinorVersion:     w.MinorVersion(),
 		Metadata:         w.Metadata(),
@@ -323,7 +323,7 @@ func newFSTSegment(t *testing.T, s segment.MutableSegment) segment.Segment {
 		FSTFieldsData:    fstFieldsBuffer.Bytes(),
 		PostingsListPool: postings.NewPool(nil, roaring.NewPostingsList),
 	}
-	reader, err := NewReader(readerOpts)
+	reader, err := NewSegment(readerOpts)
 	require.NoError(t, err)
 
 	return reader

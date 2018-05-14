@@ -30,7 +30,7 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/generated/proto/fswriter"
 	"github.com/m3db/m3ninx/index"
-	"github.com/m3db/m3ninx/index/segment"
+	sgmt "github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/postings/pilosa"
 )
@@ -45,7 +45,7 @@ var (
 )
 
 type writer struct {
-	seg       segment.Segment
+	seg       sgmt.Segment
 	segReader index.Reader
 
 	intEncoder      *encoding.Encoder
@@ -87,7 +87,7 @@ func (w *writer) clear() {
 	w.fstTermsOffsets.Reset()
 }
 
-func (w *writer) Reset(s segment.MutableSegment) error {
+func (w *writer) Reset(s sgmt.MutableSegment) error {
 	w.clear()
 
 	if s == nil {
