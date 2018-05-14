@@ -62,6 +62,6 @@ type MutableSegment interface {
 	// Seal marks the Mutable Segment immutable.
 	Seal() (Segment, error)
 
-	// IsSealed returns true iff the segement is open and un-sealed.
+	// IsSealed returns true iff the segment is open and un-sealed.
 	IsSealed() bool
 }
