@@ -41,6 +41,16 @@ type IndexFileSetWriter interface {
 	WriteSegmentFileSet(segmentFileSet IndexSegmentFileSetWriter) error
 }
 
+// IndexSegmentFileSetWriter is an index segment file set writer.
+type IndexSegmentFileSetWriter interface {
+	SegmentType() IndexSegmentType
+	MajorVersion() int
+	MinorVersion() int
+	SegmentMetadata() []byte
+	Files() []IndexSegmentFileType
+	WriteFile(fileType IndexSegmentFileType, writer io.Writer) error
+}
+
 // IndexFileSetReader is an index file set reader, it can read many segments.
 type IndexFileSetReader interface {
 	// SegmentFileSets returns the number of segment file sets.
@@ -51,6 +61,27 @@ type IndexFileSetReader interface {
 	// The IndexSegmentFileSet will only be valid before it's closed,
 	// after that calls to Read or Bytes on it will have unexpected results.
 	ReadSegmentFileSet() (IndexSegmentFileSet, error)
+}
+
+// IndexSegmentFileSet is an index segment file set.
+type IndexSegmentFileSet interface {
+	SegmentType() IndexSegmentType
+	MajorVersion() int
+	MinorVersion() int
+	SegmentMetadata() []byte
+	Files() []IndexSegmentFile
+}
+
+// IndexSegmentFile is a file in an index segment file set.
+type IndexSegmentFile interface {
+	io.Reader
+	io.Closer
+
+	// SegmentFileType returns the segment file type.
+	SegmentFileType() IndexSegmentFileType
+
+	// Bytes will be valid until the segment file is closed.
+	Bytes() ([]byte, error)
 }
 
 // IndexSegmentType is the type of an index file set.
@@ -79,35 +110,4 @@ func (t IndexSegmentFileType) Validate() error {
 			TypeRegex.String())
 	}
 	return nil
-}
-
-// IndexSegmentFileSetWriter is an index segment file set writer.
-type IndexSegmentFileSetWriter interface {
-	SegmentType() IndexSegmentType
-	MajorVersion() int
-	MinorVersion() int
-	SegmentMetadata() []byte
-	Files() []IndexSegmentFileType
-	WriteFile(fileType IndexSegmentFileType, writer io.Writer) error
-}
-
-// IndexSegmentFileSet is an index segment file set.
-type IndexSegmentFileSet interface {
-	SegmentType() IndexSegmentType
-	MajorVersion() int
-	MinorVersion() int
-	SegmentMetadata() []byte
-	Files() []IndexSegmentFile
-}
-
-// IndexSegmentFile is a file in an index segment file set.
-type IndexSegmentFile interface {
-	io.Reader
-	io.Closer
-
-	// SegmentFileType returns the segment file type.
-	SegmentFileType() IndexSegmentFileType
-
-	// Bytes will be valid until the segment file is closed.
-	Bytes() ([]byte, error)
 }
