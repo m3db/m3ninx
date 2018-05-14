@@ -44,7 +44,9 @@ func (e *Encoder) Reset() {
 	e.scratchBuffer.Reset()
 }
 
-// Encode encodes the provided postings list.
+// Encode encodes the provided postings list in serialized form.
+// The bytes returned are invalidate on a subsequent call to Encode(),
+// or Reset().
 func (e *Encoder) Encode(pl postings.List) ([]byte, error) {
 	e.scratchBuffer.Reset()
 

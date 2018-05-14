@@ -20,18 +20,20 @@
 
 package x
 
+import "io"
+
 // safeCloser ensures Close() is only called once. It's
 // useful for cleanup of resources in functions.
 type safeCloser struct {
-	Closable
+	io.Closer
 	closed bool
 }
 
-// NewSafeCloser returns a Closable which ensures the
+// NewSafeCloser returns a io.Closer which ensures the
 // underlying Close() is only called once. It's
 // useful for cleanup of resources in functions.
-func NewSafeCloser(x Closable) Closable {
-	return &safeCloser{Closable: x}
+func NewSafeCloser(x io.Closer) io.Closer {
+	return &safeCloser{Closer: x}
 }
 
 // Close guarantees the underlying Closable's Close() is
@@ -41,10 +43,5 @@ func (c *safeCloser) Close() error {
 		return nil
 	}
 	c.closed = true
-	return c.Closable.Close()
-}
-
-// Closable represents a closable resource.
-type Closable interface {
-	Close() error
+	return c.Closer.Close()
 }
