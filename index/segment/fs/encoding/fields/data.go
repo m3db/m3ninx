@@ -37,8 +37,6 @@ const (
 type DataWriter struct {
 	writer io.Writer
 	enc    *encoding.Encoder
-
-	idx uint64
 }
 
 // NewDataWriter returns a new DataWriter.

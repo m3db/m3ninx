@@ -103,7 +103,7 @@ func TestUvarint(t *testing.T) {
 		},
 		{
 			x: math.MaxUint64,
-			n: 9,
+			n: 10,
 		},
 	}
 
@@ -118,7 +118,7 @@ func TestUvarint(t *testing.T) {
 			actual, err := dec.Uvarint()
 
 			require.NoError(t, err)
-			require.Equal(t, test.n, actual)
+			require.Equal(t, test.x, actual)
 		})
 	}
 }
