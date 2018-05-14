@@ -89,7 +89,9 @@ name (value). The name is encoded first and the value second.
 
 ## Index File
 
-TODO
+The index file contains, for each postings ID in the segment, the offset of the corresponding
+document in the data file. The base postings ID is stored at the start of the file as a
+little-endian `uint64`. Following it are the actual offsets.
 
 ┌───────────────────────────┐
 │            Base           │
@@ -101,3 +103,24 @@ TODO
 │                           │
 │                           │
 └───────────────────────────┘
+
+### Offsets
+
+The offsets are stored serially starting from the offset for the base postings ID. Each
+offset is a little-endian `uint64`. Since each offset is of a fixed-size we can access
+the offset for a given postings ID by calculating its index relative to the starts of
+the offsets.
+
+```
+┌───────────────────────────┐
+│ ┌───────────────────────┐ │
+│ │       Offset 1        │ │
+│ │       (uint64)        │ │
+│ ├───────────────────────┤ │
+│ │          ...          │ │
+│ ├───────────────────────┤ │
+│ │       Offset n        │ │
+│ │       (uint64)        │ │
+│ └───────────────────────┘ │
+└───────────────────────────┘
+```
