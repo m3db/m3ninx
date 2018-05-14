@@ -29,20 +29,44 @@ import (
 )
 
 func TestStoredFieldsIndex(t *testing.T) {
+	type entry struct {
+		id     postings.ID
+		offset uint64
+	}
+
 	tests := []struct {
 		name    string
-		base    postings.ID
-		offsets []uint64
+		entries []entry
 	}{
 		{
-			name:    "valid offsets",
-			base:    postings.ID(0),
-			offsets: []uint64{13, 29, 42, 57, 83},
+			name: "valid offsets",
+			entries: []entry{
+				entry{id: 0, offset: 0},
+				entry{id: 1, offset: 20},
+				entry{id: 6, offset: 50},
+				entry{id: 18, offset: 100},
+				entry{id: 19, offset: 125},
+			},
 		},
 		{
-			name:    "valid offsets with non-zero base",
-			base:    postings.ID(176),
-			offsets: []uint64{13, 29, 42, 57, 83},
+			name: "valid offsets with non-zero base",
+			entries: []entry{
+				entry{id: 42, offset: 0},
+				entry{id: 43, offset: 33},
+				entry{id: 44, offset: 77},
+				entry{id: 45, offset: 88},
+				entry{id: 49, offset: 111},
+			},
+		},
+		{
+			name: "non-monotonic offsets",
+			entries: []entry{
+				entry{id: 13, offset: 124},
+				entry{id: 14, offset: 28},
+				entry{id: 15, offset: 95},
+				entry{id: 17, offset: 56},
+				entry{id: 20, offset: 77},
+			},
 		},
 	}
 
@@ -51,19 +75,19 @@ func TestStoredFieldsIndex(t *testing.T) {
 			buf := new(bytes.Buffer)
 
 			w := NewIndexWriter(buf)
-			for i := range test.offsets {
-				id := test.base + postings.ID(i)
-				err := w.Write(id, test.offsets[i])
+			for i := range test.entries {
+				id, offset := test.entries[i].id, test.entries[i].offset
+				err := w.Write(id, offset)
 				require.NoError(t, err)
 			}
 
 			r, err := NewIndexReader(buf.Bytes())
 			require.NoError(t, err)
-			for i := range test.offsets {
-				id := test.base + postings.ID(i)
+			for i := range test.entries {
+				id, offset := test.entries[i].id, test.entries[i].offset
 				actual, err := r.Read(id)
 				require.NoError(t, err)
-				require.Equal(t, test.offsets[i], actual)
+				require.Equal(t, offset, actual)
 			}
 		})
 	}

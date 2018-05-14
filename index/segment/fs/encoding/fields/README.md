@@ -111,7 +111,8 @@ little-endian `uint64`. Following it are the actual offsets.
 The offsets are stored serially starting from the offset for the base postings ID. Each
 offset is a little-endian `uint64`. Since each offset is of a fixed-size we can access
 the offset for a given postings ID by calculating its index relative to the start of
-the offsets.
+the offsets. An offset equal to the maximum value for a uint64 indicates that there is
+no corresponding document for a given postings ID.
 
 ```
 ┌───────────────────────────┐

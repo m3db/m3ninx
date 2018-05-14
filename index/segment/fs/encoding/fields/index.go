@@ -23,15 +23,18 @@ package fields
 import (
 	"fmt"
 	"io"
+	"math"
 
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/postings"
 )
 
-const (
-	indexHeaderSize = 8 // Base postings ID as a uint64.
+const emptyID = math.MaxUint64
 
-	initialIndexEncoderLen = 64
+const (
+	indexMetadataSize = 8 // Base postings ID as a uint64.
+
+	initialIndexEncoderLen = 256
 )
 
 // IndexWriter is a writer for the index file for stored fields.
@@ -51,13 +54,18 @@ func NewIndexWriter(w io.Writer) *IndexWriter {
 	return iw
 }
 
+// Write writes the offset for an id. IDs must be written in increasing order but can be
+// non-contiguous.
 func (w *IndexWriter) Write(id postings.ID, offset uint64) error {
 	if !w.ready {
-		w.writeHeader(id)
+		w.writeMetadata(id)
 		w.ready = true
 	} else {
-		if id != w.prev+1 {
-			return fmt.Errorf("non-sequential postings ID: receieved %v but previous ID was %v", id, w.prev)
+		if id <= w.prev {
+			return fmt.Errorf("postings IDs must be monotonically increasing: received %v but previous ID was %v", id, w.prev)
+		}
+		for i := 0; i < int(id-w.prev)-1; i++ {
+			w.enc.PutUint64(emptyID)
 		}
 	}
 
@@ -67,7 +75,7 @@ func (w *IndexWriter) Write(id postings.ID, offset uint64) error {
 	return w.write()
 }
 
-func (w *IndexWriter) writeHeader(id postings.ID) {
+func (w *IndexWriter) writeMetadata(id postings.ID) {
 	w.enc.PutUint64(uint64(id))
 }
 
@@ -94,11 +102,11 @@ type IndexReader struct {
 
 // NewIndexReader returns a new IndexReader.
 func NewIndexReader(data []byte) (*IndexReader, error) {
-	if len(data) < indexHeaderSize {
+	if len(data) < indexMetadataSize {
 		return nil, io.ErrShortBuffer
 	}
 
-	payloadLen := len(data) - indexHeaderSize
+	payloadLen := len(data) - indexMetadataSize
 	if payloadLen%8 != 0 {
 		return nil, fmt.Errorf("stored fields index payload should be a multiple of 8, found %v", payloadLen%8)
 	}
@@ -119,8 +127,8 @@ func NewIndexReader(data []byte) (*IndexReader, error) {
 }
 
 func (r *IndexReader) Read(id postings.ID) (uint64, error) {
-	if id < r.base || id > r.limit {
-		return 0, fmt.Errorf("invalid postings ID %v, must be between [%v, %v]", id, r.base, r.limit)
+	if id < r.base || id >= r.limit {
+		return 0, fmt.Errorf("invalid postings ID %v, must be in the range [%v, %v)", id, r.base, r.limit)
 	}
 
 	idx := r.index(id)
@@ -134,5 +142,5 @@ func (r *IndexReader) Read(id postings.ID) (uint64, error) {
 }
 
 func (r *IndexReader) index(id postings.ID) int {
-	return (int(id-r.base) * 8) + indexHeaderSize
+	return (int(id-r.base) * 8) + indexMetadataSize
 }
