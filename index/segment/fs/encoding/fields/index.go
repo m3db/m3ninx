@@ -35,7 +35,7 @@ const (
 	indexEncoderWriteThreshold = 512
 )
 
-// IndexWriter ...
+// IndexWriter is a writer for the index file for stored fields.
 type IndexWriter struct {
 	writer io.Writer
 	enc    *encoding.Encoder
@@ -43,7 +43,7 @@ type IndexWriter struct {
 	prev   postings.ID
 }
 
-// NewIndexWriter ...
+// NewIndexWriter returns a new IndexWriter.
 func NewIndexWriter(w io.Writer) *IndexWriter {
 	iw := &IndexWriter{
 		writer: w,
@@ -87,7 +87,7 @@ func (w *IndexWriter) write() error {
 	return nil
 }
 
-// Close ...
+// Close closes the IndexWriter and ensures any buffered data is written out.
 func (w *IndexWriter) Close() error {
 	if w.enc.Len() == 0 {
 		return nil
@@ -95,7 +95,7 @@ func (w *IndexWriter) Close() error {
 	return w.write()
 }
 
-// IndexReader ...
+// IndexReader is a reader for the index file for stored fields.
 type IndexReader struct {
 	data  []byte
 	dec   *encoding.Decoder
@@ -103,7 +103,7 @@ type IndexReader struct {
 	limit postings.ID
 }
 
-// NewIndexReader ...
+// NewIndexReader returns a new IndexReader.
 func NewIndexReader(data []byte) (*IndexReader, error) {
 	if len(data) < indexHeaderSize {
 		return nil, io.ErrShortBuffer

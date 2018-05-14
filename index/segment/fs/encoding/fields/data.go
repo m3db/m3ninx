@@ -33,7 +33,7 @@ const (
 	dataEncoderWriteThreshold = 512
 )
 
-// DataWriter ...
+// DataWriter writes the data file for stored fields.
 type DataWriter struct {
 	writer io.Writer
 	enc    *encoding.Encoder
@@ -41,7 +41,7 @@ type DataWriter struct {
 	idx uint64
 }
 
-// NewDataWriter ...
+// NewDataWriter returns a new DataWriter.
 func NewDataWriter(w io.Writer) *DataWriter {
 	return &DataWriter{
 		writer: w,
@@ -79,7 +79,7 @@ func (w *DataWriter) write() error {
 	return nil
 }
 
-// Close ...
+// Close closes the DataWriter and ensures any buffered data is written out.
 func (w *DataWriter) Close() error {
 	if w.enc.Len() == 0 {
 		return nil
@@ -87,13 +87,13 @@ func (w *DataWriter) Close() error {
 	return w.write()
 }
 
-// DataReader ...
+// DataReader is a reader for the data file for stored fields.
 type DataReader struct {
 	data []byte
 	dec  *encoding.Decoder
 }
 
-// NewDataReader ...
+// NewDataReader returns a new DataReader.
 func NewDataReader(data []byte) *DataReader {
 	return &DataReader{
 		data: data,
@@ -103,7 +103,7 @@ func NewDataReader(data []byte) *DataReader {
 
 func (r *DataReader) Read(offset uint64) (doc.Document, error) {
 	if offset > uint64(len(r.data)) {
-		return doc.Document{}, fmt.Errorf("invalid offset %v", offset)
+		return doc.Document{}, fmt.Errorf("invalid offset: %v is past the end of the data file", offset)
 	}
 	r.dec.Reset(r.data[int(offset):])
 
