@@ -25,7 +25,6 @@
 package postings
 
 import (
-	"io"
 	"reflect"
 
 	"github.com/golang/mock/gomock"
@@ -152,19 +151,6 @@ func (mr *MockListMockRecorder) Equal(other interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Equal", reflect.TypeOf((*MockList)(nil).Equal), other)
 }
 
-// WriteTo mocks base method
-func (m *MockList) WriteTo(arg0 io.Writer) (int64, error) {
-	ret := m.ctrl.Call(m, "WriteTo", arg0)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// WriteTo indicates an expected call of WriteTo
-func (mr *MockListMockRecorder) WriteTo(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTo", reflect.TypeOf((*MockList)(nil).WriteTo), arg0)
-}
-
 // MockMutableList is a mock of MutableList interface
 type MockMutableList struct {
 	ctrl     *gomock.Controller
@@ -286,19 +272,6 @@ func (mr *MockMutableListMockRecorder) Equal(other interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Equal", reflect.TypeOf((*MockMutableList)(nil).Equal), other)
 }
 
-// WriteTo mocks base method
-func (m *MockMutableList) WriteTo(arg0 io.Writer) (int64, error) {
-	ret := m.ctrl.Call(m, "WriteTo", arg0)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// WriteTo indicates an expected call of WriteTo
-func (mr *MockMutableListMockRecorder) WriteTo(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTo", reflect.TypeOf((*MockMutableList)(nil).WriteTo), arg0)
-}
-
 // Insert mocks base method
 func (m *MockMutableList) Insert(i ID) {
 	m.ctrl.Call(m, "Insert", i)
@@ -355,19 +328,6 @@ func (m *MockMutableList) AddIterator(iter Iterator) error {
 // AddIterator indicates an expected call of AddIterator
 func (mr *MockMutableListMockRecorder) AddIterator(iter interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddIterator", reflect.TypeOf((*MockMutableList)(nil).AddIterator), iter)
-}
-
-// ReadFrom mocks base method
-func (m *MockMutableList) ReadFrom(arg0 io.Reader) (int64, error) {
-	ret := m.ctrl.Call(m, "ReadFrom", arg0)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ReadFrom indicates an expected call of ReadFrom
-func (mr *MockMutableListMockRecorder) ReadFrom(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFrom", reflect.TypeOf((*MockMutableList)(nil).ReadFrom), arg0)
 }
 
 // AddRange mocks base method
