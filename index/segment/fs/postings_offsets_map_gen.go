@@ -2,7 +2,9 @@
 // Any changes will be lost if this file is regenerated.
 // see https://github.com/mauricelam/genny
 
-package fst
+package fs
+
+import "github.com/m3db/m3ninx/doc"
 
 // Copyright (c) 2018 Uber Technologies, Inc.
 //
@@ -24,23 +26,23 @@ package fst
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// fstTermsOffsetsMapHash is the hash for a given map entry, this is public to support
+// postingsOffsetsMapHash is the hash for a given map entry, this is public to support
 // iterating over the map using a native Go for loop.
-type fstTermsOffsetsMapHash uint64
+type postingsOffsetsMapHash uint64
 
-// fstTermsOffsetsMapHashFn is the hash function to execute when hashing a key.
-type fstTermsOffsetsMapHashFn func([]byte) fstTermsOffsetsMapHash
+// postingsOffsetsMapHashFn is the hash function to execute when hashing a key.
+type postingsOffsetsMapHashFn func(doc.Field) postingsOffsetsMapHash
 
-// fstTermsOffsetsMapEqualsFn is the equals key function to execute when detecting equality of a key.
-type fstTermsOffsetsMapEqualsFn func([]byte, []byte) bool
+// postingsOffsetsMapEqualsFn is the equals key function to execute when detecting equality of a key.
+type postingsOffsetsMapEqualsFn func(doc.Field, doc.Field) bool
 
-// fstTermsOffsetsMapCopyFn is the copy key function to execute when copying the key.
-type fstTermsOffsetsMapCopyFn func([]byte) []byte
+// postingsOffsetsMapCopyFn is the copy key function to execute when copying the key.
+type postingsOffsetsMapCopyFn func(doc.Field) doc.Field
 
-// fstTermsOffsetsMapFinalizeFn is the finalize key function to execute when finished with a key.
-type fstTermsOffsetsMapFinalizeFn func([]byte)
+// postingsOffsetsMapFinalizeFn is the finalize key function to execute when finished with a key.
+type postingsOffsetsMapFinalizeFn func(doc.Field)
 
-// fstTermsOffsetsMap uses the genny package to provide a generic hash map that can be specialized
+// postingsOffsetsMap uses the genny package to provide a generic hash map that can be specialized
 // by running the following command from this root of the repository:
 // ```
 // make hashmap-gen pkg=outpkg key_type=Type value_type=Type out_dir=/tmp
@@ -54,73 +56,73 @@ type fstTermsOffsetsMapFinalizeFn func([]byte)
 // This will output to stdout the generated source file to use for your map.
 // It uses linear probing by incrementing the number of the hash created when
 // hashing the identifier if there is a collision.
-// fstTermsOffsetsMap is a value type and not an interface to allow for less painful
+// postingsOffsetsMap is a value type and not an interface to allow for less painful
 // upgrades when adding/removing methods, it is not likely to need mocking so
 // an interface would not be super useful either.
-type fstTermsOffsetsMap struct {
-	_fstTermsOffsetsMapOptions
+type postingsOffsetsMap struct {
+	_postingsOffsetsMapOptions
 
 	// lookup uses hash of the identifier for the key and the MapEntry value
 	// wraps the value type and the key (used to ensure lookup is correct
 	// when dealing with collisions), we use uint64 for the hash partially
 	// because lookups of maps with uint64 keys has a fast path for Go.
-	lookup map[fstTermsOffsetsMapHash]fstTermsOffsetsMapEntry
+	lookup map[postingsOffsetsMapHash]postingsOffsetsMapEntry
 }
 
-// _fstTermsOffsetsMapOptions is a set of options used when creating an identifier map, it is kept
+// _postingsOffsetsMapOptions is a set of options used when creating an identifier map, it is kept
 // private so that implementers of the generated map can specify their own options
 // that partially fulfill these options.
-type _fstTermsOffsetsMapOptions struct {
+type _postingsOffsetsMapOptions struct {
 	// hash is the hash function to execute when hashing a key.
-	hash fstTermsOffsetsMapHashFn
+	hash postingsOffsetsMapHashFn
 	// equals is the equals key function to execute when detecting equality.
-	equals fstTermsOffsetsMapEqualsFn
+	equals postingsOffsetsMapEqualsFn
 	// copy is the copy key function to execute when copying the key.
-	copy fstTermsOffsetsMapCopyFn
+	copy postingsOffsetsMapCopyFn
 	// finalize is the finalize key function to execute when finished with a
 	// key, this is optional to specify.
-	finalize fstTermsOffsetsMapFinalizeFn
+	finalize postingsOffsetsMapFinalizeFn
 	// initialSize is the initial size for the map, use zero to use Go's std map
 	// initial size and consequently is optional to specify.
 	initialSize int
 }
 
-// fstTermsOffsetsMapEntry is an entry in the map, this is public to support iterating
+// postingsOffsetsMapEntry is an entry in the map, this is public to support iterating
 // over the map using a native Go for loop.
-type fstTermsOffsetsMapEntry struct {
+type postingsOffsetsMapEntry struct {
 	// key is used to check equality on lookups to resolve collisions
-	key _fstTermsOffsetsMapKey
+	key _postingsOffsetsMapKey
 	// value type stored
 	value uint64
 }
 
-type _fstTermsOffsetsMapKey struct {
-	key      []byte
+type _postingsOffsetsMapKey struct {
+	key      doc.Field
 	finalize bool
 }
 
 // Key returns the map entry key.
-func (e fstTermsOffsetsMapEntry) Key() []byte {
+func (e postingsOffsetsMapEntry) Key() doc.Field {
 	return e.key.key
 }
 
 // Value returns the map entry value.
-func (e fstTermsOffsetsMapEntry) Value() uint64 {
+func (e postingsOffsetsMapEntry) Value() uint64 {
 	return e.value
 }
 
-// _fstTermsOffsetsMapAlloc is a non-exported function so that when generating the source code
+// _postingsOffsetsMapAlloc is a non-exported function so that when generating the source code
 // for the map you can supply a public constructor that sets the correct
 // hash, equals, copy, finalize options without users of the map needing to
 // implement them themselves.
-func _fstTermsOffsetsMapAlloc(opts _fstTermsOffsetsMapOptions) *fstTermsOffsetsMap {
-	m := &fstTermsOffsetsMap{_fstTermsOffsetsMapOptions: opts}
+func _postingsOffsetsMapAlloc(opts _postingsOffsetsMapOptions) *postingsOffsetsMap {
+	m := &postingsOffsetsMap{_postingsOffsetsMapOptions: opts}
 	m.Reallocate()
 	return m
 }
 
-func (m *fstTermsOffsetsMap) newMapKey(k []byte, opts _fstTermsOffsetsMapKeyOptions) _fstTermsOffsetsMapKey {
-	key := _fstTermsOffsetsMapKey{key: k, finalize: opts.finalizeKey}
+func (m *postingsOffsetsMap) newMapKey(k doc.Field, opts _postingsOffsetsMapKeyOptions) _postingsOffsetsMapKey {
+	key := _postingsOffsetsMapKey{key: k, finalize: opts.finalizeKey}
 	if !opts.copyKey {
 		return key
 	}
@@ -129,7 +131,7 @@ func (m *fstTermsOffsetsMap) newMapKey(k []byte, opts _fstTermsOffsetsMapKeyOpti
 	return key
 }
 
-func (m *fstTermsOffsetsMap) removeMapKey(hash fstTermsOffsetsMapHash, key _fstTermsOffsetsMapKey) {
+func (m *postingsOffsetsMap) removeMapKey(hash postingsOffsetsMapHash, key _postingsOffsetsMapKey) {
 	delete(m.lookup, hash)
 	if key.finalize {
 		m.finalize(key.key)
@@ -137,7 +139,7 @@ func (m *fstTermsOffsetsMap) removeMapKey(hash fstTermsOffsetsMapHash, key _fstT
 }
 
 // Get returns a value in the map for an identifier if found.
-func (m *fstTermsOffsetsMap) Get(k []byte) (uint64, bool) {
+func (m *postingsOffsetsMap) Get(k doc.Field) (uint64, bool) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -151,39 +153,39 @@ func (m *fstTermsOffsetsMap) Get(k []byte) (uint64, bool) {
 }
 
 // Set will set the value for an identifier.
-func (m *fstTermsOffsetsMap) Set(k []byte, v uint64) {
-	m.set(k, v, _fstTermsOffsetsMapKeyOptions{
+func (m *postingsOffsetsMap) Set(k doc.Field, v uint64) {
+	m.set(k, v, _postingsOffsetsMapKeyOptions{
 		copyKey:     true,
 		finalizeKey: m.finalize != nil,
 	})
 }
 
-// fstTermsOffsetsMapSetUnsafeOptions is a set of options to use when setting a value with
+// postingsOffsetsMapSetUnsafeOptions is a set of options to use when setting a value with
 // the SetUnsafe method.
-type fstTermsOffsetsMapSetUnsafeOptions struct {
+type postingsOffsetsMapSetUnsafeOptions struct {
 	NoCopyKey     bool
 	NoFinalizeKey bool
 }
 
 // SetUnsafe will set the value for an identifier with unsafe options for how
 // the map treats the key.
-func (m *fstTermsOffsetsMap) SetUnsafe(k []byte, v uint64, opts fstTermsOffsetsMapSetUnsafeOptions) {
-	m.set(k, v, _fstTermsOffsetsMapKeyOptions{
+func (m *postingsOffsetsMap) SetUnsafe(k doc.Field, v uint64, opts postingsOffsetsMapSetUnsafeOptions) {
+	m.set(k, v, _postingsOffsetsMapKeyOptions{
 		copyKey:     !opts.NoCopyKey,
 		finalizeKey: !opts.NoFinalizeKey,
 	})
 }
 
-type _fstTermsOffsetsMapKeyOptions struct {
+type _postingsOffsetsMapKeyOptions struct {
 	copyKey     bool
 	finalizeKey bool
 }
 
-func (m *fstTermsOffsetsMap) set(k []byte, v uint64, opts _fstTermsOffsetsMapKeyOptions) {
+func (m *postingsOffsetsMap) set(k doc.Field, v uint64, opts _postingsOffsetsMapKeyOptions) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
-			m.lookup[hash] = fstTermsOffsetsMapEntry{
+			m.lookup[hash] = postingsOffsetsMapEntry{
 				key:   entry.key,
 				value: v,
 			}
@@ -193,7 +195,7 @@ func (m *fstTermsOffsetsMap) set(k []byte, v uint64, opts _fstTermsOffsetsMapKey
 		hash++
 	}
 
-	m.lookup[hash] = fstTermsOffsetsMapEntry{
+	m.lookup[hash] = postingsOffsetsMapEntry{
 		key:   m.newMapKey(k, opts),
 		value: v,
 	}
@@ -202,24 +204,24 @@ func (m *fstTermsOffsetsMap) set(k []byte, v uint64, opts _fstTermsOffsetsMapKey
 // Iter provides the underlying map to allow for using a native Go for loop
 // to iterate the map, however callers should only ever read and not write
 // the map.
-func (m *fstTermsOffsetsMap) Iter() map[fstTermsOffsetsMapHash]fstTermsOffsetsMapEntry {
+func (m *postingsOffsetsMap) Iter() map[postingsOffsetsMapHash]postingsOffsetsMapEntry {
 	return m.lookup
 }
 
 // Len returns the number of map entries in the map.
-func (m *fstTermsOffsetsMap) Len() int {
+func (m *postingsOffsetsMap) Len() int {
 	return len(m.lookup)
 }
 
 // Contains returns true if value exists for key, false otherwise, it is
 // shorthand for a call to Get that doesn't return the value.
-func (m *fstTermsOffsetsMap) Contains(k []byte) bool {
+func (m *postingsOffsetsMap) Contains(k doc.Field) bool {
 	_, ok := m.Get(k)
 	return ok
 }
 
 // Delete will remove a value set in the map for the specified key.
-func (m *fstTermsOffsetsMap) Delete(k []byte) {
+func (m *postingsOffsetsMap) Delete(k doc.Field) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -233,7 +235,7 @@ func (m *fstTermsOffsetsMap) Delete(k []byte) {
 
 // Reset will reset the map by simply deleting all keys to avoid
 // allocating a new map.
-func (m *fstTermsOffsetsMap) Reset() {
+func (m *postingsOffsetsMap) Reset() {
 	for hash, entry := range m.lookup {
 		m.removeMapKey(hash, entry.key)
 	}
@@ -242,10 +244,10 @@ func (m *fstTermsOffsetsMap) Reset() {
 // Reallocate will avoid deleting all keys and reallocate a new
 // map, this is useful if you believe you have a large map and
 // will not need to grow back to a similar size.
-func (m *fstTermsOffsetsMap) Reallocate() {
+func (m *postingsOffsetsMap) Reallocate() {
 	if m.initialSize > 0 {
-		m.lookup = make(map[fstTermsOffsetsMapHash]fstTermsOffsetsMapEntry, m.initialSize)
+		m.lookup = make(map[postingsOffsetsMapHash]postingsOffsetsMapEntry, m.initialSize)
 	} else {
-		m.lookup = make(map[fstTermsOffsetsMapHash]fstTermsOffsetsMapEntry)
+		m.lookup = make(map[postingsOffsetsMapHash]postingsOffsetsMapEntry)
 	}
 }

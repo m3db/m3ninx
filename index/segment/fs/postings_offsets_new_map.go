@@ -18,36 +18,42 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package fst
+package fs
 
 import (
 	"bytes"
 
+	"github.com/m3db/m3ninx/doc"
+
 	"github.com/cespare/xxhash"
 )
 
-// newFSTTermsOffsetsMap returns a new fstTermsOffsetsMap with default ctor parameters.
-func newFSTTermsOffsetsMap(initialSize int) *fstTermsOffsetsMap {
-	return _fstTermsOffsetsMapAlloc(_fstTermsOffsetsMapOptions{
-		hash: func(k []byte) fstTermsOffsetsMapHash {
-			return fstTermsOffsetsMapHash(xxhash.Sum64(k))
+// newPostingsOffsetsMap returns a new postingsOffsetsMap with default ctor parameters.
+func newPostingsOffsetsMap(initialSize int) *postingsOffsetsMap {
+	return _postingsOffsetsMapAlloc(_postingsOffsetsMapOptions{
+		hash: func(f doc.Field) postingsOffsetsMapHash {
+			// NB(pratee): Similar to the standard composite key hashes for Java objects
+			hash := uint64(7)
+			hash = 31*hash + xxhash.Sum64(f.Name)
+			hash = 31*hash + xxhash.Sum64(f.Value)
+			return postingsOffsetsMapHash(hash)
 		},
-		equals: func(f, g []byte) bool {
-			return bytes.Equal(f, g)
+		equals: func(f, g doc.Field) bool {
+			return bytes.Equal(f.Name, g.Name) && bytes.Equal(f.Value, g.Value)
 		},
-		copy:        undefinedFSTTermsOffsetsMapCopyFn,
-		finalize:    undefinedFSTTermsOffsetsMapFinalizeFn,
+		copy:        undefinedPostingsOffsetsMapCopyFn,
+		finalize:    undefinedPostingsOffsetsMapFinalizeFn,
 		initialSize: initialSize,
 	})
 }
 
-var undefinedFSTTermsOffsetsMapCopyFn fstTermsOffsetsMapCopyFn = func([]byte) []byte {
+var undefinedPostingsOffsetsMapCopyFn postingsOffsetsMapCopyFn = func(doc.Field) doc.Field {
 	// NB: intentionally not defined to force users of the map to not
 	// allocate extra copies.
 	panic("not implemented")
 }
 
-var undefinedFSTTermsOffsetsMapFinalizeFn fstTermsOffsetsMapFinalizeFn = func([]byte) {
+var undefinedPostingsOffsetsMapFinalizeFn postingsOffsetsMapFinalizeFn = func(doc.Field) {
 	// NB: intentionally not defined to force users of the map to not
 	// allocate extra copies.
 	panic("not implemented")
