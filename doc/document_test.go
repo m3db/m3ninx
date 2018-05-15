@@ -463,6 +463,18 @@ func TestDocumentValidation(t *testing.T) {
 			expectedErr: true,
 		},
 		{
+			name: "Reserved non-character code-point",
+			input: Document{
+				Fields: []Field{
+					Field{
+						Name:  ReservedCodePoint,
+						Value: []byte("bar"),
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
 			name: "document contains field with reserved field name",
 			input: Document{
 				Fields: []Field{

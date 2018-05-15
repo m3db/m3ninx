@@ -116,11 +116,8 @@ const (
 	// PostingsIndexSegmentFileType is a postings List data index segment file.
 	PostingsIndexSegmentFileType IndexSegmentFileType = "postingsdata"
 
-	// FSTFieldsIndexSegmentFileType is a FST Fields index segment file.
-	FSTFieldsIndexSegmentFileType IndexSegmentFileType = "fstfields"
-
-	// FSTTermsIndexSegmentFileType is a FST Terms index segment file.
-	FSTTermsIndexSegmentFileType IndexSegmentFileType = "fstterms"
+	// FSTDataIndexSegmentFileType is a FST data index segment file.
+	FSTDataIndexSegmentFileType IndexSegmentFileType = "fstdata"
 )
 
 var (
@@ -132,8 +129,7 @@ var (
 		DocumentDataIndexSegmentFileType,
 		DocumentIndexIndexSegmentFileType,
 		PostingsIndexSegmentFileType,
-		FSTFieldsIndexSegmentFileType,
-		FSTTermsIndexSegmentFileType,
+		FSTDataIndexSegmentFileType,
 	}
 )
 

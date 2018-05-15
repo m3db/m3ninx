@@ -21,18 +21,6 @@
 syntax = "proto3";
 package fswriter;
 
-enum SegmentType {
-  FST_SEGMENT_TYPE = 0;
-}
-
-enum FSTSegmentFileType {
-  DOCUMENTS_INDEX     = 0;
-  DOCUMENTS_DATA      = 1;
-  POSTINGS_DATA       = 2;
-  FST_TERMS           = 3;
-  FST_FIELDS          = 4;
-}
-
 enum PostingsFormat {
   PILOSAV1_POSTINGS_FORMAT = 0;
 }

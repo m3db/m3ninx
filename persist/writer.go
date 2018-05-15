@@ -71,8 +71,7 @@ func (w *writer) Files() []IndexSegmentFileType {
 		DocumentDataIndexSegmentFileType,
 		DocumentIndexIndexSegmentFileType,
 		PostingsIndexSegmentFileType,
-		FSTTermsIndexSegmentFileType,
-		FSTFieldsIndexSegmentFileType,
+		FSTDataIndexSegmentFileType,
 	}
 }
 
@@ -84,10 +83,8 @@ func (w *writer) WriteFile(fileType IndexSegmentFileType, iow io.Writer) error {
 		return w.fsWriter.WriteDocumentsIndex(iow)
 	case PostingsIndexSegmentFileType:
 		return w.fsWriter.WritePostingsOffsets(iow)
-	case FSTFieldsIndexSegmentFileType:
-		return w.fsWriter.WriteFSTFields(iow)
-	case FSTTermsIndexSegmentFileType:
-		return w.fsWriter.WriteFSTTerms(iow)
+	case FSTDataIndexSegmentFileType:
+		return w.fsWriter.WriteFSTData(iow)
 	}
 	return fmt.Errorf("unknown fileType: %s provided", fileType)
 }

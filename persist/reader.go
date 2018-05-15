@@ -68,13 +68,8 @@ func filesetToSegmentData(fileset IndexSegmentFileSet) (fs.SegmentData, error) {
 			if err != nil {
 				return sd, err
 			}
-		case FSTFieldsIndexSegmentFileType:
-			sd.FSTFieldsData, err = f.Bytes()
-			if err != nil {
-				return sd, err
-			}
-		case FSTTermsIndexSegmentFileType:
-			sd.FSTTermsData, err = f.Bytes()
+		case FSTDataIndexSegmentFileType:
+			sd.FSTData, err = f.Bytes()
 			if err != nil {
 				return sd, err
 			}

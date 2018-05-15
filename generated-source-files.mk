@@ -31,8 +31,7 @@ genny-map-all:                          \
 	genny-map-segment-mem-postingsmap     \
 	genny-map-segment-mem-fieldsmap       \
 	genny-map-segment-mem-idsmap          \
-	genny-map-segment-fs-postings-offset  \
-	genny-map-segment-fs-fst-terms-offset
+	genny-map-segment-fs-postings-offset
 
 # NB: We use (genny)[1] to combat the lack of generics in Go. It allows us
 # to declare templat-ized versions of code, and specialize using code
@@ -93,25 +92,10 @@ genny-map-segment-mem-idsmap: install-m3x-repo
 genny-map-segment-fs-postings-offset: install-m3x-repo
 	cd $(m3x_package_path) && make hashmap-gen           \
 		pkg=fs                                             \
-		key_type=doc.Field                                 \
+		key_type=fieldAndTerm                              \
 		value_type=uint64                                  \
 		target_package=$(m3ninx_package)/index/segment/fs  \
-		rename_nogen_key=true                              \
 		rename_nogen_value=true                            \
 		rename_type_prefix=postingsOffsets
 	# Rename generated map file
 	mv -f $(m3ninx_package_path)/index/segment/fs/map_gen.go $(m3ninx_package_path)/index/segment/fs/postings_offsets_map_gen.go
-
-# Map generation rule for index/segment/fs/fstTermsOffsetsMap
-.PHONY: genny-map-segment-fs-fst-terms-offset
-genny-map-segment-fs-fst-terms-offset: install-m3x-repo
-	cd $(m3x_package_path) && make hashmap-gen           \
-		pkg=fs                                             \
-		key_type=[]byte                                    \
-		value_type=uint64                                  \
-		target_package=$(m3ninx_package)/index/segment/fs  \
-		rename_nogen_key=true                              \
-		rename_nogen_value=true                            \
-		rename_type_prefix=fstTermsOffsets
-	# Rename generated map file
-	mv -f $(m3ninx_package_path)/index/segment/fs/map_gen.go $(m3ninx_package_path)/index/segment/fs/fst_terms_offsets_map_gen.go

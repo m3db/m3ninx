@@ -69,11 +69,7 @@ type Writer interface {
 	// writer.
 	WritePostingsOffsets(w io.Writer) error
 
-	// WriteFSTTerms writes out the FSTTerms file using the provided writer.
+	// WriteFSTData writes out the FSTData file using the provided writer.
 	// NB(prateek): this must be called after WritePostingsOffsets().
-	WriteFSTTerms(w io.Writer) error
-
-	// WriteFSTFields writes out the FSTFields file using the provided writer.
-	// NB(prateek): this must be called after WriteFSTTerm().
-	WriteFSTFields(w io.Writer) error
+	WriteFSTData(w io.Writer) error
 }
