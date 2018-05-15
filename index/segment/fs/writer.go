@@ -27,7 +27,6 @@ import (
 	"io"
 	"sort"
 
-	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/generated/proto/fswriter"
 	"github.com/m3db/m3ninx/index"
 	sgmt "github.com/m3db/m3ninx/index/segment"
@@ -40,12 +39,10 @@ import (
 
 var (
 	defaultInitialPostingsOffsetsMapSize = 1024
-	defaultInitialFSTTermsOffsetsMapSize = 1024
 	defaultInitialDocOffsetsSize         = 1024
 	defaultInitialIntEncoderSize         = 128
 
 	errUnableToFindPostingsOffset = errors.New("internal error: unable to find postings offset")
-	errUnableToFindFSTTermsOffset = errors.New("internal error: unable to find fst terms offset")
 )
 
 type writer struct {
@@ -63,7 +60,6 @@ type writer struct {
 	postingsFileWritten bool
 	fstTermsFileWritten bool
 	postingsOffsets     *postingsOffsetsMap
-	fstTermsOffsets     *fstTermsOffsetsMap
 	docOffsets          []docOffset
 }
 
@@ -76,7 +72,6 @@ func NewWriter() Writer {
 		docDataWriter:   docs.NewDataWriter(nil),
 		docIndexWriter:  docs.NewIndexWriter(nil),
 		postingsOffsets: newPostingsOffsetsMap(defaultInitialPostingsOffsetsMapSize),
-		fstTermsOffsets: newFSTTermsOffsetsMap(defaultInitialFSTTermsOffsetsMapSize),
 		docOffsets:      make([]docOffset, 0, defaultInitialDocOffsetsSize),
 	}
 }
@@ -96,7 +91,6 @@ func (w *writer) clear() {
 	w.postingsFileWritten = false
 	w.fstTermsFileWritten = false
 	w.postingsOffsets.Reset()
-	w.fstTermsOffsets.Reset()
 	w.docOffsets = w.docOffsets[:0]
 }
 
@@ -231,80 +225,12 @@ func (w *writer) WritePostingsOffsets(iow io.Writer) error {
 	return nil
 }
 
-func (w *writer) WriteFSTTerms(iow io.Writer) error {
+func (w *writer) WriteFSTData(iow io.Writer) error {
 	if !w.postingsFileWritten {
 		return fmt.Errorf("postings offsets have to be written before fst terms can be written")
 	}
 
-	// track offset of writes into `iow`.
-	currentOffset := uint64(0)
-
-	// retrieve all known fields
-	fields, err := w.seg.Fields()
-	if err != nil {
-		return err
-	}
-
-	// build a fst for each field's terms
-	for _, f := range fields {
-		// reset writer for this field's fst
-		if err := w.fstWriter.Reset(iow); err != nil {
-			return err
-		}
-
-		// retrieve all terms for this field
-		terms, err := w.seg.Terms(f)
-		if err != nil {
-			return err
-		}
-
-		// inserts into the fst have to be lexicographically ordered
-		sortSliceOfByteSlices(terms)
-
-		// for each term corresponding to this field
-		for _, t := range terms {
-			// retieve postsings offset for the current field,term
-			po, err := w.getPostingsOffset(f, t)
-			if err != nil {
-				return err
-			}
-
-			// add the term -> posting offset into the term's fst
-			if err := w.fstWriter.Add(t, po); err != nil {
-				return err
-			}
-		}
-
-		// retrieve a serialized representation of the field's fst
-		numBytesFST, err := w.fstWriter.Close()
-		if err != nil {
-			return err
-		}
-
-		// serialize the size of the fst
-		n, err := w.writeSizeAndMagicNumber(iow, numBytesFST)
-		if err != nil {
-			return err
-		}
-
-		// update offset with the number of bytes we've written
-		currentOffset += numBytesFST + n
-
-		// track current offset as the offset for the current field's fst
-		w.addFSTTermsOffset(currentOffset, f)
-	}
-
-	// all good!
-	w.fstTermsFileWritten = true
-	return nil
-}
-
-func (w *writer) WriteFSTFields(iow io.Writer) error {
-	if !w.fstTermsFileWritten {
-		return fmt.Errorf("fst terms files have to be written before fst fields can be written")
-	}
-
-	// reset fst writer
+	// reset writer for this field's fst
 	if err := w.fstWriter.Reset(iow); err != nil {
 		return err
 	}
@@ -315,24 +241,54 @@ func (w *writer) WriteFSTFields(iow io.Writer) error {
 		return err
 	}
 
+	// NB(prateek): need to do this as the private code point (referred to as [S]) affects
+	// the lexicographic ordering in case of prefix-ed words.
+	// E.g. node < nodename but node[S] > nodename[S]
+	for i := range fields {
+		fields[i] = computeFSTKeyWithField(fields[i])
+	}
+
 	// inserts into the fst have to be lexicographically ordered
 	sortSliceOfByteSlices(fields)
 
-	// insert each field into fst
+	// build a fst for each field's terms
 	for _, f := range fields {
-		// get offset for this field's term fst
-		offset, err := w.getFSTTermsOffset(f)
+		// undo the privateCodePoint append to lookup value in postingsOffset map
+		rawFieldAndTerm, err := extractFieldAndTerm(f)
+		if err != nil {
+			return err
+		}
+		rawField := rawFieldAndTerm.field
+
+		// retrieve all terms for this field
+		terms, err := w.seg.Terms(rawField)
 		if err != nil {
 			return err
 		}
 
-		// add field, offset into fst
-		if err := w.fstWriter.Add(f, offset); err != nil {
-			return err
+		// inserts into the fst have to be lexicographically ordered
+		sortSliceOfByteSlices(terms)
+
+		// for each term corresponding to this field
+		for _, t := range terms {
+
+			// retieve postsings offset for the current field,term
+			po, err := w.getPostingsOffset(rawField, t)
+			if err != nil {
+				return fmt.Errorf("%v - unable to find postings offset for [%v, %v]", err, rawField, t)
+			}
+
+			// compute fstKey for the specified field and term
+			fstKey := computeFSTKey(fieldAndTerm{rawField, t})
+
+			// add the term -> posting offset into the term's fst
+			if err := w.fstWriter.Add(fstKey, po); err != nil {
+				return err
+			}
 		}
 	}
 
-	// flush the fst writer
+	// flush fst
 	_, err = w.fstWriter.Close()
 	return err
 }
@@ -369,36 +325,26 @@ func (w *writer) writeSizeAndMagicNumber(iow io.Writer, size uint64) (uint64, er
 	return uint64(n), nil
 }
 
-func (w *writer) addFSTTermsOffset(offset uint64, field []byte) {
-	w.fstTermsOffsets.SetUnsafe(field, offset, fstTermsOffsetsMapSetUnsafeOptions{
-		NoCopyKey:     true,
-		NoFinalizeKey: true,
-	})
-}
-
-func (w *writer) getFSTTermsOffset(field []byte) (uint64, error) {
-	offset, ok := w.fstTermsOffsets.Get(field)
-	if !ok {
-		return 0, errUnableToFindFSTTermsOffset
-	}
-	return offset, nil
+type fieldAndTerm struct {
+	field []byte
+	term  []byte
 }
 
 func (w *writer) addPostingsOffset(offset uint64, name, value []byte) {
-	field := doc.Field{
-		Name:  name,
-		Value: value,
+	f := fieldAndTerm{
+		field: name,
+		term:  value,
 	}
-	w.postingsOffsets.SetUnsafe(field, offset, postingsOffsetsMapSetUnsafeOptions{
+	w.postingsOffsets.SetUnsafe(f, offset, postingsOffsetsMapSetUnsafeOptions{
 		NoCopyKey:     true,
 		NoFinalizeKey: true,
 	})
 }
 
 func (w *writer) getPostingsOffset(name, value []byte) (uint64, error) {
-	field := doc.Field{
-		Name:  name,
-		Value: value,
+	field := fieldAndTerm{
+		field: name,
+		term:  value,
 	}
 	offset, ok := w.postingsOffsets.Get(field)
 	if !ok {
