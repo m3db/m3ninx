@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+
+	"github.com/m3db/m3ninx/index/segment"
 )
 
 var (
@@ -49,6 +51,15 @@ type IndexSegmentFileSetWriter interface {
 	SegmentMetadata() []byte
 	Files() []IndexSegmentFileType
 	WriteFile(fileType IndexSegmentFileType, writer io.Writer) error
+}
+
+// MutableSegmentFileSetWriter is a new IndexSegmentFileSetWriter for writing
+// out Mutable Segments.
+type MutableSegmentFileSetWriter interface {
+	IndexSegmentFileSetWriter
+
+	// Reset resets the writer to write the provided mutable segment.
+	Reset(segment.MutableSegment) error
 }
 
 // IndexFileSetReader is an index file set reader, it can read many segments.
@@ -87,6 +98,58 @@ type IndexSegmentFile interface {
 // IndexSegmentType is the type of an index file set.
 type IndexSegmentType string
 
+const (
+	// FSTIndexSegmentType is a FST IndexSegmentType.
+	FSTIndexSegmentType IndexSegmentType = "fst"
+)
+
+// IndexSegmentFileType is the type of a file in an index file set.
+type IndexSegmentFileType string
+
+const (
+	// DocumentDataIndexSegmentFileType is a document data segment file.
+	DocumentDataIndexSegmentFileType IndexSegmentFileType = "docdata"
+
+	// DocumentIndexIndexSegmentFileType is a document index segment file.
+	DocumentIndexIndexSegmentFileType IndexSegmentFileType = "docidx"
+
+	// PostingsIndexSegmentFileType is a postings List data index segment file.
+	PostingsIndexSegmentFileType IndexSegmentFileType = "postingsdata"
+
+	// FSTFieldsIndexSegmentFileType is a FST Fields index segment file.
+	FSTFieldsIndexSegmentFileType IndexSegmentFileType = "fstfields"
+
+	// FSTTermsIndexSegmentFileType is a FST Terms index segment file.
+	FSTTermsIndexSegmentFileType IndexSegmentFileType = "fstterms"
+)
+
+var (
+	indexSegmentTypes = []IndexSegmentType{
+		FSTIndexSegmentType,
+	}
+
+	indexSegmentFileTypes = []IndexSegmentFileType{
+		DocumentDataIndexSegmentFileType,
+		DocumentIndexIndexSegmentFileType,
+		PostingsIndexSegmentFileType,
+		FSTFieldsIndexSegmentFileType,
+		FSTTermsIndexSegmentFileType,
+	}
+)
+
+func init() {
+	for _, f := range indexSegmentTypes {
+		if err := f.Validate(); err != nil {
+			panic(err)
+		}
+	}
+	for _, f := range indexSegmentFileTypes {
+		if err := f.Validate(); err != nil {
+			panic(err)
+		}
+	}
+}
+
 // Validate validates whether the string value is a valid segment type
 // and contains only lowercase a-z and underscore characters.
 func (t IndexSegmentType) Validate() error {
@@ -97,9 +160,6 @@ func (t IndexSegmentType) Validate() error {
 	}
 	return nil
 }
-
-// IndexSegmentFileType is the type of a file in an index file set.
-type IndexSegmentFileType string
 
 // Validate validates whether the string value is a valid segment file type
 // and contains only lowercase a-z and underscore characters.
