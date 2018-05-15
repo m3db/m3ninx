@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package fields
+package docs
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ const (
 	initialIndexEncoderLen = 256
 )
 
-// IndexWriter is a writer for the index file for stored fields.
+// IndexWriter is a writer for the index file for documents.
 type IndexWriter struct {
 	writer io.Writer
 	enc    *encoding.Encoder
@@ -92,12 +92,20 @@ func (w *IndexWriter) write() error {
 	return nil
 }
 
-// IndexReader is a reader for the index file for stored fields.
+// Reset resets the IndexWriter.
+func (w *IndexWriter) Reset(wr io.Writer) {
+	w.writer = wr
+	w.enc.Reset()
+	w.ready = false
+}
+
+// IndexReader is a reader for the index file for documents.
 type IndexReader struct {
 	data  []byte
 	dec   *encoding.Decoder
 	base  postings.ID
 	limit postings.ID
+	len   int
 }
 
 // NewIndexReader returns a new IndexReader.
@@ -123,6 +131,7 @@ func NewIndexReader(data []byte) (*IndexReader, error) {
 	}
 	r.base = postings.ID(base)
 	r.limit = r.base + postings.ID(count)
+	r.len = count
 	return r, nil
 }
 
@@ -139,6 +148,16 @@ func (r *IndexReader) Read(id postings.ID) (uint64, error) {
 	}
 
 	return offset, nil
+}
+
+// Base returns the base postings ID.
+func (r *IndexReader) Base() postings.ID {
+	return r.base
+}
+
+// Len returns the number of postings IDs.
+func (r *IndexReader) Len() int {
+	return r.len
 }
 
 func (r *IndexReader) index(id postings.ID) int {

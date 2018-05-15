@@ -301,11 +301,15 @@ func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 	require.NoError(t, w.Reset(s))
 
 	var (
+		docsDataBuffer  bytes.Buffer
+		docsIndexBuffer bytes.Buffer
 		postingsBuffer  bytes.Buffer
 		fstTermsBuffer  bytes.Buffer
 		fstFieldsBuffer bytes.Buffer
 	)
 
+	require.NoError(t, w.WriteDocumentsData(&docsDataBuffer))
+	require.NoError(t, w.WriteDocumentsIndex(&docsIndexBuffer))
 	require.NoError(t, w.WritePostingsOffsets(&postingsBuffer))
 	require.NoError(t, w.WriteFSTTerms(&fstTermsBuffer))
 	require.NoError(t, w.WriteFSTFields(&fstFieldsBuffer))
@@ -314,8 +318,8 @@ func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 		MajorVersion:  w.MajorVersion(),
 		MinorVersion:  w.MinorVersion(),
 		Metadata:      w.Metadata(),
-		DocsData:      []byte("FOLLOW(prateek): need to override this once Jerome's changes land"),
-		DocsIdxData:   []byte("FOLLOW(prateek): need to override this once Jerome's changes land"),
+		DocsData:      docsDataBuffer.Bytes(),
+		DocsIdxData:   docsIndexBuffer.Bytes(),
 		PostingsData:  postingsBuffer.Bytes(),
 		FSTTermsData:  fstTermsBuffer.Bytes(),
 		FSTFieldsData: fstFieldsBuffer.Bytes(),
