@@ -96,13 +96,13 @@ func TestIterator(t *testing.T) {
 
 	require.True(t, it.Next())
 	require.Equal(t, docWithIds[0].doc, it.Current())
-	require.Equal(t, docWithIds[0].id, it.ID())
+	require.Equal(t, docWithIds[0].id, it.PostingsID())
 	require.True(t, it.Next())
 	require.Equal(t, docWithIds[1].doc, it.Current())
-	require.Equal(t, docWithIds[1].id, it.ID())
+	require.Equal(t, docWithIds[1].id, it.PostingsID())
 	require.True(t, it.Next())
 	require.Equal(t, docWithIds[2].doc, it.Current())
-	require.Equal(t, docWithIds[2].id, it.ID())
+	require.Equal(t, docWithIds[2].id, it.PostingsID())
 
 	require.False(t, it.Next())
 	require.NoError(t, it.Err())

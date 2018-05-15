@@ -77,10 +77,8 @@ var (
 		},
 	}
 	lotsTestDocuments = util.MustReadDocs("../../util/testdata/node_exporter.json", 2000)
-)
 
-func TestConstruction(t *testing.T) {
-	tests := []struct {
+	testDocuments = []struct {
 		name string
 		docs []doc.Document
 	}{
@@ -93,8 +91,10 @@ func TestConstruction(t *testing.T) {
 			docs: lotsTestDocuments,
 		},
 	}
+)
 
-	for _, test := range tests {
+func TestConstruction(t *testing.T) {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			newTestSegments(t, test.docs)
 		})
@@ -102,21 +102,7 @@ func TestConstruction(t *testing.T) {
 }
 
 func TestSizeEquals(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			require.Equal(t, memSeg.Size(), fstSeg.Size())
@@ -125,21 +111,7 @@ func TestSizeEquals(t *testing.T) {
 }
 
 func TestFieldsEquals(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 
@@ -156,21 +128,7 @@ func TestFieldsEquals(t *testing.T) {
 }
 
 func TestTermEquals(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 
@@ -196,21 +154,7 @@ func TestTermEquals(t *testing.T) {
 }
 
 func TestPostingsListEqualForMatchTerm(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			memReader, err := memSeg.Reader()
@@ -239,21 +183,7 @@ func TestPostingsListEqualForMatchTerm(t *testing.T) {
 }
 
 func TestPostingsListContainsID(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			memIDs, err := memSeg.Terms(doc.IDReservedFieldName)
@@ -268,21 +198,7 @@ func TestPostingsListContainsID(t *testing.T) {
 }
 
 func TestPostingsListRegexAll(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			fields, err := memSeg.Fields()
@@ -303,22 +219,8 @@ func TestPostingsListRegexAll(t *testing.T) {
 	}
 }
 
-func TestDocs(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+func TestSegmentDocs(t *testing.T) {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			memReader, err := memSeg.Reader()
@@ -351,22 +253,8 @@ func TestDocs(t *testing.T) {
 	}
 }
 
-func TestAllDocs(t *testing.T) {
-	tests := []struct {
-		name string
-		docs []doc.Document
-	}{
-		{
-			name: "few documents",
-			docs: fewTestDocuments,
-		},
-		{
-			name: "many documents",
-			docs: lotsTestDocuments,
-		},
-	}
-
-	for _, test := range tests {
+func TestSegmentAllDocs(t *testing.T) {
+	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 			memReader, err := memSeg.Reader()

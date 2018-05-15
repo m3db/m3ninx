@@ -90,7 +90,7 @@ type DocRetriever interface {
 type IDDocIterator interface {
 	doc.Iterator
 
-	ID() postings.ID
+	PostingsID() postings.ID
 }
 
 // Reader provides a point-in-time accessor to the documents in an index.

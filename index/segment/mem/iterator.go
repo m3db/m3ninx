@@ -46,8 +46,8 @@ func (it *boundedPostingsIterator) Next() bool {
 		}
 
 		curr := it.Iterator.Current()
-		// Not assuming that posting IDs are ordered otherwise we could return false if
-		// when we exceeded the end of the range.
+		// We are not assuming that the posting IDs are ordered otherwise we could return
+		// false immediately when we exceed the end of the range.
 		if curr < it.limits.startInclusive || curr >= it.limits.endExclusive {
 			continue
 		}

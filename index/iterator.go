@@ -69,7 +69,7 @@ func (it *idDocIterator) Current() doc.Document {
 	return it.currDoc
 }
 
-func (it *idDocIterator) ID() postings.ID {
+func (it *idDocIterator) PostingsID() postings.ID {
 	return it.currID
 }
 

@@ -153,7 +153,7 @@ func (w *writer) WriteDocumentsData(iow io.Writer) error {
 		w.docOffsets = make([]docOffset, 0, w.seg.Size())
 	}
 	for iter.Next() {
-		id, doc := iter.ID(), iter.Current()
+		id, doc := iter.PostingsID(), iter.Current()
 		n, err := w.docDataWriter.Write(doc)
 		if err != nil {
 			return err
