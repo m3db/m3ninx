@@ -66,6 +66,7 @@ type SegmentData struct {
 	FSTFieldsData []byte
 }
 
+// Validate validates the provided segment data, returning an error if it's not.
 func (sd SegmentData) Validate() error {
 	if sd.MajorVersion != MajorVersion {
 		return errUnsupportedMajorVersion
