@@ -39,8 +39,7 @@ func newTestWriter(t *testing.T, ctrl *gomock.Controller) (
 	s := segment.NewMockMutableSegment(ctrl)
 	w := fs.NewMockWriter(ctrl)
 	w.EXPECT().Reset(s).Return(nil)
-	fn := func() fs.Writer { return w }
-	writer, err := newMutableSegmentFileSetWriter(fn, s)
+	writer, err := newMutableSegmentFileSetWriter(w, s)
 	require.NoError(t, err)
 	return w, writer
 }

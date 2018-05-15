@@ -28,22 +28,20 @@ import (
 	"github.com/m3db/m3ninx/index/segment/fs"
 )
 
-type newFSSegmentWriterFn func() fs.Writer
-
 // NewMutableSegmentFileSetWriter returns a new IndexSegmentFileSetWriter for writing
 // out the provided Mutable Segment.
 func NewMutableSegmentFileSetWriter(
 	seg segment.MutableSegment,
 ) (MutableSegmentFileSetWriter, error) {
-	return newMutableSegmentFileSetWriter(fs.NewWriter, seg)
+	return newMutableSegmentFileSetWriter(fs.NewWriter(), seg)
 }
 
 func newMutableSegmentFileSetWriter(
-	fn newFSSegmentWriterFn,
+	fsWriter fs.Writer,
 	seg segment.MutableSegment,
 ) (MutableSegmentFileSetWriter, error) {
 	w := &writer{
-		fsWriter: fn(),
+		fsWriter: fsWriter,
 	}
 	if err := w.Reset(seg); err != nil {
 		return nil, err
@@ -77,7 +75,7 @@ func (w *writer) SegmentMetadata() []byte {
 
 func (w *writer) Files() []IndexSegmentFileType {
 	// NB(prateek): order is important here. It is the order of files written out,
-	// and needs to be maintained as it is belw
+	// and needs to be maintained as it is below.
 	return []IndexSegmentFileType{
 		DocumentDataIndexSegmentFileType,
 		DocumentIndexIndexSegmentFileType,
