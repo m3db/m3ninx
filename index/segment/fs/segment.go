@@ -127,8 +127,7 @@ func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
 		return nil, fmt.Errorf("unable to load documents index: %v", err)
 	}
 
-	// NB(jeromefroe): Currently we assume the postings IDs are contiguous even though the
-	// underlying index supports non-contiguous postings IDs.
+	// NB(jeromefroe): Currently we assume the postings IDs are contiguous.
 	startInclusive := docsIndexReader.Base()
 	endExclusive := startInclusive + postings.ID(docsIndexReader.Len())
 
@@ -366,15 +365,38 @@ func (r *fsSegment) MatchAll() (postings.MutableList, error) {
 }
 
 func (r *fsSegment) Doc(id postings.ID) (doc.Document, error) {
-	return doc.Document{}, errNotImplemented
+	r.RLock()
+	defer r.RUnlock()
+	if r.closed {
+		return doc.Document{}, errReaderClosed
+	}
+
+	offset, err := r.docsIndexReader.Read(id)
+	if err != nil {
+		return doc.Document{}, err
+	}
+
+	return r.docsDataReader.Read(offset)
 }
 
 func (r *fsSegment) Docs(pl postings.List) (doc.Iterator, error) {
-	return nil, errNotImplemented
+	r.RLock()
+	defer r.RUnlock()
+	if r.closed {
+		return nil, errReaderClosed
+	}
+
+	return index.NewIDDocIterator(r, pl.Iterator()), nil
 }
 
 func (r *fsSegment) AllDocs() (index.IDDocIterator, error) {
-	return nil, errNotImplemented
+	r.RLock()
+	defer r.RUnlock()
+	if r.closed {
+		return nil, errReaderClosed
+	}
+	pi := postings.NewRangeIterator(r.startInclusive, r.endExclusive)
+	return index.NewIDDocIterator(r, pi), nil
 }
 
 func (r *fsSegment) retrievePostingsListWithRLock(postingsOffset uint64) (postings.List, error) {

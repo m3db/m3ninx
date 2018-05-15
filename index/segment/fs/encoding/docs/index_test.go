@@ -39,6 +39,10 @@ func TestStoredFieldsIndex(t *testing.T) {
 		entries []entry
 	}{
 		{
+			name:    "no offsets",
+			entries: []entry{},
+		},
+		{
 			name: "single offset",
 			entries: []entry{
 				entry{id: 0, offset: 0},

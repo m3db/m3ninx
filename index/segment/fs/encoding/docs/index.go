@@ -25,6 +25,7 @@ import (
 	"io"
 	"math"
 
+	"github.com/m3db/m3ninx/index"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/postings"
 )
@@ -110,6 +111,10 @@ type IndexReader struct {
 
 // NewIndexReader returns a new IndexReader.
 func NewIndexReader(data []byte) (*IndexReader, error) {
+	if len(data) == 0 {
+		return &IndexReader{}, nil
+	}
+
 	if len(data) < indexMetadataSize {
 		return nil, io.ErrShortBuffer
 	}
@@ -122,9 +127,9 @@ func NewIndexReader(data []byte) (*IndexReader, error) {
 
 	r := &IndexReader{
 		data: data,
+		dec:  encoding.NewDecoder(data[:8]),
 	}
 
-	r.dec = encoding.NewDecoder(data[:8])
 	base, err := r.dec.Uint64()
 	if err != nil {
 		return nil, fmt.Errorf("could not read base postings ID: %v", err)
@@ -137,7 +142,7 @@ func NewIndexReader(data []byte) (*IndexReader, error) {
 
 func (r *IndexReader) Read(id postings.ID) (uint64, error) {
 	if id < r.base || id >= r.limit {
-		return 0, fmt.Errorf("invalid postings ID %v, must be in the range [%v, %v)", id, r.base, r.limit)
+		return 0, index.ErrDocNotFound
 	}
 
 	idx := r.index(id)
