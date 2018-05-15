@@ -341,12 +341,45 @@ func TestDocs(t *testing.T) {
 
 					memDocs, err := memReader.Docs(memPl)
 					require.NoError(t, err)
-					fstDocs, err := memReader.Docs(fstPl)
+					fstDocs, err := fstReader.Docs(fstPl)
 					require.NoError(t, err)
 
 					assertDocsEqual(t, memDocs, fstDocs)
 				}
 			}
+		})
+	}
+}
+
+func TestAllDocs(t *testing.T) {
+	tests := []struct {
+		name string
+		docs []doc.Document
+	}{
+		{
+			name: "few documents",
+			docs: fewTestDocuments,
+		},
+		{
+			name: "many documents",
+			docs: lotsTestDocuments,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			memSeg, fstSeg := newTestSegments(t, test.docs)
+			memReader, err := memSeg.Reader()
+			require.NoError(t, err)
+			fstReader, err := fstSeg.Reader()
+			require.NoError(t, err)
+
+			memDocs, err := memReader.AllDocs()
+			require.NoError(t, err)
+			fstDocs, err := fstReader.AllDocs()
+			require.NoError(t, err)
+
+			assertDocsEqual(t, memDocs, fstDocs)
 		})
 	}
 }
