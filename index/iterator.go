@@ -35,9 +35,9 @@ type idDocIterator struct {
 	retriever    DocRetriever
 	postingsIter postings.Iterator
 
-	closed  bool
 	currDoc doc.Document
 	currID  postings.ID
+	closed  bool
 	err     error
 }
 

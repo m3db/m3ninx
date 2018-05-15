@@ -36,7 +36,6 @@ var (
 	// ErrDuplicateID is the error returned when a batch contains duplicate IDs.
 	ErrDuplicateID = errors.New("a batch cannot contain duplicate IDs")
 
-	errUnknownPostingsID = errors.New("unknown postings ID specified")
 	errSegmentSealed     = errors.New("unable to seal, segment has already been sealed")
 	errSegmentIsUnsealed = errors.New("un-supported operation on an un-sealed mutable segment")
 )

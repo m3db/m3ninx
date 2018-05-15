@@ -45,7 +45,6 @@ import (
 var (
 	errReaderClosed            = errors.New("segment is closed")
 	errUnsupportedMajorVersion = errors.New("unsupported major version")
-	errNotImplemented          = errors.New("operation not implemented")
 	errDocumentsDataUnset      = errors.New("documents data bytes are not set")
 	errDocumentsIdxUnset       = errors.New("documents index bytes are not set")
 	errPostingsDataUnset       = errors.New("postings data bytes are not set")
