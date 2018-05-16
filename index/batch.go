@@ -73,25 +73,22 @@ func NewBatch(docs []doc.Document, opts ...BatchOption) Batch {
 // BatchPartialError indicates an error was encountered inserting some documents in a batch.
 // It is not safe for concurrent use.
 type BatchPartialError struct {
-	errs []BatchError
-}
-
-// BatchError is an error that occurred for a document being inserted.
-type BatchError struct {
-	Err error
-	Idx int
+	errs []error
+	idxs []int
 }
 
 // NewBatchPartialError returns a new BatchPartialError.
 func NewBatchPartialError() *BatchPartialError {
-	return &BatchPartialError{}
+	return &BatchPartialError{
+		errs: make([]error, 0),
+		idxs: make([]int, 0),
+	}
 }
 
 func (e *BatchPartialError) Error() string {
 	var b bytes.Buffer
 	for i := range e.errs {
-		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v",
-			e.errs[i].Idx, e.errs[i].Err))
+		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v", e.idxs[i], e.errs[i]))
 		if i != len(e.errs)-1 {
 			b.WriteString("\n")
 		}
@@ -100,17 +97,17 @@ func (e *BatchPartialError) Error() string {
 }
 
 // Add adds an error to e. Any nil errors are ignored.
-func (e *BatchPartialError) Add(err BatchError) {
-	if err.Err == nil {
+func (e *BatchPartialError) Add(err error, idx int) {
+	if err == nil {
 		return
 	}
 	e.errs = append(e.errs, err)
+	e.idxs = append(e.idxs, idx)
 }
 
-// Errs returns the errors with the indexes of the documents in the batch
-// which were not indexed.
-func (e *BatchPartialError) Errs() []BatchError {
-	return e.errs
+// Indices returns the indices of the documents in the batch which were not indexed.
+func (e *BatchPartialError) Indices() []int {
+	return e.idxs
 }
 
 // IsEmpty returns a bool indicating whether e is empty or not.
