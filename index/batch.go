@@ -107,16 +107,24 @@ func (e *BatchPartialError) Error() string {
 
 // NonDuplicateIDErrors returns all errors != ErrDuplicateID.
 func (e *BatchPartialError) NonDuplicateIDErrors() string {
-	var b bytes.Buffer
+	var (
+		b         bytes.Buffer
+		onlyDupes = true
+	)
+
 	for i := range e.errs {
 		if e.errs[i].Err == ErrDuplicateID {
 			continue
 		}
+		onlyDupes = false
 		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v",
 			e.errs[i].Idx, e.errs[i].Err))
 		if i != len(e.errs)-1 {
 			b.WriteString("\n")
 		}
+	}
+	if onlyDupes {
+		b.WriteString("only encountered duplicate ID errors")
 	}
 	return b.String()
 }
