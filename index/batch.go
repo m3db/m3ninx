@@ -22,9 +22,15 @@ package index
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/m3db/m3ninx/doc"
+)
+
+var (
+	// ErrDuplicateID is the error returned when a batch contains duplicate IDs.
+	ErrDuplicateID = errors.New("a batch cannot contain duplicate IDs")
 )
 
 // Batch represents a batch of documents that should be inserted into the index.
@@ -90,6 +96,22 @@ func NewBatchPartialError() *BatchPartialError {
 func (e *BatchPartialError) Error() string {
 	var b bytes.Buffer
 	for i := range e.errs {
+		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v",
+			e.errs[i].Idx, e.errs[i].Err))
+		if i != len(e.errs)-1 {
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
+}
+
+// NonDuplicateIDErrors returns all errors != ErrDuplicateID.
+func (e *BatchPartialError) NonDuplicateIDErrors() string {
+	var b bytes.Buffer
+	for i := range e.errs {
+		if e.errs[i].Err == ErrDuplicateID {
+			continue
+		}
 		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v",
 			e.errs[i].Idx, e.errs[i].Err))
 		if i != len(e.errs)-1 {
