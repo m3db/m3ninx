@@ -167,8 +167,8 @@ func (d Document) Validate() error {
 			return fmt.Errorf("document contains invalid field name: %v", f.Name)
 		}
 
-		if bytes.Index(f.Name, ReservedCodePoint) != -1 || bytes.Index(f.Value, ReservedCodePoint) != -1 {
-			return fmt.Errorf("document uses a reserved Unicode non-character.")
+		if bytes.Contains(f.Name, ReservedCodePoint) || bytes.Contains(f.Value, ReservedCodePoint) {
+			return fmt.Errorf("document uses a reserved Unicode non-character")
 		}
 
 		if bytes.Equal(f.Name, IDReservedFieldName) {

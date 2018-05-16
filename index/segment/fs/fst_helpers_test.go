@@ -107,6 +107,6 @@ func genBytes() gopter.Gen {
 			return []byte(s)
 		}).
 		SuchThat(func(b []byte) bool {
-			return len(b) > 0 && bytes.Index(b, privateCodePoint) == -1
+			return len(b) > 0 && !bytes.Contains(b, privateCodePoint)
 		})
 }
