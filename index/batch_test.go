@@ -22,6 +22,7 @@ package index
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,4 +73,25 @@ func TestBatchPartialError(t *testing.T) {
 
 	require.True(t, IsBatchPartialError(err))
 	require.False(t, IsBatchPartialError(errors.New("error")))
+}
+
+func TestBatchPartialErrorDupeFilter(t *testing.T) {
+	var (
+		idxs = []int{3, 7, 13}
+		err  = NewBatchPartialError()
+	)
+	require.True(t, err.IsEmpty())
+
+	for _, idx := range idxs {
+		err.Add(BatchError{ErrDuplicateID, idx})
+	}
+	require.False(t, err.IsEmpty())
+
+	var actualIdxs []int
+	for _, err := range err.Errs() {
+		actualIdxs = append(actualIdxs, err.Idx)
+	}
+	require.Equal(t, idxs, actualIdxs)
+	require.False(t, strings.Contains(err.NonDuplicateIDErrors(),
+		"failed to insert document at index"))
 }
