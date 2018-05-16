@@ -22,7 +22,7 @@ package index
 
 import (
 	"errors"
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -91,7 +91,34 @@ func TestBatchPartialErrorDupeFilter(t *testing.T) {
 	for _, err := range err.Errs() {
 		actualIdxs = append(actualIdxs, err.Idx)
 	}
-	require.Equal(t, idxs, actualIdxs)
-	require.False(t, strings.Contains(err.NonDuplicateIDErrors(),
-		"failed to insert document at index"))
+
+	filtered := err.FilterDuplicateIDErrors()
+	require.Nil(t, filtered)
+}
+
+func TestBatchPartialErrorDupeFilterIncludeOther(t *testing.T) {
+	testErr := fmt.Errorf("testerr")
+
+	err := NewBatchPartialError()
+	err.Add(BatchError{ErrDuplicateID, 0})
+	filtered := err.FilterDuplicateIDErrors()
+	require.Nil(t, filtered)
+
+	err.Add(BatchError{testErr, 1})
+	filtered = err.FilterDuplicateIDErrors()
+	require.NotNil(t, filtered)
+
+}
+
+func TestBatchPartialErrorDupeFilterSingleElement(t *testing.T) {
+	testErr := fmt.Errorf("testerr")
+
+	err := NewBatchPartialError()
+	err.Add(BatchError{testErr, 1})
+	original := err.FilterDuplicateIDErrors()
+	require.NotNil(t, original)
+
+	err.Add(BatchError{ErrDuplicateID, 0})
+	after := err.FilterDuplicateIDErrors()
+	require.Equal(t, original.Error(), after.Error())
 }

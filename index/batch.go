@@ -105,28 +105,29 @@ func (e *BatchPartialError) Error() string {
 	return b.String()
 }
 
-// NonDuplicateIDErrors returns all errors != ErrDuplicateID.
-func (e *BatchPartialError) NonDuplicateIDErrors() string {
+// FilterDuplicateIDErrors returns a new BatchPartialError (or nil), without
+// any DuplicateIDError(s).
+// NB(prateek): it mutates the order of errors in the original error to avoid
+// allocations.
+func (e *BatchPartialError) FilterDuplicateIDErrors() *BatchPartialError {
+	// cheap to do the copy as it's just pointers for the slices
 	var (
-		b         bytes.Buffer
-		onlyDupes = true
+		errs = e.errs
+		i    = 0
 	)
 
-	for i := range e.errs {
-		if e.errs[i].Err == ErrDuplicateID {
+	for i < len(errs) {
+		if errs[i].Err == ErrDuplicateID {
+			errs[i], errs[len(errs)-1] = errs[len(errs)-1], errs[i]
+			errs = errs[:len(errs)-1]
 			continue
 		}
-		onlyDupes = false
-		b.WriteString(fmt.Sprintf("failed to insert document at index %v in batch: %v",
-			e.errs[i].Idx, e.errs[i].Err))
-		if i != len(e.errs)-1 {
-			b.WriteString("\n")
-		}
+		i++
 	}
-	if onlyDupes {
-		b.WriteString("only encountered duplicate ID errors")
+	if len(errs) == 0 {
+		return nil
 	}
-	return b.String()
+	return &BatchPartialError{errs: errs}
 }
 
 // Add adds an error to e. Any nil errors are ignored.
