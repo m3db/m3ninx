@@ -49,8 +49,7 @@ func TestWriterFiles(t *testing.T) {
 		DocumentDataIndexSegmentFileType,
 		DocumentIndexIndexSegmentFileType,
 		PostingsIndexSegmentFileType,
-		FSTTermsIndexSegmentFileType,
-		FSTFieldsIndexSegmentFileType,
+		FSTDataIndexSegmentFileType,
 	})
 }
 
@@ -70,9 +69,6 @@ func TestWriterWriteFile(t *testing.T) {
 	fsWriter.EXPECT().WritePostingsOffsets(iow).Return(nil)
 	require.NoError(t, w.WriteFile(PostingsIndexSegmentFileType, iow))
 
-	fsWriter.EXPECT().WriteFSTFields(iow).Return(nil)
-	require.NoError(t, w.WriteFile(FSTFieldsIndexSegmentFileType, iow))
-
-	fsWriter.EXPECT().WriteFSTTerms(iow).Return(nil)
-	require.NoError(t, w.WriteFile(FSTTermsIndexSegmentFileType, iow))
+	fsWriter.EXPECT().WriteFSTData(iow).Return(nil)
+	require.NoError(t, w.WriteFile(FSTDataIndexSegmentFileType, iow))
 }

@@ -113,18 +113,12 @@ func TestReaderValidateAllByteAccess(t *testing.T) {
 	postingsFile.EXPECT().SegmentFileType().Return(PostingsIndexSegmentFileType)
 	postingsFile.EXPECT().Bytes().Return([]byte{}, nil)
 
-	fstFieldsFile := NewMockIndexSegmentFile(ctrl)
-	fstFieldsFile.EXPECT().SegmentFileType().Return(FSTFieldsIndexSegmentFileType)
-	fstFieldsFile.EXPECT().Bytes().Return([]byte{}, nil)
-
-	fstTermsFile := NewMockIndexSegmentFile(ctrl)
-	fstTermsFile.EXPECT().SegmentFileType().Return(FSTTermsIndexSegmentFileType)
-	fstTermsFile.EXPECT().Bytes().Return([]byte{}, nil)
+	fstDataFile := NewMockIndexSegmentFile(ctrl)
+	fstDataFile.EXPECT().SegmentFileType().Return(FSTDataIndexSegmentFileType)
+	fstDataFile.EXPECT().Bytes().Return([]byte{}, nil)
 
 	fset.EXPECT().Files().Return([]IndexSegmentFile{docsDataFile, docsIdxFile,
-		postingsFile,
-		fstFieldsFile,
-		fstTermsFile})
+		postingsFile, fstDataFile})
 
 	sd, err := filesetToSegmentData(fset)
 	require.NoError(t, err)

@@ -21,11 +21,11 @@
 package fs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/generated/proto/fswriter"
@@ -47,23 +47,18 @@ var (
 	errDocumentsDataUnset      = errors.New("documents data bytes are not set")
 	errDocumentsIdxUnset       = errors.New("documents index bytes are not set")
 	errPostingsDataUnset       = errors.New("postings data bytes are not set")
-	errFSTTermsDataUnset       = errors.New("fst terms data bytes are not set")
-	errFSTFieldsDataUnset      = errors.New("fst fields data bytes are not set")
-
-	minByteKey = []byte{}
-	maxByteKey = []byte(string(utf8.MaxRune))
+	errFSTDataUnset            = errors.New("fst data bytes are not set")
 )
 
 // SegmentData represent the collection of required parameters to construct a Segment.
 type SegmentData struct {
-	MajorVersion  int
-	MinorVersion  int
-	Metadata      []byte
-	DocsData      []byte
-	DocsIdxData   []byte
-	PostingsData  []byte
-	FSTTermsData  []byte
-	FSTFieldsData []byte
+	MajorVersion int
+	MinorVersion int
+	Metadata     []byte
+	DocsData     []byte
+	DocsIdxData  []byte
+	PostingsData []byte
+	FSTData      []byte
 }
 
 // Validate validates the provided segment data, returning an error if it's not.
@@ -84,12 +79,8 @@ func (sd SegmentData) Validate() error {
 		return errPostingsDataUnset
 	}
 
-	if sd.FSTTermsData == nil {
-		return errFSTTermsDataUnset
-	}
-
-	if sd.FSTFieldsData == nil {
-		return errFSTFieldsDataUnset
+	if sd.FSTData == nil {
+		return errFSTDataUnset
 	}
 
 	return nil
@@ -115,9 +106,9 @@ func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
 		return nil, fmt.Errorf("unsupported postings format: %v", metadata.PostingsFormat.String())
 	}
 
-	fieldsFST, err := vellum.Load(data.FSTFieldsData)
+	fieldsFST, err := vellum.Load(data.FSTData)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load fields fst: %v", err)
+		return nil, fmt.Errorf("unable to load fst: %v", err)
 	}
 
 	docsIndexReader, err := docs.NewIndexReader(data.DocsIdxData)
@@ -176,19 +167,9 @@ func (r *fsSegment) ContainsID(docID []byte) (bool, error) {
 		return false, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFSTWithRLock(doc.IDReservedFieldName)
-	if err != nil {
-		return false, err
-	}
-	fstCloser := x.NewSafeCloser(termsFST)
-	defer fstCloser.Close()
-
-	_, exists, err := termsFST.Get(docID)
-	if err != nil {
-		return false, err
-	}
-
-	return exists, fstCloser.Close()
+	fstKey := computeFSTKey(fieldAndTerm{doc.IDReservedFieldName, docID})
+	_, exists, err := r.fieldsFST.Get(fstKey)
+	return exists, err
 }
 
 func (r *fsSegment) Reader() (index.Reader, error) {
@@ -223,7 +204,40 @@ func (r *fsSegment) Fields() ([][]byte, error) {
 		return nil, errReaderClosed
 	}
 
-	return r.allKeys(r.fieldsFST)
+	iter, iterErr := r.fieldsFST.Iterator(minByteKey, maxByteKey)
+	safeCloser := x.NewSafeCloser(iter)
+	defer safeCloser.Close()
+
+	var (
+		num       = r.fieldsFST.Len() / 100
+		fields    = make([][]byte, 0, num)
+		lastField []byte
+	)
+
+	for {
+		if iterErr == vellum.ErrIteratorDone {
+			break
+		}
+		if iterErr != nil {
+			return nil, iterErr
+		}
+		fstKey, _ := iter.Current()
+		ft, err := extractFieldAndTerm(fstKey)
+		if err != nil {
+			return nil, fmt.Errorf("internal error decoding fst: %v", err)
+		}
+		if !bytes.Equal(ft.field, lastField) {
+			lastField = r.copyBytes(ft.field)
+			fields = append(fields, lastField)
+		}
+		iterErr = iter.Next()
+	}
+
+	if err := safeCloser.Close(); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
 }
 
 func (r *fsSegment) Terms(field []byte) ([][]byte, error) {
@@ -233,20 +247,33 @@ func (r *fsSegment) Terms(field []byte) ([][]byte, error) {
 		return nil, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFSTWithRLock(field)
-	if err != nil {
-		return nil, err
+	minKey, maxKey := computeFSTBoundsForField(field)
+	iter, iterErr := r.fieldsFST.Iterator(minKey, maxKey)
+	safeCloser := x.NewSafeCloser(iter)
+	defer safeCloser.Close()
+
+	var (
+		num   = r.fieldsFST.Len() / 1000
+		terms = make([][]byte, 0, num)
+	)
+
+	for {
+		if iterErr == vellum.ErrIteratorDone {
+			break
+		}
+		if iterErr != nil {
+			return nil, iterErr
+		}
+		fstKey, _ := iter.Current()
+		ft, err := extractFieldAndTerm(fstKey)
+		if err != nil {
+			return nil, fmt.Errorf("internal error decoding fst: %v", err)
+		}
+		terms = append(terms, r.copyBytes(ft.term))
+		iterErr = iter.Next()
 	}
 
-	fstCloser := x.NewSafeCloser(termsFST)
-	defer fstCloser.Close()
-
-	terms, err := r.allKeys(termsFST)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := fstCloser.Close(); err != nil {
+	if err := safeCloser.Close(); err != nil {
 		return nil, err
 	}
 
@@ -260,14 +287,8 @@ func (r *fsSegment) MatchTerm(field []byte, term []byte) (postings.List, error) 
 		return nil, errReaderClosed
 	}
 
-	termsFST, err := r.retrieveTermsFSTWithRLock(field)
-	if err != nil {
-		return nil, err
-	}
-	fstCloser := x.NewSafeCloser(termsFST)
-	defer fstCloser.Close()
-
-	postingsOffset, exists, err := termsFST.Get(term)
+	fstKey := computeFSTKey(fieldAndTerm{field, term})
+	postingsOffset, exists, err := r.fieldsFST.Get(fstKey)
 	if err != nil {
 		return nil, err
 	}
@@ -277,16 +298,7 @@ func (r *fsSegment) MatchTerm(field []byte, term []byte) (postings.List, error) 
 		return r.opts.PostingsListPool.Get(), nil
 	}
 
-	pl, err := r.retrievePostingsListWithRLock(postingsOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := fstCloser.Close(); err != nil {
-		return nil, err
-	}
-
-	return pl, nil
+	return r.retrievePostingsListWithRLock(postingsOffset)
 }
 
 func (r *fsSegment) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Regexp) (postings.List, error) {
@@ -296,26 +308,19 @@ func (r *fsSegment) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Re
 		return nil, errReaderClosed
 	}
 
-	re, err := vregex.New(string(regexp))
-	if err != nil {
-		return nil, err
-	}
-
-	termsFST, err := r.retrieveTermsFSTWithRLock(field)
+	fstKey := computeFSTKey(fieldAndTerm{field, regexp})
+	re, err := vregex.New(string(fstKey))
 	if err != nil {
 		return nil, err
 	}
 
 	var (
-		fstCloser     = x.NewSafeCloser(termsFST)
-		pl            = r.opts.PostingsListPool.Get()
-		iter, iterErr = termsFST.Search(re, minByteKey, maxByteKey)
-		iterCloser    = x.NewSafeCloser(iter)
+		minKey, maxKey = computeFSTBoundsForField(field)
+		iter, iterErr  = r.fieldsFST.Search(re, minKey, maxKey)
+		iterCloser     = x.NewSafeCloser(iter)
+		pl             = r.opts.PostingsListPool.Get()
 	)
-	defer func() {
-		iterCloser.Close()
-		fstCloser.Close()
-	}()
+	defer iterCloser.Close()
 
 	for {
 		if iterErr == vellum.ErrIteratorDone {
@@ -339,10 +344,6 @@ func (r *fsSegment) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Re
 	}
 
 	if err := iterCloser.Close(); err != nil {
-		return nil, err
-	}
-
-	if err := fstCloser.Close(); err != nil {
 		return nil, err
 	}
 
@@ -404,50 +405,6 @@ func (r *fsSegment) retrievePostingsListWithRLock(postingsOffset uint64) (postin
 	}
 
 	return pilosa.Unmarshal(postingsBytes, roaring.NewPostingsList)
-}
-
-func (r *fsSegment) allKeys(fst *vellum.FST) ([][]byte, error) {
-	num := fst.Len()
-	keys := make([][]byte, 0, num)
-
-	iter, iterErr := fst.Iterator(minByteKey, maxByteKey)
-	safeCloser := x.NewSafeCloser(iter)
-	defer safeCloser.Close()
-
-	for {
-		if iterErr == vellum.ErrIteratorDone {
-			break
-		}
-		if iterErr != nil {
-			return nil, iterErr
-		}
-		key, _ := iter.Current()
-		keys = append(keys, r.copyBytes(key))
-		iterErr = iter.Next()
-	}
-
-	if err := safeCloser.Close(); err != nil {
-		return nil, err
-	}
-	return keys, nil
-}
-
-func (r *fsSegment) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
-	termsFSTOffset, exists, err := r.fieldsFST.Get(field)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
-		return nil, fmt.Errorf("no terms known for field: %v", string(field))
-	}
-
-	termsFSTBytes, err := r.retrieveBytesWithRLock(r.data.FSTTermsData, termsFSTOffset)
-	if err != nil {
-		return nil, fmt.Errorf("error while decoding terms fst: %v", err)
-	}
-
-	return vellum.Load(termsFSTBytes)
 }
 
 // retrieveBytesWithRLock assumes the base []byte slice is a collection of (payload, size, magicNumber) triples,

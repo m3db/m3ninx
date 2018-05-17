@@ -33,8 +33,14 @@ var (
 	errEmptyDocument     = errors.New("document cannot be empty")
 )
 
-// IDReservedFieldName is the field name reserved for IDs.
-var IDReservedFieldName = []byte("_m3ninx_id")
+var (
+	// IDReservedFieldName is the field name reserved for IDs.
+	IDReservedFieldName = []byte("_m3ninx_id")
+
+	// ReservedCodePoint is a Unicode non-character reserved for internal usage by the library.
+	// More details about non-characters here: https://www.unicode.org/faq/private_use.html#nonchar1
+	ReservedCodePoint = []byte(string(rune(0xFDEF)))
+)
 
 // Field represents a field in a document. It is composed of a name and a value.
 type Field struct {
@@ -159,6 +165,10 @@ func (d Document) Validate() error {
 		// TODO: Should we enforce uniqueness of field names?
 		if !utf8.Valid(f.Name) {
 			return fmt.Errorf("document contains invalid field name: %v", f.Name)
+		}
+
+		if bytes.Contains(f.Name, ReservedCodePoint) || bytes.Contains(f.Value, ReservedCodePoint) {
+			return fmt.Errorf("document uses a reserved Unicode non-character")
 		}
 
 		if bytes.Equal(f.Name, IDReservedFieldName) {

@@ -22,33 +22,46 @@ package fs
 
 import (
 	"bytes"
+	"fmt"
+	"unicode/utf8"
 
-	"github.com/cespare/xxhash"
+	"github.com/m3db/m3ninx/doc"
 )
 
-// newFSTTermsOffsetsMap returns a new fstTermsOffsetsMap with default ctor parameters.
-func newFSTTermsOffsetsMap(initialSize int) *fstTermsOffsetsMap {
-	return _fstTermsOffsetsMapAlloc(_fstTermsOffsetsMapOptions{
-		hash: func(k []byte) fstTermsOffsetsMapHash {
-			return fstTermsOffsetsMapHash(xxhash.Sum64(k))
-		},
-		equals: func(f, g []byte) bool {
-			return bytes.Equal(f, g)
-		},
-		copy:        undefinedFSTTermsOffsetsMapCopyFn,
-		finalize:    undefinedFSTTermsOffsetsMapFinalizeFn,
-		initialSize: initialSize,
-	})
+var (
+	privateCodePoint    = doc.ReservedCodePoint
+	privateCodePointLen = len(privateCodePoint)
+
+	minByteKey = []byte{}
+	maxByteKey = []byte(string(utf8.MaxRune))
+)
+
+func extractFieldAndTerm(entry []byte) (fieldAndTerm, error) {
+	result := fieldAndTerm{}
+	idx := bytes.Index(entry, privateCodePoint)
+	if idx == -1 {
+		return result, fmt.Errorf("invalid entry, did not find separator")
+	}
+	result.field = entry[:idx]
+	if idx+privateCodePointLen > len(entry) {
+		return result, fmt.Errorf("entry is too small, did not find term")
+
+	}
+	result.term = entry[idx+privateCodePointLen:]
+	return result, nil
 }
 
-var undefinedFSTTermsOffsetsMapCopyFn fstTermsOffsetsMapCopyFn = func([]byte) []byte {
-	// NB: intentionally not defined to force users of the map to not
-	// allocate extra copies.
-	panic("not implemented")
+func computeFSTKeyWithField(field []byte) []byte {
+	return append(
+		append([]byte(nil), field...), privateCodePoint...)
 }
 
-var undefinedFSTTermsOffsetsMapFinalizeFn fstTermsOffsetsMapFinalizeFn = func([]byte) {
-	// NB: intentionally not defined to force users of the map to not
-	// allocate extra copies.
-	panic("not implemented")
+func computeFSTKey(ft fieldAndTerm) []byte {
+	return append(computeFSTKeyWithField(ft.field), ft.term...)
+}
+
+func computeFSTBoundsForField(field []byte) (min []byte, max []byte) {
+	min = computeFSTKeyWithField(field)
+	max = append(min, maxByteKey...)
+	return min, max
 }

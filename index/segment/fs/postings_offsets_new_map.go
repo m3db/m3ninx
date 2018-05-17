@@ -23,23 +23,21 @@ package fs
 import (
 	"bytes"
 
-	"github.com/m3db/m3ninx/doc"
-
 	"github.com/cespare/xxhash"
 )
 
 // newPostingsOffsetsMap returns a new postingsOffsetsMap with default ctor parameters.
 func newPostingsOffsetsMap(initialSize int) *postingsOffsetsMap {
 	return _postingsOffsetsMapAlloc(_postingsOffsetsMapOptions{
-		hash: func(f doc.Field) postingsOffsetsMapHash {
+		hash: func(f fieldAndTerm) postingsOffsetsMapHash {
 			// NB(pratee): Similar to the standard composite key hashes for Java objects
 			hash := uint64(7)
-			hash = 31*hash + xxhash.Sum64(f.Name)
-			hash = 31*hash + xxhash.Sum64(f.Value)
+			hash = 31*hash + xxhash.Sum64(f.field)
+			hash = 31*hash + xxhash.Sum64(f.term)
 			return postingsOffsetsMapHash(hash)
 		},
-		equals: func(f, g doc.Field) bool {
-			return bytes.Equal(f.Name, g.Name) && bytes.Equal(f.Value, g.Value)
+		equals: func(f, g fieldAndTerm) bool {
+			return bytes.Equal(f.field, g.field) && bytes.Equal(f.term, g.term)
 		},
 		copy:        undefinedPostingsOffsetsMapCopyFn,
 		finalize:    undefinedPostingsOffsetsMapFinalizeFn,
@@ -47,13 +45,13 @@ func newPostingsOffsetsMap(initialSize int) *postingsOffsetsMap {
 	})
 }
 
-var undefinedPostingsOffsetsMapCopyFn postingsOffsetsMapCopyFn = func(doc.Field) doc.Field {
+var undefinedPostingsOffsetsMapCopyFn postingsOffsetsMapCopyFn = func(fieldAndTerm) fieldAndTerm {
 	// NB: intentionally not defined to force users of the map to not
 	// allocate extra copies.
 	panic("not implemented")
 }
 
-var undefinedPostingsOffsetsMapFinalizeFn postingsOffsetsMapFinalizeFn = func(doc.Field) {
+var undefinedPostingsOffsetsMapFinalizeFn postingsOffsetsMapFinalizeFn = func(fieldAndTerm) {
 	// NB: intentionally not defined to force users of the map to not
 	// allocate extra copies.
 	panic("not implemented")

@@ -4,8 +4,6 @@
 
 package fs
 
-import "github.com/m3db/m3ninx/doc"
-
 // Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,16 +29,16 @@ import "github.com/m3db/m3ninx/doc"
 type postingsOffsetsMapHash uint64
 
 // postingsOffsetsMapHashFn is the hash function to execute when hashing a key.
-type postingsOffsetsMapHashFn func(doc.Field) postingsOffsetsMapHash
+type postingsOffsetsMapHashFn func(fieldAndTerm) postingsOffsetsMapHash
 
 // postingsOffsetsMapEqualsFn is the equals key function to execute when detecting equality of a key.
-type postingsOffsetsMapEqualsFn func(doc.Field, doc.Field) bool
+type postingsOffsetsMapEqualsFn func(fieldAndTerm, fieldAndTerm) bool
 
 // postingsOffsetsMapCopyFn is the copy key function to execute when copying the key.
-type postingsOffsetsMapCopyFn func(doc.Field) doc.Field
+type postingsOffsetsMapCopyFn func(fieldAndTerm) fieldAndTerm
 
 // postingsOffsetsMapFinalizeFn is the finalize key function to execute when finished with a key.
-type postingsOffsetsMapFinalizeFn func(doc.Field)
+type postingsOffsetsMapFinalizeFn func(fieldAndTerm)
 
 // postingsOffsetsMap uses the genny package to provide a generic hash map that can be specialized
 // by running the following command from this root of the repository:
@@ -97,12 +95,12 @@ type postingsOffsetsMapEntry struct {
 }
 
 type _postingsOffsetsMapKey struct {
-	key      doc.Field
+	key      fieldAndTerm
 	finalize bool
 }
 
 // Key returns the map entry key.
-func (e postingsOffsetsMapEntry) Key() doc.Field {
+func (e postingsOffsetsMapEntry) Key() fieldAndTerm {
 	return e.key.key
 }
 
@@ -121,7 +119,7 @@ func _postingsOffsetsMapAlloc(opts _postingsOffsetsMapOptions) *postingsOffsetsM
 	return m
 }
 
-func (m *postingsOffsetsMap) newMapKey(k doc.Field, opts _postingsOffsetsMapKeyOptions) _postingsOffsetsMapKey {
+func (m *postingsOffsetsMap) newMapKey(k fieldAndTerm, opts _postingsOffsetsMapKeyOptions) _postingsOffsetsMapKey {
 	key := _postingsOffsetsMapKey{key: k, finalize: opts.finalizeKey}
 	if !opts.copyKey {
 		return key
@@ -139,7 +137,7 @@ func (m *postingsOffsetsMap) removeMapKey(hash postingsOffsetsMapHash, key _post
 }
 
 // Get returns a value in the map for an identifier if found.
-func (m *postingsOffsetsMap) Get(k doc.Field) (uint64, bool) {
+func (m *postingsOffsetsMap) Get(k fieldAndTerm) (uint64, bool) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -153,7 +151,7 @@ func (m *postingsOffsetsMap) Get(k doc.Field) (uint64, bool) {
 }
 
 // Set will set the value for an identifier.
-func (m *postingsOffsetsMap) Set(k doc.Field, v uint64) {
+func (m *postingsOffsetsMap) Set(k fieldAndTerm, v uint64) {
 	m.set(k, v, _postingsOffsetsMapKeyOptions{
 		copyKey:     true,
 		finalizeKey: m.finalize != nil,
@@ -169,7 +167,7 @@ type postingsOffsetsMapSetUnsafeOptions struct {
 
 // SetUnsafe will set the value for an identifier with unsafe options for how
 // the map treats the key.
-func (m *postingsOffsetsMap) SetUnsafe(k doc.Field, v uint64, opts postingsOffsetsMapSetUnsafeOptions) {
+func (m *postingsOffsetsMap) SetUnsafe(k fieldAndTerm, v uint64, opts postingsOffsetsMapSetUnsafeOptions) {
 	m.set(k, v, _postingsOffsetsMapKeyOptions{
 		copyKey:     !opts.NoCopyKey,
 		finalizeKey: !opts.NoFinalizeKey,
@@ -181,7 +179,7 @@ type _postingsOffsetsMapKeyOptions struct {
 	finalizeKey bool
 }
 
-func (m *postingsOffsetsMap) set(k doc.Field, v uint64, opts _postingsOffsetsMapKeyOptions) {
+func (m *postingsOffsetsMap) set(k fieldAndTerm, v uint64, opts _postingsOffsetsMapKeyOptions) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
@@ -215,13 +213,13 @@ func (m *postingsOffsetsMap) Len() int {
 
 // Contains returns true if value exists for key, false otherwise, it is
 // shorthand for a call to Get that doesn't return the value.
-func (m *postingsOffsetsMap) Contains(k doc.Field) bool {
+func (m *postingsOffsetsMap) Contains(k fieldAndTerm) bool {
 	_, ok := m.Get(k)
 	return ok
 }
 
 // Delete will remove a value set in the map for the specified key.
-func (m *postingsOffsetsMap) Delete(k doc.Field) {
+func (m *postingsOffsetsMap) Delete(k fieldAndTerm) {
 	hash := m.hash(k)
 	for entry, ok := m.lookup[hash]; ok; entry, ok = m.lookup[hash] {
 		if m.equals(entry.key.key, k) {
