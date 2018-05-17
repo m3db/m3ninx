@@ -17,7 +17,7 @@ install-m3x-repo: install-glide install-generics-bin
 
 # Generation rule for all generated types
 .PHONY: genny-all
-genny-all: genny-map-all
+genny-all: genny-map-all genny-arraypool-all
 
 # Tests that all currently generated types match their contents if they were regenerated
 .PHONY: test-genny-all
@@ -115,3 +115,21 @@ genny-map-segment-fs-fst-terms-offset: install-m3x-repo
 		rename_type_prefix=fstTermsOffsets
 	# Rename generated map file
 	mv -f $(m3ninx_package_path)/index/segment/fs/map_gen.go $(m3ninx_package_path)/index/segment/fs/fst_terms_offsets_map_gen.go
+
+
+# generation rule for all generated arraypools
+.PHONY: genny-arraypool-all
+genny-arraypool-all:                     \
+	genny-arraypool-bytes-slice-array-pool
+
+# arraypool generation rule for ./x/bytes.SliceArrayPool
+.PHONY: genny-arraypool-bytes-slice-array-pool
+genny-arraypool-bytes-slice-array-pool: install-m3x-repo
+	cd $(m3x_package_path) && make genny-arraypool \
+	pkg=bytes                                      \
+	elem_type=[]byte                               \
+	target_package=$(m3ninx_package)/x/bytes       \
+	out_file=slice_arraypool_gen.go                \
+	rename_type_prefix=Slice                       \
+	rename_type_middle=Slice                       \
+	rename_constructor=NewSliceArrayPool

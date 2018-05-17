@@ -36,7 +36,7 @@ func TestReaderValidateType(t *testing.T) {
 
 	fset := NewMockIndexSegmentFileSet(ctrl)
 	fset.EXPECT().SegmentType().Return(IndexSegmentType("random"))
-	_, err := NewSegment(fset, fs.NewSegmentOpts{})
+	_, err := NewSegment(fset, nil)
 	require.Error(t, err)
 }
 
@@ -51,7 +51,7 @@ func TestReaderValidateDataSlices(t *testing.T) {
 	fset.EXPECT().SegmentMetadata().Return([]byte{})
 	fset.EXPECT().Files().Return(nil)
 
-	_, err := NewSegment(fset, fs.NewSegmentOpts{})
+	_, err := NewSegment(fset, nil)
 	require.Error(t, err)
 }
 
@@ -70,7 +70,7 @@ func TestReaderValidateByteAccess(t *testing.T) {
 	docsDataFile.EXPECT().Bytes().Return(nil, fmt.Errorf("random"))
 	fset.EXPECT().Files().Return([]IndexSegmentFile{docsDataFile})
 
-	_, err := NewSegment(fset, fs.NewSegmentOpts{})
+	_, err := NewSegment(fset, nil)
 	require.Error(t, err)
 }
 
@@ -88,7 +88,7 @@ func TestReaderValidateSegmentFileType(t *testing.T) {
 	docsDataFile.EXPECT().SegmentFileType().Return(IndexSegmentFileType("rand"))
 	fset.EXPECT().Files().Return([]IndexSegmentFile{docsDataFile})
 
-	_, err := NewSegment(fset, fs.NewSegmentOpts{})
+	_, err := NewSegment(fset, nil)
 	require.Error(t, err)
 }
 

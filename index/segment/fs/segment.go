@@ -30,12 +30,14 @@ import (
 	"github.com/m3db/m3ninx/doc"
 	"github.com/m3db/m3ninx/generated/proto/fswriter"
 	"github.com/m3db/m3ninx/index"
+	sgmt "github.com/m3db/m3ninx/index/segment"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding"
 	"github.com/m3db/m3ninx/index/segment/fs/encoding/docs"
 	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/postings/pilosa"
 	"github.com/m3db/m3ninx/postings/roaring"
 	"github.com/m3db/m3ninx/x"
+	"github.com/m3db/m3x/context"
 
 	"github.com/couchbase/vellum"
 	vregex "github.com/couchbaselabs/vellum/regexp"
@@ -95,13 +97,8 @@ func (sd SegmentData) Validate() error {
 	return nil
 }
 
-// NewSegmentOpts represent the collection of knobs used by the Segment.
-type NewSegmentOpts struct {
-	PostingsListPool postings.Pool
-}
-
 // NewSegment returns a new Segment backed by the provided options.
-func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
+func NewSegment(data SegmentData, opts Options) (Segment, error) {
 	if err := data.Validate(); err != nil {
 		return nil, err
 	}
@@ -132,6 +129,7 @@ func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
 	docsDataReader := docs.NewDataReader(data.DocsData)
 
 	return &fsSegment{
+		ctx:             context.NewContext(),
 		fieldsFST:       fieldsFST,
 		docsDataReader:  docsDataReader,
 		docsIndexReader: docsIndexReader,
@@ -146,14 +144,13 @@ func NewSegment(data SegmentData, opts NewSegmentOpts) (Segment, error) {
 
 type fsSegment struct {
 	sync.RWMutex
-	closed bool
-
+	ctx             context.Context
+	closed          bool
 	fieldsFST       *vellum.FST
 	docsDataReader  *docs.DataReader
 	docsIndexReader *docs.IndexReader
-
-	data SegmentData
-	opts NewSegmentOpts
+	data            SegmentData
+	opts            Options
 
 	numDocs        int64
 	startInclusive postings.ID
@@ -209,24 +206,29 @@ func (r *fsSegment) Close() error {
 		return errReaderClosed
 	}
 	r.closed = true
+	// ensure all references that depened on this segment are released
+	r.ctx.BlockingClose()
 	return r.fieldsFST.Close()
 }
 
-// FOLLOWUP(prateek): really need to change the types returned in Fields() and Terms()
-// to be iterators to allow us to pool the bytes being returned to the user. Otherwise
-// we're forced to copy these massive slices every time. Tracking this under
-// https://github.com/m3db/m3ninx/issues/66
-func (r *fsSegment) Fields() ([][]byte, error) {
+func (r *fsSegment) Fields() (sgmt.FieldsIterator, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
 		return nil, errReaderClosed
 	}
 
-	return r.allKeys(r.fieldsFST)
+	newCtx := context.NewContext()
+	r.ctx.DependsOn(newCtx)
+	return newFSTTermsIter(newFstTermsIterOpts{
+		ctx:         newCtx,
+		opts:        r.opts,
+		fst:         r.fieldsFST,
+		finalizeFST: false,
+	}), nil
 }
 
-func (r *fsSegment) Terms(field []byte) ([][]byte, error) {
+func (r *fsSegment) Terms(field []byte) (sgmt.TermsIterator, error) {
 	r.RLock()
 	defer r.RUnlock()
 	if r.closed {
@@ -238,19 +240,14 @@ func (r *fsSegment) Terms(field []byte) ([][]byte, error) {
 		return nil, err
 	}
 
-	fstCloser := x.NewSafeCloser(termsFST)
-	defer fstCloser.Close()
-
-	terms, err := r.allKeys(termsFST)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := fstCloser.Close(); err != nil {
-		return nil, err
-	}
-
-	return terms, nil
+	newCtx := context.NewContext()
+	r.ctx.DependsOn(newCtx)
+	return newFSTTermsIter(newFstTermsIterOpts{
+		ctx:         newCtx,
+		opts:        r.opts,
+		fst:         termsFST,
+		finalizeFST: true,
+	}), nil
 }
 
 func (r *fsSegment) MatchTerm(field []byte, term []byte) (postings.List, error) {
@@ -274,7 +271,7 @@ func (r *fsSegment) MatchTerm(field []byte, term []byte) (postings.List, error) 
 
 	if !exists {
 		// i.e. we don't know anything about the term, so can early return an empty postings list
-		return r.opts.PostingsListPool.Get(), nil
+		return r.opts.PostingsListPool().Get(), nil
 	}
 
 	pl, err := r.retrievePostingsListWithRLock(postingsOffset)
@@ -308,7 +305,7 @@ func (r *fsSegment) MatchRegexp(field []byte, regexp []byte, compiled *regexp.Re
 
 	var (
 		fstCloser     = x.NewSafeCloser(termsFST)
-		pl            = r.opts.PostingsListPool.Get()
+		pl            = r.opts.PostingsListPool().Get()
 		iter, iterErr = termsFST.Search(re, minByteKey, maxByteKey)
 		iterCloser    = x.NewSafeCloser(iter)
 	)
@@ -356,7 +353,7 @@ func (r *fsSegment) MatchAll() (postings.MutableList, error) {
 		return nil, errReaderClosed
 	}
 
-	pl := r.opts.PostingsListPool.Get()
+	pl := r.opts.PostingsListPool().Get()
 	pl.AddRange(r.startInclusive, r.endExclusive)
 
 	return pl, nil
@@ -404,32 +401,6 @@ func (r *fsSegment) retrievePostingsListWithRLock(postingsOffset uint64) (postin
 	}
 
 	return pilosa.Unmarshal(postingsBytes, roaring.NewPostingsList)
-}
-
-func (r *fsSegment) allKeys(fst *vellum.FST) ([][]byte, error) {
-	num := fst.Len()
-	keys := make([][]byte, 0, num)
-
-	iter, iterErr := fst.Iterator(minByteKey, maxByteKey)
-	safeCloser := x.NewSafeCloser(iter)
-	defer safeCloser.Close()
-
-	for {
-		if iterErr == vellum.ErrIteratorDone {
-			break
-		}
-		if iterErr != nil {
-			return nil, iterErr
-		}
-		key, _ := iter.Current()
-		keys = append(keys, r.copyBytes(key))
-		iterErr = iter.Next()
-	}
-
-	if err := safeCloser.Close(); err != nil {
-		return nil, err
-	}
-	return keys, nil
 }
 
 func (r *fsSegment) retrieveTermsFSTWithRLock(field []byte) (*vellum.FST, error) {
@@ -570,15 +541,4 @@ func (sr *fsSegmentReader) Close() error {
 	}
 	sr.closed = true
 	return nil
-}
-
-// copyBytes returns a copy of the provided bytes. We need to do this as the bytes
-// backing the fsSegment are mmap-ed, and maintain their lifecycle exclusive from those
-// owned by users.
-// FOLLOWUP(prateek): return iterator types at all exit points of Reader, and
-// then we can pool the bytes below.
-func (r *fsSegment) copyBytes(b []byte) []byte {
-	copied := make([]byte, len(b))
-	copy(copied, b)
-	return copied
 }
