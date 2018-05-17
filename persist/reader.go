@@ -33,13 +33,8 @@ import (
 // and success. i.e. users are not expected to call Close on any of the provided fileset.Files()
 // after invoking this function.
 func NewSegment(fileset IndexSegmentFileSet, opts fs.NewSegmentOpts) (fs.Segment, error) {
-	success := false
 	safeCloser := newSafeIndexSegmentFileSetCloser(fileset)
-	defer func() {
-		if !success {
-			safeCloser.Close()
-		}
-	}()
+	defer safeCloser.Close()
 
 	if t := fileset.SegmentType(); t != FSTIndexSegmentType {
 		return nil, fmt.Errorf("unknown segment type: %s", t)
@@ -56,12 +51,9 @@ func NewSegment(fileset IndexSegmentFileSet, opts fs.NewSegmentOpts) (fs.Segment
 		return nil, err
 	}
 
-	// indicate we don't need to close files in the defer above
-	success = true
+	// segment assumes ownership of the safeCloser at this point.
 	return segment, nil
 }
-
-// NewSegment takes ownership of the provided files.
 
 func filesetToSegmentData(fileset IndexSegmentFileSet) (fs.SegmentData, error) {
 	var (
