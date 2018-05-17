@@ -57,7 +57,11 @@ func (f *fstWriter) Reset(w io.Writer) error {
 	f.writer = w
 
 	// TODO(prateek): builderopts for vellum
-	builder, err := vellum.New(f, nil)
+	builder, err := vellum.New(f, &vellum.BuilderOpts{
+		Encoder:           1,
+		RegistryMRUSize:   4,
+		RegistryTableSize: 10000000,
+	})
 	if err != nil {
 		return err
 	}
