@@ -118,7 +118,3 @@ func (f *fstTermsIter) Close() error {
 	multiErr = multiErr.Add(f.iterOpts.Close())
 	return multiErr.FinalError()
 }
-
-type noOpCloser struct{}
-
-func (n noOpCloser) Close() error { return nil }
