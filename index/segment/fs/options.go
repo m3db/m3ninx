@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,10 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package mem
+package fs
 
 import (
-	"github.com/m3db/m3ninx/index/util"
 	"github.com/m3db/m3ninx/postings"
 	"github.com/m3db/m3ninx/postings/roaring"
 	"github.com/m3db/m3ninx/x/bytes"
@@ -31,11 +30,10 @@ import (
 )
 
 const (
-	defaultInitialCapacity        = 1024
 	defaultBytesArrayPoolCapacity = 1024
 )
 
-// Options is a collection of knobs for an in-memory segment.
+// Options is a collection of knobs for a fs segment.
 type Options interface {
 	// SetInstrumentOptions sets the instrument options.
 	SetInstrumentOptions(value instrument.Options) Options
@@ -54,26 +52,12 @@ type Options interface {
 
 	// PostingsListPool returns the postings list pool.
 	PostingsListPool() postings.Pool
-
-	// SetInitialCapacity sets the initial capacity.
-	SetInitialCapacity(value int) Options
-
-	// InitialCapacity returns the initial capacity.
-	InitialCapacity() int
-
-	// SetNewUUIDFn sets the function used to generate new UUIDs.
-	SetNewUUIDFn(value util.NewUUIDFn) Options
-
-	// NewUUIDFn returns the function used to generate new UUIDs.
-	NewUUIDFn() util.NewUUIDFn
 }
 
 type opts struct {
 	iopts             instrument.Options
 	bytesSliceArrPool bytes.SliceArrayPool
 	postingsPool      postings.Pool
-	initialCapacity   int
-	newUUIDFn         util.NewUUIDFn
 }
 
 // NewOptions returns new options.
@@ -88,8 +72,6 @@ func NewOptions() Options {
 		iopts:             instrument.NewOptions(),
 		bytesSliceArrPool: arrPool,
 		postingsPool:      postings.NewPool(nil, roaring.NewPostingsList),
-		initialCapacity:   defaultInitialCapacity,
-		newUUIDFn:         util.NewUUID,
 	}
 }
 
@@ -121,24 +103,4 @@ func (o *opts) SetPostingsListPool(v postings.Pool) Options {
 
 func (o *opts) PostingsListPool() postings.Pool {
 	return o.postingsPool
-}
-
-func (o *opts) SetInitialCapacity(v int) Options {
-	opts := *o
-	opts.initialCapacity = v
-	return &opts
-}
-
-func (o *opts) InitialCapacity() int {
-	return o.initialCapacity
-}
-
-func (o *opts) SetNewUUIDFn(v util.NewUUIDFn) Options {
-	opts := *o
-	opts.newUUIDFn = v
-	return &opts
-}
-
-func (o *opts) NewUUIDFn() util.NewUUIDFn {
-	return o.newUUIDFn
 }

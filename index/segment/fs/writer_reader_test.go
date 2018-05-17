@@ -31,12 +31,13 @@ import (
 	"github.com/m3db/m3ninx/index/segment/mem"
 	"github.com/m3db/m3ninx/index/util"
 	"github.com/m3db/m3ninx/postings"
-	"github.com/m3db/m3ninx/postings/roaring"
 
 	"github.com/stretchr/testify/require"
 )
 
 var (
+	testOptions = NewOptions()
+
 	fewTestDocuments = []doc.Document{
 		doc.Document{
 			Fields: []doc.Field{
@@ -115,11 +116,13 @@ func TestFieldsEquals(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 
-			memFields, err := memSeg.Fields()
+			memFieldsIter, err := memSeg.Fields()
 			require.NoError(t, err)
+			memFields := toSlice(t, memFieldsIter)
 
-			fstFields, err := fstSeg.Fields()
+			fstFieldsIter, err := fstSeg.Fields()
 			require.NoError(t, err)
+			fstFields := toSlice(t, fstFieldsIter)
 
 			assertSliceOfByteSlicesEqual(t, memFields, fstFields)
 
@@ -132,17 +135,21 @@ func TestTermEquals(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
 
-			memFields, err := memSeg.Fields()
+			memFieldsIter, err := memSeg.Fields()
 			require.NoError(t, err)
-			fstFields, err := fstSeg.Fields()
+			memFields := toSlice(t, memFieldsIter)
+			fstFieldsIter, err := fstSeg.Fields()
 			require.NoError(t, err)
+			fstFields := toSlice(t, fstFieldsIter)
 
 			assertTermEquals := func(fields [][]byte) {
 				for _, f := range fields {
-					memTerms, err := memSeg.Terms(f)
+					memTermsIter, err := memSeg.Terms(f)
 					require.NoError(t, err)
-					fstTerms, err := fstSeg.Terms(f)
+					memTerms := toSlice(t, memTermsIter)
+					fstTermsIter, err := fstSeg.Terms(f)
 					require.NoError(t, err)
+					fstTerms := toSlice(t, fstTermsIter)
 					assertSliceOfByteSlicesEqual(t, memTerms, fstTerms)
 				}
 			}
@@ -162,12 +169,14 @@ func TestPostingsListEqualForMatchTerm(t *testing.T) {
 			fstReader, err := fstSeg.Reader()
 			require.NoError(t, err)
 
-			memFields, err := memSeg.Fields()
+			memFieldsIter, err := memSeg.Fields()
 			require.NoError(t, err)
+			memFields := toSlice(t, memFieldsIter)
 
 			for _, f := range memFields {
-				memTerms, err := memSeg.Terms(f)
+				memTermsIter, err := memSeg.Terms(f)
 				require.NoError(t, err)
+				memTerms := toSlice(t, memTermsIter)
 
 				for _, term := range memTerms {
 					memPl, err := memReader.MatchTerm(f, term)
@@ -186,8 +195,9 @@ func TestPostingsListContainsID(t *testing.T) {
 	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
-			memIDs, err := memSeg.Terms(doc.IDReservedFieldName)
+			memIDsIter, err := memSeg.Terms(doc.IDReservedFieldName)
 			require.NoError(t, err)
+			memIDs := toSlice(t, memIDsIter)
 			for _, i := range memIDs {
 				ok, err := fstSeg.ContainsID(i)
 				require.NoError(t, err)
@@ -201,8 +211,9 @@ func TestPostingsListRegexAll(t *testing.T) {
 	for _, test := range testDocuments {
 		t.Run(test.name, func(t *testing.T) {
 			memSeg, fstSeg := newTestSegments(t, test.docs)
-			fields, err := memSeg.Fields()
+			fieldsIter, err := memSeg.Fields()
 			require.NoError(t, err)
+			fields := toSlice(t, fieldsIter)
 			for _, f := range fields {
 				reader, err := memSeg.Reader()
 				require.NoError(t, err)
@@ -228,12 +239,14 @@ func TestSegmentDocs(t *testing.T) {
 			fstReader, err := fstSeg.Reader()
 			require.NoError(t, err)
 
-			memFields, err := memSeg.Fields()
+			memFieldsIter, err := memSeg.Fields()
 			require.NoError(t, err)
+			memFields := toSlice(t, memFieldsIter)
 
 			for _, f := range memFields {
-				memTerms, err := memSeg.Terms(f)
+				memTermsIter, err := memSeg.Terms(f)
 				require.NoError(t, err)
+				memTerms := toSlice(t, memTermsIter)
 
 				for _, term := range memTerms {
 					memPl, err := memReader.MatchTerm(f, term)
@@ -343,10 +356,7 @@ func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 		FSTTermsData:  fstTermsBuffer.Bytes(),
 		FSTFieldsData: fstFieldsBuffer.Bytes(),
 	}
-	opts := NewSegmentOpts{
-		PostingsListPool: postings.NewPool(nil, roaring.NewPostingsList),
-	}
-	reader, err := NewSegment(data, opts)
+	reader, err := NewSegment(data, testOptions)
 	require.NoError(t, err)
 
 	return reader
@@ -354,8 +364,6 @@ func newFSTSegment(t *testing.T, s sgmt.MutableSegment) sgmt.Segment {
 
 func assertSliceOfByteSlicesEqual(t *testing.T, a, b [][]byte) {
 	require.Equal(t, len(a), len(b), fmt.Sprintf("a = [%s], b = [%s]", pprint(a), pprint(b)))
-	sortSliceOfByteSlices(a)
-	sortSliceOfByteSlices(b)
 	require.Equal(t, a, b)
 }
 
@@ -409,4 +417,14 @@ func pprintIter(pl postings.List) string {
 		buf.WriteString(fmt.Sprintf("%d", iter.Current()))
 	}
 	return buf.String()
+}
+
+func toSlice(t *testing.T, iter sgmt.OrderedBytesSliceIterator) [][]byte {
+	elems := [][]byte{}
+	for iter.Next() {
+		elems = append(elems, iter.Current())
+	}
+	require.NoError(t, iter.Err())
+	require.NoError(t, iter.Close())
+	return elems
 }

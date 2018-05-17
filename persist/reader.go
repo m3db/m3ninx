@@ -27,7 +27,7 @@ import (
 )
 
 // NewSegment returns a new fs.Segment backed by the provided fileset.
-func NewSegment(fileset IndexSegmentFileSet, opts fs.NewSegmentOpts) (fs.Segment, error) {
+func NewSegment(fileset IndexSegmentFileSet, opts fs.Options) (fs.Segment, error) {
 	if t := fileset.SegmentType(); t != FSTIndexSegmentType {
 		return nil, fmt.Errorf("unknown segment type: %s", t)
 	}
