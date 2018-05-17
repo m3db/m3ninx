@@ -38,6 +38,10 @@ type conjunctionSearcher struct {
 // NewConjunctionSearcher returns a new Searcher which matches documents which match each
 // of the given searchers and none of the negations. It is not safe for concurrent access.
 func NewConjunctionSearcher(numReaders int, searchers, negations search.Searchers) (search.Searcher, error) {
+	if len(searchers) == 0 {
+		return nil, errEmptySearchers
+	}
+
 	if err := validateSearchers(numReaders, searchers); err != nil {
 		return nil, err
 	}

@@ -114,3 +114,24 @@ func TestConjunctionSearcher(t *testing.T) {
 	require.False(t, s.Next())
 	require.NoError(t, s.Err())
 }
+
+func TestConjunctionSearcherError(t *testing.T) {
+	tests := []struct {
+		name       string
+		numReaders int
+		searchers  search.Searchers
+		negations  search.Searchers
+	}{
+		{
+			name:       "empty list of searchers",
+			numReaders: 3,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := NewConjunctionSearcher(test.numReaders, test.searchers, test.negations)
+			require.Error(t, err)
+		})
+	}
+}
