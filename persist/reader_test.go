@@ -117,7 +117,7 @@ func TestReaderValidateDoesNotCloseAllOnBadByteAccess(t *testing.T) {
 }
 
 func TestReaderValidateSegmentFileType(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl := gomock.NewController(xtest.Reporter{t})
 	defer ctrl.Finish()
 
 	fset := NewMockIndexSegmentFileSet(ctrl)
@@ -136,10 +136,11 @@ func TestReaderValidateSegmentFileType(t *testing.T) {
 }
 
 func TestReaderValidateAllByteAccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
+	ctrl := gomock.NewController(xtest.Reporter{t})
 	defer ctrl.Finish()
 
 	fset := NewMockIndexSegmentFileSet(ctrl)
+	fset.EXPECT().SegmentType().Return(FSTIndexSegmentType)
 	fset.EXPECT().MajorVersion().Return(fs.MajorVersion)
 	fset.EXPECT().MinorVersion().Return(1)
 	fset.EXPECT().SegmentMetadata().Return([]byte{})
@@ -147,30 +148,34 @@ func TestReaderValidateAllByteAccess(t *testing.T) {
 	docsDataFile := NewMockIndexSegmentFile(ctrl)
 	docsDataFile.EXPECT().SegmentFileType().Return(DocumentDataIndexSegmentFileType)
 	docsDataFile.EXPECT().Bytes().Return([]byte{}, nil)
+	docsDataFile.EXPECT().Close()
 
 	docsIdxFile := NewMockIndexSegmentFile(ctrl)
 	docsIdxFile.EXPECT().SegmentFileType().Return(DocumentIndexIndexSegmentFileType)
 	docsIdxFile.EXPECT().Bytes().Return([]byte{}, nil)
+	docsIdxFile.EXPECT().Close()
 
 	postingsFile := NewMockIndexSegmentFile(ctrl)
 	postingsFile.EXPECT().SegmentFileType().Return(PostingsIndexSegmentFileType)
 	postingsFile.EXPECT().Bytes().Return([]byte{}, nil)
+	postingsFile.EXPECT().Close()
 
 	fstFieldsFile := NewMockIndexSegmentFile(ctrl)
 	fstFieldsFile.EXPECT().SegmentFileType().Return(FSTFieldsIndexSegmentFileType)
 	fstFieldsFile.EXPECT().Bytes().Return([]byte{}, nil)
+	fstFieldsFile.EXPECT().Close()
 
 	fstTermsFile := NewMockIndexSegmentFile(ctrl)
 	fstTermsFile.EXPECT().SegmentFileType().Return(FSTTermsIndexSegmentFileType)
 	fstTermsFile.EXPECT().Bytes().Return([]byte{}, nil)
+	fstTermsFile.EXPECT().Close()
 
 	fset.EXPECT().Files().Return([]IndexSegmentFile{docsDataFile, docsIdxFile,
 		postingsFile,
 		fstFieldsFile,
 		fstTermsFile}).AnyTimes()
 
-	sd, err := filesetToSegmentData(fset)
-	require.NoError(t, err)
-
-	require.NoError(t, sd.Validate())
+	_, err := NewSegment(fset, fs.NewSegmentOpts{})
+	// due to empty bytes being passed
+	require.Error(t, err)
 }
