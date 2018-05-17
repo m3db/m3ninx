@@ -53,16 +53,18 @@ func (f *fstWriter) Write(p []byte) (int, error) {
 }
 
 func (f *fstWriter) Reset(w io.Writer) error {
-	f.Clear()
+	f.bytesWritten = 0
 	f.writer = w
-
-	// TODO(prateek): builderopts for vellum
-	builder, err := vellum.New(f, nil)
-	if err != nil {
-		return err
+	if f.builder == nil {
+		// TODO(prateek): builderopts for vellum
+		builder, err := vellum.New(f, nil)
+		if err != nil {
+			return err
+		}
+		f.builder = builder
+		return nil
 	}
-	f.builder = builder
-	return nil
+	return f.builder.Reset(f)
 }
 
 func (f *fstWriter) Add(b []byte, v uint64) error {
@@ -74,7 +76,5 @@ func (f *fstWriter) Close() (uint64, error) {
 	if err != nil {
 		return 0, nil
 	}
-	bytesWritten := f.bytesWritten
-	f.Clear()
-	return bytesWritten, nil
+	return f.bytesWritten, nil
 }
