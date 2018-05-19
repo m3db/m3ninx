@@ -56,8 +56,12 @@ func (f *fstWriter) Reset(w io.Writer) error {
 	f.bytesWritten = 0
 	f.writer = w
 	if f.builder == nil {
-		// TODO(prateek): builderopts for vellum
-		builder, err := vellum.New(f, nil)
+		// TODO(prateek): tweak builderopts for vellum
+		builder, err := vellum.New(f, &vellum.BuilderOpts{
+			Encoder:           1,
+			RegistryTableSize: 100000,
+			RegistryMRUSize:   4,
+		})
 		if err != nil {
 			return err
 		}
