@@ -1,5 +1,5 @@
-hash: 1cdafb184c75df28f8e8ff1627089bd5ae8a19d78633853b24996ab6a03076ef
-updated: 2018-05-19T23:20:00.44500584-04:00
+hash: 03d26c61a742599f6ff045a3ac56e17ecd2cfa10eb86b4af961c21d9828f2203
+updated: 2018-05-21T13:15:13.928451988-04:00
 imports:
 - name: github.com/apache/thrift
   version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
@@ -8,8 +8,9 @@ imports:
 - name: github.com/cespare/xxhash
   version: 48099fad606eafc26e3a569fad19ff510fff4df6
 - name: github.com/couchbase/vellum
-  version: c8d001ddd5fefddde930379e021aadaeba565fef
-  repo: https://github.com/m3db/vellum
+  version: 9f27eb7552cbec3eb324f2aceadf231ed7d6a5b7
+  repo: https://github.com/prateek/vellum
+  vcs: git
   subpackages:
   - regexp
   - utf8
